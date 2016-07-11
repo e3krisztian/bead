@@ -121,6 +121,8 @@ def arg_bead_query(parser):
     # bead_filters
     BEAD_QUERY = 'bead_query'
     APPEND = 'append'
+    APPEND_CONST = 'append_const'
+
     arg('-o', '--older', '--older-than', dest=BEAD_QUERY, action=APPEND,
         metavar='TIMEDEF', type=tag(bead_spec.OLDER_THAN, _parse_time))
     arg('-n', '--newer', '--newer-than', dest=BEAD_QUERY, action=APPEND,
@@ -129,6 +131,8 @@ def arg_bead_query(parser):
         metavar='START-OF-BEAD-NAME',
         type=tag(bead_spec.BEAD_NAME_GLOB, _parse_start_of_name))
 
+    arg('--next', dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.NEXT_VERSION)
+    arg('--prev', dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.PREV_VERSION)
     # match reducers
     # -N, --next
     # -P, --prev, --previous
@@ -175,8 +179,13 @@ class ArchiveReference(BeadReference):
         return Workspace(self.bead.name)
 
 
+from tracelog import TRACELOG
+
+
 class BoxQueryReference(BeadReference):
     def __init__(self, workspace_name, query, boxes, index=-1):
+        TRACELOG('BoxQueryReference', workspace_name, query, index)
+
         # index: like python list indices 0 = first, -1 = last
         self.workspace_name = workspace_name
         self.query = query
@@ -213,5 +222,16 @@ def get_bead_ref(env, bead_ref_base, bead_query):
     if bead_ref_base:
         query = [(bead_spec.BEAD_NAME_GLOB, bead_ref_base)] + query
 
-    # TODO: calculate and add index parameter (--next, --prev)
-    return BoxQueryReference(bead_ref_base, query, env.get_boxes())
+    # calculate index parameter (--next, --prev)
+    index = -1
+    final_query = []
+    for q in query:
+        if q is bead_spec.PREV_VERSION:
+            index -= 1
+        elif q is bead_spec.NEXT_VERSION:
+            index += 1
+        else:
+            final_query.append(q)
+    TRACELOG(index)
+
+    return BoxQueryReference(bead_ref_base, final_query, env.get_boxes(), index)

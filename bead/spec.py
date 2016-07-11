@@ -17,6 +17,8 @@ BEAD_NAME_GLOB = 'BEAD_NAME_GLOB'
 KIND           = 'KIND'
 CONTENT_HASH   = 'CONTENT_HASH'
 # TODO: support shortened content hashes
+NEXT_VERSION   = 'NEXT_VERSION'
+PREV_VERSION   = 'PREV_VERSION'
 
 
 # private and specific to Box implementation, when Box gains
