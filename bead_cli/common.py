@@ -133,11 +133,9 @@ def arg_bead_query(parser):
 
     arg('--next', dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.NEXT_VERSION)
     arg('--prev', dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.PREV_VERSION)
-    # match reducers
+    # match offset/index
     # -N, --next
     # -P, --prev, --previous
-    # --newest, --latest (default)
-    # --oldest
 
 BEAD_QUERY = arg_bead_query
 
@@ -215,6 +213,7 @@ class BoxQueryReference(BeadReference):
 
 def get_bead_ref(env, bead_ref_base, bead_query):
     if os.path.sep in bead_ref_base and os.path.isfile(bead_ref_base):
+        assert not bead_query
         return ArchiveReference(bead_ref_base)
 
     query = list(bead_query or [])
