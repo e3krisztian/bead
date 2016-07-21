@@ -3,6 +3,8 @@ from __future__ import division
 from __future__ import unicode_literals
 from __future__ import print_function
 
+from tracelog import TRACELOG  # TODO: remove TRACELOG
+
 import os
 import sys
 
@@ -116,15 +118,16 @@ def arg_bead_query(parser):
         'Restrict the bead version with these options')
     arg = group.add_argument
     # TODO: implement more options
-    # -b, --box
+    # -b, --box    to restrict search to a specific box
 
     # bead_filters
     BEAD_QUERY = 'bead_query'
     APPEND = 'append'
     APPEND_CONST = 'append_const'
 
-    # FIXME: older-than and newer-than should include the time itself
-    # FIXME: newer-than -> from, older-than -> to,
+    # FIXME: newer-than, older-than -> -t time
+    #   which means the bead having a timestamp closest to the given time
+    # (this is currently a mess)
     arg('-o', '--older', '--older-than', dest=BEAD_QUERY, action=APPEND,
         metavar='TIMEDEF', type=tag(bead_spec.OLDER_THAN, _parse_time))
     arg('-n', '--newer', '--newer-than', dest=BEAD_QUERY, action=APPEND,
@@ -133,11 +136,12 @@ def arg_bead_query(parser):
         metavar='START-OF-BEAD-NAME',
         type=tag(bead_spec.BEAD_NAME_GLOB, _parse_start_of_name))
 
-    arg('--next', dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.NEXT_VERSION)
-    arg('--prev', dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.PREV_VERSION)
     # match offset/index
-    # -N, --next
-    # -P, --prev, --previous
+    arg('-N', '--next', dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.NEXT_VERSION)
+    arg('-P', '--prev', '--previous',
+        dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.PREV_VERSION)
+    # arg('-N', '--next', dest='bead_query_next', action='count')
+    # arg('-P', '--prev', '--previous', dest='bead_query_prev', action='count')
 
 BEAD_QUERY = arg_bead_query
 
@@ -162,6 +166,12 @@ BEAD_REF_BASE = arg_bead_ref_base(nargs=None, default=None)
 class BeadReference:
     bead = Archive
 
+    def add_query(self, query):
+        pass
+
+    def set_index(self, index):
+        pass
+
 
 class ArchiveReference(BeadReference):
     def __init__(self, archive_path):
@@ -173,26 +183,24 @@ class ArchiveReference(BeadReference):
             return Archive(self.archive_path)
         raise LookupError('Not a file', self.archive_path)
 
+    def add_query(self, query):
+        if query:
+            raise NotImplementedError('query modifiers are unsupported on archives')
 
-from tracelog import TRACELOG
+    def set_index(self, index):
+        if index != -1:
+            raise NotImplementedError('indexing relative to an archive is unsupported')
 
 
 class BoxQueryReference(BeadReference):
-    def __init__(self, query, boxes, index=-1):
-        TRACELOG('BoxQueryReference', query, index)
-
-        # index: like python list indices 0 = first, -1 = last
-        self.query = query
-        if index < 0:
-            self.order = bead_spec.NEWEST_FIRST
-            self.limit = -index
-        else:
-            self.order = bead_spec.OLDEST_FIRST
-            self.limit = index + 1
+    def __init__(self, boxes):
         self.boxes = list(boxes)
+        self.query = []
+        self.set_index(-1)
 
     @property
     def bead(self):
+        TRACELOG('BoxQueryReference', self.query, self.limit, self.order)
         matches = []
         for box in self.boxes:
             matches.extend(box.find_beads(self.query, self.order, self.limit))
@@ -201,6 +209,18 @@ class BoxQueryReference(BeadReference):
         if len(matches) == self.limit:
             return matches[-1]
         raise LookupError
+
+    def add_query(self, query):
+        self.query.extend(query)
+
+    def set_index(self, index):
+        # index: like python list indices 0 = first, -1 = last
+        if index < 0:
+            self.order = bead_spec.NEWEST_FIRST
+            self.limit = -index
+        else:
+            self.order = bead_spec.OLDEST_FIRST
+            self.limit = index + 1
 
 
 def get_bead_ref(env, bead_ref_base, bead_query):
@@ -213,16 +233,23 @@ def get_bead_ref(env, bead_ref_base, bead_query):
     if bead_ref_base:
         query = [(bead_spec.BEAD_NAME_GLOB, bead_ref_base)] + query
 
+    final_query = [
+        q for q in query
+        if q is not bead_spec.PREV_VERSION and q is not bead_spec.NEXT_VERSION]
+
+    ref = BoxQueryReference(env.get_boxes())
+    ref.add_query(final_query)
+    return ref
+
+
+def get_query_index(args):
+    # return args.bead_query_next - bead_query_prev - 1
     # calculate index parameter (--next, --prev)
     index = -1
-    final_query = []
-    for q in query:
+    for q in args.bead_query or ():
         if q is bead_spec.PREV_VERSION:
             index -= 1
         elif q is bead_spec.NEXT_VERSION:
             index += 1
-        else:
-            final_query.append(q)
     TRACELOG(index)
-
-    return BoxQueryReference(final_query, env.get_boxes(), index)
+    return index

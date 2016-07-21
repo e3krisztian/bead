@@ -13,7 +13,8 @@ from .common import (
     CurrentDirWorkspace,
     die, warning
 )
-from .common import BEAD_REF_BASE_defaulting_to, BEAD_QUERY, get_bead_ref, BoxQueryReference
+from .common import (
+    BEAD_REF_BASE_defaulting_to, BEAD_QUERY, get_bead_ref, get_query_index, BoxQueryReference)
 from bead import spec as bead_spec
 from bead.tech.timestamp import time_from_timestamp
 
@@ -55,7 +56,7 @@ class CmdAdd(Command):
     def declare(self, arg):
         arg(INPUT_NICK)
         arg(BEAD_REF_BASE_defaulting_to(USE_INPUT_NICK))
-        arg(BEAD_QUERY)
+        arg(BEAD_QUERY)  # XXX: add: arg(BEAD_TIME) as a generic query should not be supported
         arg(OPTIONAL_WORKSPACE)
         arg(OPTIONAL_ENV)
 
@@ -69,6 +70,7 @@ class CmdAdd(Command):
             bead_ref_base = input_nick
 
         bead_ref = get_bead_ref(env, bead_ref_base, args.bead_query)
+
         try:
             bead = bead_ref.bead
         except LookupError:
@@ -112,6 +114,7 @@ class CmdUpdate(Command):
         workspace = args.workspace
         env = args.get_env()
         if input_nick is ALL_INPUTS:
+            # TODO: update: assert there is no other argument
             for input in workspace.inputs:
                 try:
                     _update(env, workspace, input)
@@ -122,14 +125,31 @@ class CmdUpdate(Command):
                         warning('Can not find bead for {}'.format(input.name))
             print('All inputs are up to date.')
         else:
-            # FIXME: update: fix to allow to select previous/next/closest to a timestamp bead
+            input = workspace.get_input(input_nick)
+            # FIXME: update: is an inconsistent mess
+            # should be simplified to this 3 cases:
+            #  - update to last version (index==-1)
+            #  - update to version closest to given time (not yet supported)
+            #  - update to next/previous version
+            # it should work without loading the bead if it was unloaded
             if bead_ref_base is NEWEST_VERSION:
-                bead_ref = NEWEST_VERSION
-                # bead_ref = get_bead_ref(env, 'bead_with_history', args.bead_query)
+                bead_ref = BoxQueryReference(env.get_boxes())
+                query = [(bead_spec.KIND, input.kind)]
+                bead_ref.add_query(query)
+                # assert len(args.bead_query) == 0
+                time = time_from_timestamp(input.timestamp)
+                index = get_query_index(args)
+                if index < -1:
+                    bead_ref.add_query([(bead_spec.OLDER_THAN, time)])
+                    index += 1
+                elif index > -1:
+                    bead_ref.add_query([(bead_spec.NEWER_THAN, time)])
+                bead_ref.set_index(index)
             else:
                 bead_ref = get_bead_ref(env, bead_ref_base, args.bead_query)
+                assert -1 == get_query_index(args)
             try:
-                _update(env, workspace, workspace.get_input(input_nick), bead_ref)
+                _update(env, workspace, input, bead_ref)
             except LookupError:
                 die('Can not find matching bead')
 
@@ -139,7 +159,8 @@ def _update(env, workspace, input, bead_ref=NEWEST_VERSION):
         query = [
             (bead_spec.KIND, input.kind),
             (bead_spec.NEWER_THAN, time_from_timestamp(input.timestamp))]
-        bead_ref = BoxQueryReference(query, env.get_boxes())
+        bead_ref = BoxQueryReference(env.get_boxes())
+        bead_ref.add_query(query)
 
     replacement = bead_ref.bead
     _check_load_with_feedback(workspace, input.name, replacement)

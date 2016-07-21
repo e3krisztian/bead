@@ -128,7 +128,7 @@ class CmdDevelop(Command):
 
     def declare(self, arg):
         arg(BEAD_REF_BASE)
-        arg(BEAD_QUERY)
+        arg(BEAD_QUERY)  # XXX: develop: arg(BEAD_TIME) as a generic query should not be supported
         arg(WORKSPACE_defaulting_to(DERIVE_FROM_BEAD_NAME))
         arg('-x', '--extract-output', dest='extract_output',
             default=False, action='store_true',
@@ -139,6 +139,7 @@ class CmdDevelop(Command):
         extract_output = args.extract_output
         env = args.get_env()
         bead_ref = get_bead_ref(env, args.bead_ref_base, args.bead_query)
+
         try:
             bead = bead_ref.bead
         except LookupError:

@@ -7,6 +7,7 @@ from __future__ import division
 from __future__ import unicode_literals
 from __future__ import print_function
 
+from tracelog import TRACELOG  # TODO: remove TRACELOG
 
 import heapq
 from datetime import datetime, timedelta
@@ -45,6 +46,8 @@ def order_and_limit_beads(beads, order=bead_spec.NEWEST_FIRST, limit=None):
     '''
     Order beads by timestamps and keep only the closest ones.
     '''
+    TRACELOG(beads, order, limit)
+
     # wrap beads so that they can be compared by timestamps
     compare_wrap = {
         bead_spec.NEWEST_FIRST: _MoreIsLess,
@@ -55,6 +58,7 @@ def order_and_limit_beads(beads, order=bead_spec.NEWEST_FIRST, limit=None):
     if limit:
         # assume we have lots of beads, so do it with memory limited
         wrapped_results = heapq.nsmallest(limit, comparable_beads)
+        TRACELOG([w.wrapped.timestamp_str for w in wrapped_results])
     else:
         wrapped_results = sorted(comparable_beads)
 
@@ -105,6 +109,11 @@ class Box(object):
         Valid only for local boxes.
         '''
         return Path(self.location)
+
+    # FIXME: find_beads(self, time) -> (right before, exactly at, right after)
+    # i.e. a triple of beads
+    # in theory timestamps can be [intentionally] duplicated, but let's
+    # treat that as an error condition to be fixed ASAP
 
     def find_beads(self, conditions, order=bead_spec.NEWEST_FIRST, limit=None):
         '''
