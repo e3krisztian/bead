@@ -146,7 +146,7 @@ class CmdDevelop(Command):
         if not bead.is_valid:
             die('Bead is found but damaged')
         if args.workspace is DERIVE_FROM_BEAD_NAME:
-            workspace = bead_ref.default_workspace
+            workspace = Workspace(bead.name)
         else:
             workspace = args.workspace
 

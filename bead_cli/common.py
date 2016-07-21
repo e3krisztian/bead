@@ -123,6 +123,8 @@ def arg_bead_query(parser):
     APPEND = 'append'
     APPEND_CONST = 'append_const'
 
+    # FIXME: older-than and newer-than should include the time itself
+    # FIXME: newer-than -> from, older-than -> to,
     arg('-o', '--older', '--older-than', dest=BEAD_QUERY, action=APPEND,
         metavar='TIMEDEF', type=tag(bead_spec.OLDER_THAN, _parse_time))
     arg('-n', '--newer', '--newer-than', dest=BEAD_QUERY, action=APPEND,
@@ -159,7 +161,6 @@ BEAD_REF_BASE = arg_bead_ref_base(nargs=None, default=None)
 
 class BeadReference:
     bead = Archive
-    default_workspace = Workspace
 
 
 class ArchiveReference(BeadReference):
@@ -172,20 +173,15 @@ class ArchiveReference(BeadReference):
             return Archive(self.archive_path)
         raise LookupError('Not a file', self.archive_path)
 
-    @property
-    def default_workspace(self):
-        return Workspace(self.bead.name)
-
 
 from tracelog import TRACELOG
 
 
 class BoxQueryReference(BeadReference):
-    def __init__(self, workspace_name, query, boxes, index=-1):
-        TRACELOG('BoxQueryReference', workspace_name, query, index)
+    def __init__(self, query, boxes, index=-1):
+        TRACELOG('BoxQueryReference', query, index)
 
         # index: like python list indices 0 = first, -1 = last
-        self.workspace_name = workspace_name
         self.query = query
         if index < 0:
             self.order = bead_spec.NEWEST_FIRST
@@ -205,10 +201,6 @@ class BoxQueryReference(BeadReference):
         if len(matches) == self.limit:
             return matches[-1]
         raise LookupError
-
-    @property
-    def default_workspace(self):
-        return Workspace(self.workspace_name)
 
 
 def get_bead_ref(env, bead_ref_base, bead_query):
@@ -233,4 +225,4 @@ def get_bead_ref(env, bead_ref_base, bead_query):
             final_query.append(q)
     TRACELOG(index)
 
-    return BoxQueryReference(bead_ref_base, final_query, env.get_boxes(), index)
+    return BoxQueryReference(final_query, env.get_boxes(), index)

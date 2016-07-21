@@ -125,6 +125,7 @@ class CmdUpdate(Command):
             # FIXME: update: fix to allow to select previous/next/closest to a timestamp bead
             if bead_ref_base is NEWEST_VERSION:
                 bead_ref = NEWEST_VERSION
+                # bead_ref = get_bead_ref(env, 'bead_with_history', args.bead_query)
             else:
                 bead_ref = get_bead_ref(env, bead_ref_base, args.bead_query)
             try:
@@ -138,8 +139,7 @@ def _update(env, workspace, input, bead_ref=NEWEST_VERSION):
         query = [
             (bead_spec.KIND, input.kind),
             (bead_spec.NEWER_THAN, time_from_timestamp(input.timestamp))]
-        workspace_name = ''  # no workspace!
-        bead_ref = BoxQueryReference(workspace_name, query, env.get_boxes())
+        bead_ref = BoxQueryReference(query, env.get_boxes())
 
     replacement = bead_ref.bead
     _check_load_with_feedback(workspace, input.name, replacement)
