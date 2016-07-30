@@ -263,7 +263,7 @@ class _ZipCreator(object):
                 input.name: {
                     meta.INPUT_KIND: input.kind,
                     meta.INPUT_CONTENT_HASH: input.content_hash,
-                    meta.INPUT_FREEZE_TIME: input.timestamp}
+                    meta.INPUT_FREEZE_TIME: input.timestamp_str}
                 for input in workspace.inputs},
             meta.FREEZE_NAME: workspace.bead_name}
 

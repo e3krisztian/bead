@@ -14,13 +14,12 @@ from .cmdparse import Command
 from .common import die, warning
 from .common import DefaultArgSentinel
 from .common import OPTIONAL_WORKSPACE, OPTIONAL_ENV
-from .common import BEAD_REF_BASE, BEAD_QUERY, get_bead_ref
+from .common import BEAD_REF_BASE, BEAD_TIME, resolve_bead
 from . import arg_metavar
 from . import arg_help
 
 
 timestamp = tech.timestamp.timestamp
-time_from_timestamp = tech.timestamp.time_from_timestamp
 
 
 def assert_may_be_valid_name(name):
@@ -128,7 +127,7 @@ class CmdDevelop(Command):
 
     def declare(self, arg):
         arg(BEAD_REF_BASE)
-        arg(BEAD_QUERY)  # XXX: develop: arg(BEAD_TIME) as a generic query should not be supported
+        arg(BEAD_TIME)
         arg(WORKSPACE_defaulting_to(DERIVE_FROM_BEAD_NAME))
         arg('-x', '--extract-output', dest='extract_output',
             default=False, action='store_true',
@@ -138,10 +137,8 @@ class CmdDevelop(Command):
     def run(self, args):
         extract_output = args.extract_output
         env = args.get_env()
-        bead_ref = get_bead_ref(env, args.bead_ref_base, args.bead_query)
-
         try:
-            bead = bead_ref.bead
+            bead = resolve_bead(env, args.bead_ref_base, args.bead_time)
         except LookupError:
             die('Bead not found!')
         if not bead.is_valid:
@@ -182,10 +179,9 @@ def print_inputs(env, workspace, verbose):
             print('\tName[s]:')
             has_name = False
             for box in boxes:
-                timestamp = time_from_timestamp(input.timestamp)
                 (
                     exact_match, best_guess, best_guess_timestamp, names
-                ) = box.find_names(input.kind, input.content_hash, timestamp)
+                ) = box.find_names(input.kind, input.content_hash, input.timestamp)
                 #
                 has_name = has_name or exact_match or best_guess or names
                 if exact_match:
@@ -199,7 +195,7 @@ def print_inputs(env, workspace, verbose):
             if verbose or not has_name:
                 print('\tBead kind:', input.kind)
                 print('\tContent hash:', input.content_hash)
-                print('\tFreeze time:', input.timestamp)
+                print('\tFreeze time:', input.timestamp_str)
 
         print('')
         unloaded = [

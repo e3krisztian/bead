@@ -32,7 +32,7 @@ from __future__ import print_function
 
 
 from collections import namedtuple
-
+from .tech.timestamp import time_from_timestamp
 
 # Metadata versions determine the content-hash used and potentially
 # other processing differences. Having it in the metadata potentially
@@ -51,7 +51,10 @@ INPUT_CONTENT_HASH = 'content_hash'
 INPUT_FREEZE_TIME  = 'freeze_time'
 
 
-InputSpec = namedtuple('InputSpec', 'name kind content_hash timestamp')
+class InputSpec(namedtuple('InputSpec', 'name kind content_hash timestamp_str')):
+    @property
+    def timestamp(self):
+        return time_from_timestamp(self.timestamp_str)
 
 
 def parse_inputs(meta):

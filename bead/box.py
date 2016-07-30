@@ -9,6 +9,7 @@ from __future__ import print_function
 
 from tracelog import TRACELOG  # TODO: remove TRACELOG
 
+from fnmatch import fnmatch
 import heapq
 from datetime import datetime, timedelta
 import functools
@@ -22,24 +23,68 @@ from .import tech
 Path = tech.fs.Path
 
 
-class _Wrapper(object):
-    def __init__(self, wrapped):
-        self.wrapped = wrapped
+# private and specific to Box implementation, when Box gains more power,
+# it should change how it handles queries (e.g. using BEAD_NAME_GLOB, KIND,
+# or CONTENT_HASH directly through an index)
+
+
+def _make_checkers():
+    def has_name_glob(nameglob):
+        def filter(bead):
+            return fnmatch(bead.name, nameglob)
+        return filter
+
+    def has_kind(kind):
+        def filter(bead):
+            return bead.kind == kind
+        return filter
+
+    def has_content_prefix(hash_prefix):
+        def filter(bead):
+            return bead.content_hash.startswith(hash_prefix)
+        return filter
+
+    return {
+        bead_spec.BEAD_NAME_GLOB: has_name_glob,
+        bead_spec.KIND:           has_kind,
+        bead_spec.CONTENT_HASH:   has_content_prefix,
+    }
+
+_CHECKERS = _make_checkers()
+
+
+def compile_conditions(conditions):
+    '''
+    Compile list of (check-name, check-param)-s into a match function.
+    '''
+    checkers = [_CHECKERS[check](param) for check, param in conditions]
+
+    def match(bead):
+        for check in checkers:
+            if not check(bead):
+                return False
+        return True
+    return match
+
+
+class _CompareWrapper(object):
+    def __init__(self, bead):
+        self.bead = bead
 
     def __eq__(self, other):
-        return self.wrapped.timestamp == other.wrapped.timestamp
+        return self.bead.timestamp == other.bead.timestamp
 
 
 @functools.total_ordering
-class _MoreIsLess(_Wrapper):
+class _ReverseCompare(_CompareWrapper):
     def __lt__(self, other):
-        return self.wrapped.timestamp > other.wrapped.timestamp
+        return self.bead.timestamp > other.bead.timestamp
 
 
 @functools.total_ordering
-class _LessIsLess(_Wrapper):
+class _Compare(_CompareWrapper):
     def __lt__(self, other):
-        return self.wrapped.timestamp < other.wrapped.timestamp
+        return self.bead.timestamp < other.bead.timestamp
 
 
 def order_and_limit_beads(beads, order=bead_spec.NEWEST_FIRST, limit=None):
@@ -50,20 +95,20 @@ def order_and_limit_beads(beads, order=bead_spec.NEWEST_FIRST, limit=None):
 
     # wrap beads so that they can be compared by timestamps
     compare_wrap = {
-        bead_spec.NEWEST_FIRST: _MoreIsLess,
-        bead_spec.OLDEST_FIRST: _LessIsLess,
+        bead_spec.NEWEST_FIRST: _ReverseCompare,
+        bead_spec.OLDEST_FIRST: _Compare,
     }[order]
     comparable_beads = (compare_wrap(bead) for bead in beads)
 
     if limit:
         # assume we have lots of beads, so do it with memory limited
         wrapped_results = heapq.nsmallest(limit, comparable_beads)
-        TRACELOG([w.wrapped.timestamp_str for w in wrapped_results])
+        TRACELOG([_.bead.timestamp_str for _ in wrapped_results])
     else:
         wrapped_results = sorted(comparable_beads)
 
     # unwrap wrapped_results
-    return [wrapper.wrapped for wrapper in wrapped_results]
+    return [_.bead for _ in wrapped_results]
 
 
 ARCHIVE_COMMENT = '''
@@ -110,11 +155,7 @@ class Box(object):
         '''
         return Path(self.location)
 
-    # FIXME: find_beads(self, time) -> (right before, exactly at, right after)
-    # i.e. a triple of beads
-    # in theory timestamps can be [intentionally] duplicated, but let's
-    # treat that as an error condition to be fixed ASAP
-
+    # XXX: is find_beads in use still?
     def find_beads(self, conditions, order=bead_spec.NEWEST_FIRST, limit=None):
         '''
         Retrieve matching beads.
@@ -123,7 +164,13 @@ class Box(object):
         potentially on another machine, so it might be faster to restrict
         the results here and not send the whole list over the network.
         '''
-        match = bead_spec.compile_conditions(conditions)
+        return order_and_limit_beads(self._beads(conditions), order, limit)
+
+    def _beads(self, conditions):
+        '''
+        Retrieve matching beads.
+        '''
+        match = compile_conditions(conditions)
 
         # FUTURE IMPLEMENTATIONS: check for kind & content hash
         # they are good candidates for indexing
@@ -140,8 +187,7 @@ class Box(object):
         paths = iglob(self.directory / glob)
         beads = self._archives_from(paths)
         candidates = (bead for bead in beads if match(bead))
-
-        return order_and_limit_beads(candidates, order, limit)
+        return candidates
 
     def _archives_from(self, paths):
         for path in paths:
@@ -162,6 +208,7 @@ class Box(object):
                     bead_name=workspace.bead_name,
                     timestamp=timestamp)))
         workspace.pack(zipfilename, timestamp=timestamp, comment=ARCHIVE_COMMENT)
+        TRACELOG('store as archive', zipfilename)
         return Archive(zipfilename)
 
     def find_names(self, kind, content_hash, timestamp):
@@ -203,3 +250,89 @@ class Box(object):
             names.add(bead.name)
 
         return exact_match, best_guess, best_guess_timestamp, names
+
+    def get_context(self, string_type, string, time):
+        # in theory timestamps can be [intentionally] duplicated, but let's
+        # treat that as an error condition to be fixed ASAP
+        conditions = [(string_type, string)]
+        return make_context(time, self._beads(conditions))
+
+
+class UnionBox:
+    def __init__(self, boxes):
+        self.boxes = tuple(boxes)
+
+    def get_context(self, string_type, string, time):
+        context = None
+        for box in self.boxes:
+            try:
+                box_context = box.get_context(string_type, string, time)
+            except LookupError:
+                continue
+            else:
+                context = merge_contexts(box_context, context)
+
+        if context:
+            return context
+        raise LookupError
+
+    def get_at(self, string_type, string, time):
+        context = self.get_context(string_type, string, time)
+        return context.best
+
+
+class BeadContext:
+    def __init__(self, time, bead, prev, next):
+        assert bead is None or bead.timestamp == time
+        assert prev is None or prev.timestamp < time
+        assert next is None or next.timestamp > time
+        assert bead or prev or next
+        self.time = time
+        self.bead = bead
+        self.prev = prev
+        self.next = next
+
+    @property
+    def best(self):
+        if self.bead:
+            return self.bead
+        if not self.prev:
+            return self.next
+        if not self.next:
+            return self.prev
+        if self.time - self.prev.timestamp < self.next.timestamp - self.time:
+            return self.prev
+        return self.next
+
+
+def make_context(time, beads):
+    match, prev, next = None, None, None
+    for bead in beads:
+        if bead.timestamp < time:
+            if prev is None or prev.timestamp < bead.timestamp:
+                prev = bead
+        elif bead.timestamp > time:
+            if next is None or bead.timestamp < next.timestamp:
+                next = bead
+        else:
+            assert bead.timestamp == time
+            assert match is None or match.content_hash == bead.content_hash, (
+                'multiple beads with same timestamp')
+            match = bead
+    if match or prev or next:
+        return BeadContext(time, match, prev, next)
+    raise LookupError
+
+
+def merge_contexts(context1, context2):
+    if context1 is None:
+        return context2
+    if context2 is None:
+        return context1
+    assert context1.time == context2.time
+    time = context1.time
+    beads = (
+        context1.bead, context1.prev, context1.next,
+        context2.bead, context2.prev, context2.next)
+    beads = (bead for bead in beads if bead)
+    return make_context(time, beads)

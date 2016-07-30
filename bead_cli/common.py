@@ -3,8 +3,6 @@ from __future__ import division
 from __future__ import unicode_literals
 from __future__ import print_function
 
-from tracelog import TRACELOG  # TODO: remove TRACELOG
-
 import os
 import sys
 
@@ -14,8 +12,11 @@ from bead.archive import Archive
 from bead import box as bead_box
 from . import arg_help
 from . import arg_metavar
-from bead.tech.timestamp import time_from_user
+from bead.tech.timestamp import time_from_user, parse_iso8601
 from .environment import Environment
+
+
+TIME_LATEST = parse_iso8601('9999-12-31')
 
 ERROR_EXIT = 1
 
@@ -94,56 +95,13 @@ class DefaultArgSentinel(object):
         return self.description
 
 
-def tag(tag, parse):
-    '''
-    Make a function that parses and tags its input
-
-    parse is a function with one parameter,
-    it is expected to raise a ValueError if there is any problem
-    '''
-    return lambda value: (tag, parse(value))
+def BEAD_TIME(parser):
+    parser.arg('-t', '--time', dest='bead_time', type=time_from_user, default=TIME_LATEST)
 
 
-def _parse_time(timeish):
-    return time_from_user(timeish)
-
-
-def _parse_start_of_name(name):
-    return name + '*'
-
-
-def arg_bead_query(parser):
-    group = parser.argparser.add_argument_group(
-        'bead query',
-        'Restrict the bead version with these options')
-    arg = group.add_argument
-    # TODO: implement more options
-    # -b, --box    to restrict search to a specific box
-
-    # bead_filters
-    BEAD_QUERY = 'bead_query'
-    APPEND = 'append'
-    APPEND_CONST = 'append_const'
-
-    # FIXME: newer-than, older-than -> -t time
-    #   which means the bead having a timestamp closest to the given time
-    # (this is currently a mess)
-    arg('-o', '--older', '--older-than', dest=BEAD_QUERY, action=APPEND,
-        metavar='TIMEDEF', type=tag(bead_spec.OLDER_THAN, _parse_time))
-    arg('-n', '--newer', '--newer-than', dest=BEAD_QUERY, action=APPEND,
-        metavar='TIMEDEF', type=tag(bead_spec.NEWER_THAN, _parse_time))
-    arg('--start-of-name', dest=BEAD_QUERY, action=APPEND,
-        metavar='START-OF-BEAD-NAME',
-        type=tag(bead_spec.BEAD_NAME_GLOB, _parse_start_of_name))
-
-    # match offset/index
-    arg('-N', '--next', dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.NEXT_VERSION)
-    arg('-P', '--prev', '--previous',
-        dest=BEAD_QUERY, action=APPEND_CONST, const=bead_spec.PREV_VERSION)
-    # arg('-N', '--next', dest='bead_query_next', action='count')
-    # arg('-P', '--prev', '--previous', dest='bead_query_prev', action='count')
-
-BEAD_QUERY = arg_bead_query
+def BEAD_OFFSET(parser):
+    parser.arg('-N', '--next', dest='bead_offset', action='store_const', const=1, default=0)
+    parser.arg('-P', '--prev', '--previous', dest='bead_offset', action='store_const', const=-1)
 
 
 def arg_bead_ref_base(nargs, default):
@@ -163,93 +121,12 @@ def BEAD_REF_BASE_defaulting_to(name):
 BEAD_REF_BASE = arg_bead_ref_base(nargs=None, default=None)
 
 
-class BeadReference:
-    bead = Archive
-
-    def add_query(self, query):
+def resolve_bead(env, bead_ref_base, time):
+    try:
+        return Archive(bead_ref_base)
+    except:
         pass
 
-    def set_index(self, index):
-        pass
+    unionbox = bead_box.UnionBox(env.get_boxes())
 
-
-class ArchiveReference(BeadReference):
-    def __init__(self, archive_path):
-        self.archive_path = archive_path
-
-    @property
-    def bead(self):
-        if os.path.isfile(self.archive_path):
-            return Archive(self.archive_path)
-        raise LookupError('Not a file', self.archive_path)
-
-    def add_query(self, query):
-        if query:
-            raise NotImplementedError('query modifiers are unsupported on archives')
-
-    def set_index(self, index):
-        if index != -1:
-            raise NotImplementedError('indexing relative to an archive is unsupported')
-
-
-class BoxQueryReference(BeadReference):
-    def __init__(self, boxes):
-        self.boxes = list(boxes)
-        self.query = []
-        self.set_index(-1)
-
-    @property
-    def bead(self):
-        TRACELOG('BoxQueryReference', self.query, self.limit, self.order)
-        matches = []
-        for box in self.boxes:
-            matches.extend(box.find_beads(self.query, self.order, self.limit))
-            # XXX: order_and_limit_beads is called twice - first in find_beads
-            matches = bead_box.order_and_limit_beads(matches, self.order, self.limit)
-        if len(matches) == self.limit:
-            return matches[-1]
-        raise LookupError
-
-    def add_query(self, query):
-        self.query.extend(query)
-
-    def set_index(self, index):
-        # index: like python list indices 0 = first, -1 = last
-        if index < 0:
-            self.order = bead_spec.NEWEST_FIRST
-            self.limit = -index
-        else:
-            self.order = bead_spec.OLDEST_FIRST
-            self.limit = index + 1
-
-
-def get_bead_ref(env, bead_ref_base, bead_query):
-    if os.path.sep in bead_ref_base and os.path.isfile(bead_ref_base):
-        assert not bead_query
-        return ArchiveReference(bead_ref_base)
-
-    query = list(bead_query or [])
-
-    if bead_ref_base:
-        query = [(bead_spec.BEAD_NAME_GLOB, bead_ref_base)] + query
-
-    final_query = [
-        q for q in query
-        if q is not bead_spec.PREV_VERSION and q is not bead_spec.NEXT_VERSION]
-
-    ref = BoxQueryReference(env.get_boxes())
-    ref.add_query(final_query)
-    return ref
-
-
-def get_query_index(args):
-    # return args.bead_query_next - bead_query_prev - 1
-    # calculate index parameter (--next, --prev)
-    index = -1
-    for q in args.bead_query or ():
-        if q is bead_spec.PREV_VERSION:
-            index -= 1
-        elif q is bead_spec.NEXT_VERSION:
-            index += 1
-    TRACELOG(index)
-    return index
+    return unionbox.get_at(bead_spec.BEAD_NAME_GLOB, bead_ref_base, time)

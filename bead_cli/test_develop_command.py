@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import unicode_literals
 from __future__ import print_function
 
-from bead.test import TestCase, skip
+from bead.test import TestCase
 from testtools.matchers import FileContains, Contains, FileExists
 
 from bead.workspace import Workspace
@@ -30,35 +30,18 @@ class Test_develop(TestCase, fixtures.RobotAndBeads):
         else:
             self.fail('develop should have exited on missing bead')
 
-    def assert_develop_version(self, robot, bead_spec, timestamp):
-        assert bead_spec.startswith('bead_with_history')
-        robot.cli('develop', bead_spec)
+    def assert_develop_version(self, robot, timestamp, *bead_spec):
+        assert bead_spec[0] == 'bead_with_history'
+        robot.cli('develop', *bead_spec)
         self.assertThat(
             robot.cwd / 'bead_with_history' / 'sentinel-' + timestamp,
             FileExists())
 
-    def test_without_version(self, robot, bead_with_history):
-        self.assert_develop_version(robot, 'bead_with_history', fixtures.TS_LAST)
+    def test_last_version(self, robot, bead_with_history):
+        self.assert_develop_version(robot, fixtures.TS_LAST, 'bead_with_history')
 
-    @skip('bead version')
-    def test_without_offset(self, robot, bead_with_history):
-        self.assert_develop_version(robot, 'bead_with_history@', fixtures.TS2)
-
-    @skip('bead version')
-    def test_with_offset(self, robot, bead_with_history):
-        self.assert_develop_version(robot, 'bead_with_history@-1', fixtures.TS1)
-
-    @skip('bead version')
-    def test_with_version_without_offset(self, robot, bead_with_history):
-        self.assert_develop_version(
-            robot, 'bead_with_history@' + fixtures.TS1,
-            fixtures.TS1)
-
-    @skip('bead version')
-    def test_available_matches_to_version_are_less_than_offset(
-            self, robot, bead_with_history):
-        self.assert_develop_version(
-            robot, 'bead_with_history@{}-1'.format(fixtures.TS2), fixtures.TS2)
+    def test_at_time(self, robot, bead_with_history):
+        self.assert_develop_version(robot, fixtures.TS1, 'bead_with_history', '-t', fixtures.TS1)
 
     def test_hacked_bead_is_detected(self, robot, hacked_bead):
         self.assertRaises(SystemExit, robot.cli, 'develop', hacked_bead)

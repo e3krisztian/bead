@@ -24,7 +24,7 @@ class Test_input_commands(TestCase, fixtures.RobotAndBeads):
         robot.cli('new', 'nextbead')
         robot.cd('nextbead')
         # add version TS2
-        robot.cli('input', 'add', 'input1', 'bead_with_history', '--older-than', fixtures.TS3)
+        robot.cli('input', 'add', 'input1', 'bead_with_history', '--time', fixtures.TS2)
         self.assert_loaded(robot, 'input1', fixtures.TS2)
         robot.cli('save')
         robot.cd('..')
@@ -124,24 +124,24 @@ class Test_input_commands(TestCase, fixtures.RobotAndBeads):
         robot.cli('new', 'test-workspace')
         robot.cd('test-workspace')
         # add version TS1
-        robot.cli('input', 'add', 'input1', 'bead_with_history', '--older-than', fixtures.TS2)
+        robot.cli('input', 'add', 'input1', 'bead_with_history', '--time', fixtures.TS1)
         self.assert_loaded(robot, 'input1', fixtures.TS1)
 
         robot.cli('input', 'update', 'input1', '--next')
         self.assert_loaded(robot, 'input1', fixtures.TS2)
 
-        robot.cli('input', 'update', 'input1', '-NN')
-        self.assert_loaded(robot, 'input1', fixtures.TS4)
+        robot.cli('input', 'update', 'input1', '-N')
+        self.assert_loaded(robot, 'input1', fixtures.TS3)
 
     def test_update_to_previous_version(self, robot, bead_with_history):
         robot.cli('new', 'test-workspace')
         robot.cd('test-workspace')
         # add version TS1
-        robot.cli('input', 'add', 'input1', 'bead_with_history', '--older-than', fixtures.TS5)
+        robot.cli('input', 'add', 'input1', 'bead_with_history', '--time', fixtures.TS4)
         self.assert_loaded(robot, 'input1', fixtures.TS4)
 
         robot.cli('input', 'update', 'input1', '--prev')
         self.assert_loaded(robot, 'input1', fixtures.TS3)
 
-        robot.cli('input', 'update', 'input1', '-PP')
-        self.assert_loaded(robot, 'input1', fixtures.TS1)
+        robot.cli('input', 'update', 'input1', '-P')
+        self.assert_loaded(robot, 'input1', fixtures.TS2)
