@@ -36,6 +36,11 @@ dev = [
 reportUnusedCallResult = false
 reportUnknownParameterType = false
 reportUnknownVariableType = false
+exclude = [
+    "executables/**",
+    ".pytype/**",
+]
+
 
 [build-system]
 requires = ["flit_core"]
