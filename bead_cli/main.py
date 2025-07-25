@@ -84,7 +84,6 @@ def make_argument_parser(defaults):
             ('status', workspace.CmdStatus, 'Show workspace information.'),
             ('web', web.CmdWeb, 'Manage/visualize the big picture - connections between beads.'),
             ('zap', workspace.CmdZap, 'Delete workspace.'),
-            ('xmeta', box.CmdXmeta, 'eXport eXtended meta attributes to a file next to zip archive.'),
             ('version', CmdVersion, 'Show program version.'),
         ))
 

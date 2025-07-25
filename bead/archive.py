@@ -16,23 +16,6 @@ persistence = tech.persistence
 __all__ = ('Archive', 'InvalidArchive')
 
 
-CACHE_CONTENT_ID = 'content_id'
-CACHE_INPUT_MAP = 'input_map'
-
-
-def _cached_zip_attribute(cache_key: str, ziparchive_attribute):
-    """Make a cache accessor @property with a self.ziparchive.attribute fallback
-
-    raises InvalidArchive if the attribute is not cached
-        and the backing ziparchive is not valid.
-    """
-    def maybe_cached_attr(self):
-        try:
-            return self.cache[cache_key]
-        except LookupError:
-            return getattr(self.ziparchive, ziparchive_attribute)
-    return property(maybe_cached_attr)
-
 
 class Archive(UnpackableBead):
     def __init__(self, filename: tech.fs.Path, box_name=''):
@@ -40,91 +23,42 @@ class Archive(UnpackableBead):
         self.archive_path = tech.fs.Path(filename)
         self.box_name = box_name
         self.name = bead_name_from_file_path(filename)
-        self.cache = {}
-        self.load_cache()
 
         # Check that we can get access to metadata
-        #  - either through the cache or through the archive
-        # The resulting archive can still be invalid and die unexpectedly later with
-        # InvalidArchive exception, as these are potentially cached values
         self.meta_version
         self.freeze_time
         self.kind
 
-    def load_cache(self):
-        try:
-            try:
-                self.cache = persistence.loads(self.cache_path.read_text())
-            except persistence.ReadError:
-                TRACELOG(f"Ignoring existing, malformed bead meta cache {self.cache_path}")
-        except FileNotFoundError:
-            pass
-
-    def save_cache(self):
-        try:
-            self.cache_path.write_text(persistence.dumps(self.cache))
-        except FileNotFoundError:
-            pass
+    @property
+    def meta_version(self):
+        return self.ziparchive.meta_version
 
     @property
-    def cache_path(self):
-        if self.archive_path.suffix != '.zip':
-            raise FileNotFoundError(f'Archive can not have cache {self.archive_path}')
+    def content_id(self):
+        return self.ziparchive.content_id
 
-        return self.archive_path.with_suffix('.xmeta')
+    @property
+    def kind(self):
+        return self.ziparchive.kind
 
-    meta_version = _cached_zip_attribute(meta.META_VERSION, 'meta_version')
-    content_id = _cached_zip_attribute(CACHE_CONTENT_ID, 'content_id')
-    kind = _cached_zip_attribute(meta.KIND, 'kind')
-    freeze_time_str = _cached_zip_attribute(meta.FREEZE_TIME, 'freeze_time_str')
+    @property
+    def freeze_time_str(self):
+        return self.ziparchive.freeze_time_str
 
     @property
     def input_map(self):
-        try:
-            return self.cache[CACHE_INPUT_MAP]
-        except LookupError:
-            return self.ziparchive.input_map
-
-    @input_map.setter
-    def input_map(self, input_map):
-        self.cache[CACHE_INPUT_MAP] = input_map
-        self.save_cache()
+        return self.ziparchive.input_map
 
     @cached_property
     def ziparchive(self):
-        ziparchive = ZipArchive(self.archive_filename, self.box_name)
-
-        self._check_and_populate_cache(ziparchive)
-
-        return ziparchive
-
-    def _check_and_populate_cache(self, ziparchive):
-        def ensure(cache_key, value):
-            try:
-                if self.cache[cache_key] != value:
-                    raise InvalidArchive(
-                        'Cache disagrees with zip meta', self.archive_filename, cache_key)
-            except KeyError:
-                self.cache[cache_key] = value
-
-        ensure(meta.META_VERSION, ziparchive.meta_version)
-        ensure(CACHE_CONTENT_ID, ziparchive.content_id)
-        ensure(meta.KIND, ziparchive.kind)
-        ensure(meta.FREEZE_TIME, ziparchive.freeze_time_str)
-        ensure(meta.INPUTS, ziparchive.meta[meta.INPUTS])
-
-        # need not match
-        self.cache.setdefault(CACHE_INPUT_MAP, ziparchive.input_map)
+        return ZipArchive(self.archive_filename, self.box_name)
 
     def validate(self):
         self.ziparchive.validate()
 
     @property
     def inputs(self):
-        try:
-            return tuple(meta.parse_inputs({meta.INPUTS: self.cache[meta.INPUTS]}))
-        except LookupError:
-            return self.ziparchive.inputs
+        return self.ziparchive.inputs
 
     def extract_dir(self, zip_dir, fs_dir):
         return self.ziparchive.extract_dir(zip_dir, fs_dir)
