@@ -2,7 +2,6 @@ from bead import tech
 from bead.archive import Archive
 from .cmdparse import Command
 from .common import OPTIONAL_ENV, die
-from .web import rewire
 
 
 class CmdAdd(Command):
@@ -92,26 +91,3 @@ class CmdXmeta(Command):
         print(f'Saved {archive.cache_path}')
 
 
-class CmdRewire(Command):
-    '''
-    Remap inputs.
-    '''
-    def declare(self, arg):
-        arg('name')
-        arg('rewire_options_json')
-        arg(OPTIONAL_ENV)
-
-    def run(self, args):
-        env = args.get_env()
-        name = args.name
-        for box in env.get_boxes():
-            if box.name == name:
-                break
-        else:
-            die(f'Unknown box {name}')
-        rewire_options = tech.persistence.file_load(args.rewire_options_json)
-        rewire_specs = rewire_options.get(name, [])
-        # This could be painfully slow, if there are many beads and their metadata
-        # is not exported/cached with xmeta
-        for bead in box.all_beads():
-            rewire.apply(bead, rewire_specs)

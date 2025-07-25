@@ -106,7 +106,6 @@ def make_argument_parser(defaults):
             ('add', box.CmdAdd, 'Define a box.'),
             ('list', box.CmdList, 'Show known boxes.'),
             ('forget', box.CmdForget, 'Forget a known box.'),
-            ('rewire', box.CmdRewire, 'Remap inputs.'),
         ))
 
     parser.autocomplete()

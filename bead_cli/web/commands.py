@@ -14,7 +14,6 @@ from .io import read_beads, write_beads
 from .sketch import Sketch
 from . import sketch as web_sketch
 from .dummy import Dummy
-from . import rewire
 
 
 class CmdWeb(Command):
@@ -58,20 +57,6 @@ class CmdWeb(Command):
         Assign freshness to nodes, which are visualized as colors.
         Answers the question: "Are all input at the latest version?"
 
-    auto-rewire
-        A hackish way to fix connections after renaming beads, thus breaking links.
-        It is hackish, because it selects the first candidate, which might
-        not be the one with the best name (think: multiple branches sharing the same bead).
-        The proper to fix broken links is using the `rewire-option` and `rewire` commands.
-
-    rewire-options options.json
-        Write out every problems and solution alternatives.
-        The output file should be examined, and edited (input-map section),
-        then applied with the `rewire` command.
-
-    rewire options.json
-        Rewrite/patch the input maps as specified in the file.
-        In case of multiple options for an input, the first option is selected.
 
     heads
         Reduce graph to include only most recent computations per
@@ -249,30 +234,6 @@ class KeepOnlyHeads(SketchProcessor):
         return web_sketch.heads_of(sketch).drop_deleted_inputs()
 
 
-class RewireWriteOptions(ProcessorWithFileName):
-    def __call__(self, sketch):
-        rewire_options = rewire.get_options(sketch.beads)
-        tech.persistence.file_dump(rewire_options, self.file_name)
-        return sketch
-
-
-class Rewire(ProcessorWithFileName):
-    def __call__(self, sketch):
-        rewire_options = tech.persistence.file_load(self.file_name)
-        beads = [bead for bead in sketch.beads if bead.is_not_phantom]
-        for bead in beads:
-            rewire.apply(bead, rewire_options.get(bead.box_name, []))
-        return web_sketch.Sketch.from_beads(beads)
-
-
-class AutoRewire(SketchProcessor):
-    def __call__(self, sketch):
-        rewire_options = rewire.get_options(sketch.beads)
-        beads = [bead for bead in sketch.beads if bead.is_not_phantom]
-        for bead in beads:
-            rewire.apply(bead, rewire_options.get(bead.box_name, []))
-        return web_sketch.Sketch.from_beads(beads)
-
 
 SUBCOMMANDS = {
     'load': Load,
@@ -284,9 +245,6 @@ SUBCOMMANDS = {
     'color': SetFreshness,
     'heads': KeepOnlyHeads,
     'view': View,
-    'auto-rewire': AutoRewire,
-    'rewire-options': RewireWriteOptions,
-    'rewire': Rewire,
 }
 
 
