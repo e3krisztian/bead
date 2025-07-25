@@ -182,24 +182,39 @@ def print_inputs(env, workspace, verbose):
             has_not_loaded = has_not_loaded or is_not_loaded
             print(f'input/{input.name}')
             print(f'\tStatus:      {"**NOT LOADED**" if is_not_loaded else "loaded"}')
-            input_bead_name = workspace.get_input_bead_name(input.name)
-            print(f'\tBead:        {input_bead_name} # {input.freeze_time_str}')
+            
+            # Find bead name by content_id
+            bead_name = None
+            for box in boxes:
+                bead = box.find_bead_by_content_id(input.content_id)
+                if bead:
+                    bead_name = bead.name
+                    break
+            
+            if bead_name:
+                print(f'\tBead:        {bead_name} # {input.freeze_time_str}')
+            else:
+                print(f'\tBead:        (!missing!) # {input.freeze_time_str}')
+            
             if verbose:
                 print(f'\tKind:        {input.kind}')
                 print(f'\tContent id:  {input.content_id}')
             print('\tBox[es]:')
             has_box = False
+            # find by kind, then check for exact match
             for box in boxes:
                 try:
-                    context = box.get_context(
-                        bead_spec.BEAD_NAME, input_bead_name, input.freeze_time)
+                    # First search by kind and freeze time to find best match
+                    context = box.get_context(bead_spec.KIND, input.kind, input.freeze_time)
+                    if context.best:
+                        has_box = True
+                        # Check if the best match is also an exact content_id match
+                        if context.best.content_id == input.content_id:
+                            print(f'\t * -r {box.name} # {context.best.freeze_time_str}')
+                        else:
+                            print(f'\t ~ -r {box.name} # {context.best.freeze_time_str} (kind match)')
                 except LookupError:
-                    # not in this box
-                    continue
-                bead = context.best
-                has_box = True
-                exact_match = bead.content_id == input.content_id
-                print(f'\t {"*" if exact_match else "?"} -r {box.name} # {bead.freeze_time_str}')
+                    pass
             if not has_box:
                 print('\t - no candidates :(')
                 print('\t   Maybe it has been renamed? or is it in an unreachable box?')

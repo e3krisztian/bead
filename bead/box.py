@@ -122,6 +122,14 @@ class Box:
         for bead in self._beads(query):
             return bead
 
+    def find_bead_by_content_id(self, content_id):
+        """Find bead by exact content_id match."""
+        query = ((bead_spec.CONTENT_ID, content_id),)
+        for bead in self._beads(query):
+            if bead.content_id == content_id:
+                return bead
+        return None
+
     def all_beads(self) -> Iterator[Archive]:
         '''
         Iterator for all beads in this Box

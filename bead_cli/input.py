@@ -151,19 +151,18 @@ class CmdUpdate(Command):
         env = args.get_env()
         unionbox = UnionBox(env.get_boxes())
         for input in workspace.inputs:
-            bead_name = workspace.get_input_bead_name(input.name)
             try:
                 bead = unionbox.get_at(
-                    check_type=bead_spec.BEAD_NAME,
-                    check_param=bead_name,
+                    check_type=bead_spec.KIND,
+                    check_param=input.kind,
                     time=args.bead_time)
             except LookupError:
                 if workspace.is_loaded(input.name):
                     print(
                         f'Skipping update of "{input.name}":'
-                        + f' no other candidate found ({bead_name}@{input.freeze_time})')
+                        + f' no other candidate found ({input.freeze_time})')
                 else:
-                    warning(f'Could not find bead for "{input.name}" with name "{bead_name}"')
+                    warning(f'Could not find bead for "{input.name}"')
             else:
                 _update_input(workspace, input, bead)
         print('All inputs are up to date.')
@@ -178,25 +177,23 @@ class CmdUpdate(Command):
             die(f'Workspace does not have input "{input_nick}"'
                 ' - did you want to add it as a new one?')
         if bead_ref_base is SAME_BEAD_NEWEST_VERSION:
-            bead_name = workspace.get_input_bead_name(input.name)
-
             if args.bead_offset and args.bead_time is not TIME_LATEST:
                 die('You can give either --prev/--next or --time, not both')
 
             boxes = env.get_boxes()
             try:
                 if args.bead_offset:
-                    # handle --prev --next
-                    context = _get_context(boxes, bead_name, input.freeze_time)
+                    # handle --prev --next - use kind instead of bead name
+                    context = _get_context_by_kind(boxes, input.kind, input.freeze_time)
                     if args.bead_offset == 1:
                         bead = context.next
                     else:
                         bead = context.prev
                 else:
-                    # --time
-                    bead = _get_context(boxes, bead_name, args.bead_time).best
+                    # --time - use kind instead of bead name
+                    bead = _get_context_by_kind(boxes, input.kind, args.bead_time).best
             except LookupError:
-                die(f'Could not find bead for "{input.name}" with name "{bead_name}"')
+                die(f'Could not find bead for "{input.name}"')
         else:
             # path or new bead by name - same as input add, develop
             if args.bead_offset:
@@ -213,6 +210,14 @@ def _get_context(boxes, bead_name, time):
     return unionbox.get_context(
         check_type=bead_spec.BEAD_NAME,
         check_param=bead_name,
+        time=time)
+
+
+def _get_context_by_kind(boxes, kind, time):
+    unionbox = UnionBox(boxes)
+    return unionbox.get_context(
+        check_type=bead_spec.KIND,
+        check_param=kind,
         time=time)
 
 
@@ -259,16 +264,15 @@ class CmdLoad(Command):
 def _load(env, workspace, input):
     assert input is not None
     if not workspace.is_loaded(input.name):
-        name = workspace.get_input_bead_name(input.name)
         content_id = input.content_id
         bead = None
         for box in env.get_boxes():
-            bead = box.find_bead(name, content_id)
+            # Only try to find by exact content_id match
+            bead = box.find_bead_by_content_id(content_id)
             if bead:
                 break
         if bead is None:
-            warning(
-                f'Could not find archive named "{name}" for input "{input.name}" - not loaded!')
+            warning(f'Could not find bead for input "{input.name}" - not loaded!')
             return
         _check_load_with_feedback(workspace, input.name, bead)
     else:
@@ -281,7 +285,6 @@ def _check_load_with_feedback(workspace: Workspace, input_nick, bead):
     except InvalidArchive:
         warning(f'Bead for {input_nick} is found but damaged - not loading.')
     else:
-        workspace.set_input_bead_name(input_nick, bead.name)
         if workspace.is_loaded(input_nick):
             print(f'Removing current data from {input_nick}')
             workspace.unload(input_nick)
