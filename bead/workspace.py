@@ -180,18 +180,18 @@ class Workspace(Bead):
         input_map[input_nick] = bead_name
         self.input_map = input_map
 
-    def load(self, input_nick, bead):
+    def load(self, input_nick, archive):
         '''
-        Make output data files in bead available under input directory
+        Make output data files in archive available under input directory
         '''
         input_dir = self.directory / layouts.Workspace.INPUT
         fs.make_writable(input_dir)
         try:
             self.add_input(
                 input_nick,
-                bead.kind, bead.content_id, bead.freeze_time_str)
+                archive.kind, archive.content_id, archive.freeze_time_str)
             destination_dir = input_dir / input_nick
-            bead.unpack_data_to(destination_dir)
+            archive.unpack_data_to(destination_dir)
             for f in fs.all_subpaths(destination_dir):
                 fs.make_readonly(f)
         finally:

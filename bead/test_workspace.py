@@ -5,7 +5,8 @@ import os
 import zipfile
 import pytest
 
-from .archive import Archive
+from .bead import Archive
+from .ziparchive import ZipArchive
 from . import layouts
 from . import tech
 
@@ -111,7 +112,7 @@ def packed_archive(pack_workspace, tmp_path_factory):
 
 def test_pack_creates_valid_archive(packed_archive):
     """Test that packing creates a valid archive."""
-    bead = Archive(packed_archive)
+    bead = ZipArchive(packed_archive)
     bead.validate()
 
 
@@ -168,7 +169,7 @@ def test_pack_stability_directory_name_data_and_timestamp_determines_content_ids
         write_file(ws.directory / 'source1', 'code to produce output')
         write_file(ws.directory / 'output/output1', TS)
         ws.pack(output, TS, comment='')
-        return Archive(output)
+        return ZipArchive(output)
 
     bead1 = make_bead()
     bead2 = make_bead()
@@ -206,7 +207,7 @@ def _load_a_bead(workspace, input_nick, tmp_path_factory):
         },
         tmp_path_factory
     )
-    workspace.load(input_nick, Archive(path_of_bead_to_load))
+    workspace.load(input_nick, ZipArchive(path_of_bead_to_load))
 
 
 def test_load_makes_bead_files_available_under_input(load_workspace, tmp_path_factory):
@@ -362,7 +363,7 @@ def unzipped_archive_path(archive_with_two_files_path, tmp_path_factory):
 
 def test_newly_created_bead_is_valid(archive_with_two_files_path):
     """Test that a newly created bead is valid."""
-    Archive(archive_with_two_files_path).validate()
+    ZipArchive(archive_with_two_files_path).validate()
 
 
 def test_adding_a_data_file_to_an_archive_makes_bead_invalid(archive_path):
@@ -371,7 +372,7 @@ def test_adding_a_data_file_to_an_archive_makes_bead_invalid(archive_path):
         z.writestr(f'{layouts.Archive.DATA}/extra_file', b'something')
 
     with pytest.raises(InvalidArchive):
-        Archive(archive_path).validate()
+        ZipArchive(archive_path).validate()
 
 
 def test_adding_a_code_file_to_an_archive_makes_bead_invalid(archive_path):
@@ -380,7 +381,7 @@ def test_adding_a_code_file_to_an_archive_makes_bead_invalid(archive_path):
         z.writestr(f'{layouts.Archive.CODE}/extra_file', b'something')
 
     with pytest.raises(InvalidArchive):
-        Archive(archive_path).validate()
+        ZipArchive(archive_path).validate()
 
 
 def test_unzipping_and_zipping_an_archive_remains_valid(unzipped_archive_path, tmp_path):
@@ -388,7 +389,7 @@ def test_unzipping_and_zipping_an_archive_remains_valid(unzipped_archive_path, t
     rezipped_archive_path = tmp_path / 'rezipped_archive.zip'
     zip_up(unzipped_archive_path, rezipped_archive_path)
 
-    Archive(rezipped_archive_path).validate()
+    ZipArchive(rezipped_archive_path).validate()
 
 
 def test_deleting_a_file_in_the_manifest_makes_the_bead_invalid(unzipped_archive_path, tmp_path):
@@ -398,7 +399,7 @@ def test_deleting_a_file_in_the_manifest_makes_the_bead_invalid(unzipped_archive
     zip_up(unzipped_archive_path, modified_archive_path)
 
     with pytest.raises(InvalidArchive):
-        Archive(modified_archive_path).validate()
+        ZipArchive(modified_archive_path).validate()
 
 
 def test_changing_a_file_makes_the_bead_invalid(unzipped_archive_path, tmp_path):
@@ -408,4 +409,4 @@ def test_changing_a_file_makes_the_bead_invalid(unzipped_archive_path, tmp_path)
     zip_up(unzipped_archive_path, modified_archive_path)
 
     with pytest.raises(InvalidArchive):
-        Archive(modified_archive_path).validate()
+        ZipArchive(modified_archive_path).validate()

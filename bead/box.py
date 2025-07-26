@@ -18,7 +18,9 @@ from datetime import datetime, timedelta
 import os
 from typing import Iterator, Iterable, Sequence
 
-from .archive import Archive, InvalidArchive
+from .ziparchive import ZipArchive
+from .bead import Archive
+from .exceptions import InvalidArchive
 from .exceptions import BoxError
 from . import spec as bead_spec
 from .tech.timestamp import time_from_timestamp
@@ -163,7 +165,7 @@ class Box:
     def _archives_from(self, paths: Iterable[Path]):
         for path in paths:
             try:
-                archive = Archive(path, self.name)
+                archive = ZipArchive(path, self.name)
             except InvalidArchive:
                 # TODO: log/report problem
                 pass

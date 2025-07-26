@@ -5,7 +5,8 @@ from typing import NoReturn
 from bead.exceptions import InvalidArchive
 from bead.workspace import Workspace
 from bead import spec as bead_spec
-from bead.archive import Archive
+from bead.ziparchive import ZipArchive
+from bead.bead import Archive
 from bead import box as bead_box
 from bead.tech.fs import Path
 from bead.tech.timestamp import time_from_user, parse_iso8601
@@ -134,7 +135,7 @@ BEAD_REF_BASE = arg_bead_ref_base(nargs=None, default=None)
 def resolve_bead(env, bead_ref_base, time):
     # prefer exact file name over box search
     if os.path.isfile(bead_ref_base):
-        return Archive(bead_ref_base)
+        return ZipArchive(bead_ref_base)
 
     # not a file - try box search
     unionbox = bead_box.UnionBox(env.get_boxes())

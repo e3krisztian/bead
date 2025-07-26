@@ -1,8 +1,9 @@
 from copy import deepcopy
 import os
+import re
 import shutil
 
-from .bead import UnpackableBead
+from .bead import Archive
 from .exceptions import InvalidArchive
 from . import tech
 from . import layouts
@@ -24,11 +25,12 @@ META_KEYS = (
 )
 
 
-class ZipArchive(UnpackableBead):
+class ZipArchive(Archive):
 
     def __init__(self, filename, box_name=''):
         self.archive_filename = filename
         self.box_name = box_name
+        self.name = bead_name_from_file_path(filename)
         self._meta = self._load_meta()
         self._content_id = None
 
@@ -195,3 +197,22 @@ class ZipArchive(UnpackableBead):
     def unpack_meta_to(self, workspace):
         workspace.meta = self.meta
         workspace.input_map = self.input_map
+
+
+def bead_name_from_file_path(path):
+    '''
+    Parse bead name from a file path.
+
+    Might return a simpler name than intended
+    '''
+    name_with_timestamp, ext = os.path.splitext(os.path.basename(path))
+    # assert ext == '.zip'  # not enforced to allow having beads with different extensions
+    name = re.sub('_[0-9]{8}(?:[tT][-+0-9]*)?$', '', name_with_timestamp)
+    return meta.BeadName(name)
+
+
+assert 'bead-2015v3' == bead_name_from_file_path('bead-2015v3.zip')
+assert 'bead-2015v3' == bead_name_from_file_path('bead-2015v3_20150923.zip')
+assert 'bead-2015v3' == bead_name_from_file_path('bead-2015v3_20150923T010203012345+0200.zip')
+assert 'bead-2015v3' == bead_name_from_file_path('bead-2015v3_20150923T010203012345-0200.zip')
+assert 'bead-2015v3' == bead_name_from_file_path('path/to/bead-2015v3_20150923.zip')

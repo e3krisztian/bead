@@ -1,5 +1,5 @@
 from bead import tech
-from bead.archive import Archive
+from bead.ziparchive import ZipArchive
 from .cmdparse import Command
 from .common import OPTIONAL_ENV, die
 
@@ -86,7 +86,7 @@ class CmdXmeta(Command):
         arg('zip_archive_filename')
 
     def run(self, args):
-        archive = Archive(args.zip_archive_filename)
+        archive = ZipArchive(args.zip_archive_filename)
         archive.save_cache()
         print(f'Saved {archive.cache_path}')
 

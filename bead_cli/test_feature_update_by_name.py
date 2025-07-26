@@ -2,7 +2,7 @@ import os
 import shutil
 from typing import Dict
 
-from bead.archive import Archive
+from bead.bead import Archive
 
 
 def test_basic_support(robot, bead_a, bead_with_history, box, check, times):

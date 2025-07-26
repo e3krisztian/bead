@@ -40,7 +40,7 @@ class Bead:
                 return input
 
 
-class UnpackableBead(Bead, metaclass=ABCMeta):
+class Archive(Bead, metaclass=ABCMeta):
     '''
     Provide high-level access to content of a bead.
     '''
