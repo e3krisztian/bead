@@ -194,7 +194,7 @@ def print_inputs(env, workspace, verbose):
             if bead_name:
                 print(f'\tBead:        {bead_name} # {input.freeze_time_str}')
             else:
-                print(f'\tBead:        (!missing!) # {input.freeze_time_str}')
+                print(f'\tBead:        **MISSING** # {input.freeze_time_str}')
             
             if verbose:
                 print(f'\tKind:        {input.kind}')
