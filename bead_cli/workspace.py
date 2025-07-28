@@ -5,7 +5,6 @@ from bead import tech
 from bead.workspace import Workspace
 from bead import layouts
 from bead.exceptions import BoxError
-import bead.spec as bead_spec
 
 from .cmdparse import Command
 from .common import assert_valid_workspace, die, warning, info

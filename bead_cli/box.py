@@ -1,7 +1,7 @@
 from bead import tech
 from bead.ziparchive import ZipArchive
 from .cmdparse import Command
-from .common import OPTIONAL_ENV, die
+from .common import OPTIONAL_ENV
 
 
 class CmdAdd(Command):

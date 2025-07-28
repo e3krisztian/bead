@@ -1,9 +1,7 @@
 import re
 import pytest
 from bead.tech.fs import read_file, rmtree, write_file
-from bead.tech import persistence
 
-from bead_cli.web.freshness import Freshness
 from bead_cli.web.sketch import Sketch
 from tests.sketcher import Sketcher
 from tests.web.test_graphviz import needs_dot

@@ -14,9 +14,7 @@ Boxes can be used to:
   (this is naive access control, but could work)
 '''
 
-from datetime import datetime, timedelta
-import os
-from typing import Iterator, Iterable, Sequence, List
+from typing import Iterator, Iterable
 from abc import ABC, abstractmethod
 
 from .ziparchive import ZipArchive
@@ -208,7 +206,7 @@ class BeadSearch(ABC):
         pass
 
     @abstractmethod
-    def all(self) -> List[Archive]:
+    def all(self) -> list[Archive]:
         """Return list of all matching beads."""
         pass
 
@@ -317,7 +315,7 @@ class FileBasedSearch(BeadSearch):
             raise LookupError(f"Not enough beads found (requested index {n}, found {len(sorted_beads)})")
         return sorted_beads[n]
 
-    def all(self) -> List[Archive]:
+    def all(self) -> list[Archive]:
         return self._get_beads()
 
 
@@ -440,7 +438,7 @@ class MultiBoxSearch(BeadSearch):
             raise LookupError(f"Not enough beads found (requested index {n}, found {len(sorted_beads)})")
         return sorted_beads[n]
 
-    def all(self) -> List[Archive]:
+    def all(self) -> list[Archive]:
         return self._get_beads()
 
 

@@ -1,9 +1,8 @@
 import pytest
 from .box import Box
-from .tech.fs import write_file, rmtree
+from .tech.fs import write_file
 from .tech.timestamp import time_from_user
 from .workspace import Workspace
-from . import spec as bead_spec
 
 
 @pytest.fixture

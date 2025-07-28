@@ -4,7 +4,6 @@ from typing import NoReturn
 
 from bead.exceptions import InvalidArchive
 from bead.workspace import Workspace
-from bead import spec as bead_spec
 from bead.ziparchive import ZipArchive
 from bead.bead import Archive
 from bead import box as bead_box

@@ -5,7 +5,6 @@ import os
 import zipfile
 import pytest
 
-from .bead import Archive
 from .ziparchive import ZipArchive
 from . import layouts
 from . import tech
