@@ -534,36 +534,6 @@ class Box:
         return make_context(time, self._beads(conditions))
 
 
-class UnionBox:
-    def __init__(self, boxes: Sequence[Box]):
-        self.boxes = tuple(boxes)
-
-    def get_context(self, check_type, check_param, time):
-        context = None
-        for box in self.boxes:
-            try:
-                box_context = box.get_context(check_type, check_param, time)
-            except LookupError:
-                continue
-            else:
-                context = merge_contexts(box_context, context)
-
-        if context:
-            return context
-        raise LookupError
-
-    def get_at(self, check_type, check_param, time):
-        context = self.get_context(check_type, check_param, time)
-        return context.best
-
-    def all_beads(self) -> Iterator[Archive]:
-        '''
-        Iterator for all beads in this Box
-        '''
-        for box in self.boxes:
-            yield from box.all_beads()
-
-
 class BeadContext:
     def __init__(self, time, bead, prev, next):
         assert bead is None or bead.freeze_time == time
@@ -605,17 +575,3 @@ def make_context(time, beads):
     if match or prev or next:
         return BeadContext(time, match, prev, next)
     raise LookupError
-
-
-def merge_contexts(context1, context2):
-    if context1 is None:
-        return context2
-    if context2 is None:
-        return context1
-    assert context1.time == context2.time
-    time = context1.time
-    beads = (
-        context1.bead, context1.prev, context1.next,
-        context2.bead, context2.prev, context2.next)
-    beads = (bead for bead in beads if bead)
-    return make_context(time, beads)
