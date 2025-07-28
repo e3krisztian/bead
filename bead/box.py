@@ -480,10 +480,10 @@ class Box:
         '''
         match = compile_conditions(conditions)
 
-        bead_names = set(
+        bead_names = {
             value
             for tag, value in conditions
-            if tag == bead_spec.BEAD_NAME)
+            if tag == bead_spec.BEAD_NAME}
         if bead_names:
             if len(bead_names) > 1:
                 # easy path: names disagree

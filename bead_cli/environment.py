@@ -31,7 +31,7 @@ class Environment:
         return cls(Path(os.path.join(directory, 'env.json')))
 
     def load(self):
-        with open(self.filename, 'r') as f:
+        with open(self.filename) as f:
             self._content = persistence.load(f)
 
     def save(self):

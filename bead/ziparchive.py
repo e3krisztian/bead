@@ -38,7 +38,7 @@ class ZipArchive(Archive):
     def zipfile(self):
         try:
             return zipopener.open(self.archive_filename)
-        except (zipopener.BadZipFile, OSError, IOError):
+        except (zipopener.BadZipFile, OSError):
             raise InvalidArchive(self.archive_filename)
 
     def validate(self):

@@ -30,8 +30,8 @@ def timestamp():
 
 def test_all_beads(box):
     """Test that all beads are returned."""
-    bead_names = set(b.name for b in box.all_beads())
-    assert set(['bead1', 'bead2', 'BEAD3']) == bead_names
+    bead_names = {b.name for b in box.all_beads()}
+    assert {'bead1', 'bead2', 'BEAD3'} == bead_names
 
 
 def test_find_with_uppercase_name(box, timestamp):
@@ -58,5 +58,5 @@ def test_box_methods_tolerate_junk_in_box(tmp_path_factory):
     junk_file = box.directory / 'some-non-bead-file'
     write_file(junk_file, 'random bits')
 
-    bead_names = set(b.name for b in box.all_beads())
-    assert set(['bead1', 'bead2', 'BEAD3']) == bead_names
+    bead_names = {b.name for b in box.all_beads()}
+    assert {'bead1', 'bead2', 'BEAD3'} == bead_names

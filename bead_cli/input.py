@@ -25,7 +25,7 @@ def OPTIONAL_INPUT_NICK(parser):
     Declare `input_nick` as optional parameter
     '''
     parser.arg(
-        'input_nick', type=type(''), nargs='?', default=ALL_INPUTS,
+        'input_nick', type=str, nargs='?', default=ALL_INPUTS,
         metavar=arg_metavar.INPUT_NICK, help=arg_help.INPUT_NICK)
 
 

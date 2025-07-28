@@ -21,14 +21,14 @@ def write_file(path: Path, content: bytes | str):
         with f:
             f.write(content)
     else:
-        f = io.open(path, 'wt', encoding='utf-8')
+        f = open(path, 'w', encoding='utf-8')
 
         with f:
             f.write(content)
 
 
 def read_file(path: Path):
-    with io.open(path, 'rt', encoding='utf-8') as f:
+    with open(path, encoding='utf-8') as f:
         return f.read()
 
 

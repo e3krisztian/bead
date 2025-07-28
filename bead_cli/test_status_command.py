@@ -1,5 +1,3 @@
-
-
 def test_status(robot, beads, bead_with_inputs, bead_a):
     robot.cli('develop', bead_with_inputs)
     robot.cd(bead_with_inputs)

@@ -202,7 +202,7 @@ def _load_a_bead(workspace, input_nick, tmp_path_factory):
         path_of_bead_to_load,
         {
             'output/output1':
-            f'data for {input_nick}'.encode('utf-8')
+            f'data for {input_nick}'.encode()
         },
         tmp_path_factory
     )
