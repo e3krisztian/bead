@@ -39,6 +39,7 @@ reportUnknownVariableType = false
 exclude = [
     "executables/**",
     ".pytype/**",
+    ".cache/**",
 ]
 
 
