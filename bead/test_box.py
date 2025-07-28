@@ -26,7 +26,7 @@ def box(tmp_path_factory):
 @pytest.fixture
 def timestamp():
     """Provide a test timestamp."""
-    return time_from_user('20160704T162800000000+0200')
+    return time_from_user('20160704T162800000001+0200')
 
 
 def test_all_beads(box):
@@ -37,9 +37,8 @@ def test_all_beads(box):
 
 def test_find_with_uppercase_name(box, timestamp):
     """Test finding beads with uppercase names."""
-    matches = box.get_context(bead_spec.BEAD_NAME, 'BEAD3', timestamp)
-    best_name = matches.best.name
-    assert 'BEAD3' == best_name
+    bead = box.search().by_name('BEAD3').at_or_older(timestamp).newest()
+    assert 'BEAD3' == bead.name
 
 
 def test_box_methods_tolerate_junk_in_box(tmp_path_factory):

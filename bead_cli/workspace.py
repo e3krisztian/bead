@@ -207,14 +207,13 @@ def print_inputs(env, workspace, verbose):
             for box in boxes:
                 try:
                     # First search by kind and freeze time to find best match
-                    context = box.get_context(bead_spec.KIND, input.kind, input.freeze_time)
-                    if context.best:
-                        has_box = True
-                        # Check if the best match is also an exact content_id match
-                        if context.best.content_id == input.content_id:
-                            print(f'\t * -r {box.name} # {context.best.freeze_time_str}')
-                        else:
-                            print(f'\t ~ -r {box.name} # {context.best.freeze_time_str} (kind match)')
+                    best_bead = box.search().by_kind(input.kind).at_or_older(input.freeze_time).newest()
+                    has_box = True
+                    # Check if the best match is also an exact content_id match
+                    if best_bead.content_id == input.content_id:
+                        print(f'\t * -r {box.name} # {best_bead.freeze_time_str}')
+                    else:
+                        print(f'\t ~ -r {box.name} # {best_bead.freeze_time_str} (kind match)')
                 except LookupError:
                     pass
             if not has_box:
