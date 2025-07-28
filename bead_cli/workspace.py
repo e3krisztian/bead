@@ -186,10 +186,12 @@ def print_inputs(env, workspace, verbose):
             # Find bead name by content_id
             bead_name = None
             for box in boxes:
-                bead = box.find_bead_by_content_id(input.content_id)
-                if bead:
+                try:
+                    bead = box.search().by_content_id(input.content_id).first()
                     bead_name = bead.name
                     break
+                except LookupError:
+                    continue
             
             if bead_name:
                 print(f'\tBead:        {bead_name} # {input.freeze_time_str}')

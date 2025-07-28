@@ -268,9 +268,11 @@ def _load(env, workspace, input):
         bead = None
         for box in env.get_boxes():
             # Only try to find by exact content_id match
-            bead = box.find_bead_by_content_id(content_id)
-            if bead:
+            try:
+                bead = box.search().by_content_id(content_id).first()
                 break
+            except LookupError:
+                continue
         if bead is None:
             warning(f'Could not find bead for input "{input.name}" - not loaded!')
             return
