@@ -35,30 +35,6 @@ def test_all_beads(box):
     assert set(['bead1', 'bead2', 'BEAD3']) == bead_names
 
 
-def test_find_names(box, timestamp):
-    """Test finding beads by name."""
-    result = box.find_names(kind='test-bead1', content_id='', timestamp=timestamp)
-    exact_match, best_guess, best_guess_timestamp, names = result
-
-    assert exact_match is None
-    assert 'bead1' == best_guess
-    assert best_guess_timestamp is not None
-    names_set = set(names)
-    assert set(['bead1']) == names_set
-
-
-def test_find_names_works_even_with_removed_box_directory(box, timestamp):
-    """Test that find_names handles missing box directory gracefully."""
-    rmtree(box.directory)
-    result = box.find_names(kind='test-bead1', content_id='', timestamp=timestamp)
-    exact_match, best_guess, best_guess_timestamp, names = result
-    assert exact_match is None
-    assert best_guess is None
-    assert best_guess_timestamp is None
-    names_list = list(names)
-    assert [] == names_list
-
-
 def test_find_with_uppercase_name(box, timestamp):
     """Test finding beads with uppercase names."""
     matches = box.get_context(bead_spec.BEAD_NAME, 'BEAD3', timestamp)

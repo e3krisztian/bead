@@ -469,11 +469,6 @@ class Box:
         '''
         return Path(self.location)
 
-    def find_bead(self, name, content_id):
-        query = ((bead_spec.BEAD_NAME, name), (bead_spec.CONTENT_ID, content_id))
-        for bead in self._beads(query):
-            return bead
-
     def find_bead_by_content_id(self, content_id):
         """Find bead by exact content_id match."""
         query = ((bead_spec.CONTENT_ID, content_id),)
@@ -532,53 +527,6 @@ class Box:
             self.directory / f'{workspace.name}_{freeze_time}.zip')
         workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT)
         return zipfilename
-
-    def find_names(self, kind, content_id, timestamp):
-        '''
-        -> (exact_match, best_guess, best_guess_freeze_time, names)
-        where
-            exact_match            = name (kind & content_id matched)
-            best_guess             = name (kind matched, timestamp is closest to input's)
-            best_guess_freeze_time = timestamp ()
-            names                  = sequence of names (kind matched)
-        '''
-        assert isinstance(timestamp, datetime)
-        try:
-            filenames = os.listdir(self.directory)
-        except FileNotFoundError:
-            filenames = []
-        paths = (self.directory / fname for fname in filenames)
-        beads = self._archives_from(paths)
-        candidates = (bead for bead in beads if bead.kind == kind)
-
-        exact_match            = None
-        best_guess             = None
-        best_guess_freeze_time = None
-        best_guess_timedelta   = None
-        names                  = set()
-        for bead in candidates:
-            if bead.content_id == content_id:
-                exact_match = bead.name
-            #
-            bead_freeze_time = time_from_timestamp(bead.freeze_time_str)
-            bead_timedelta = bead_freeze_time - timestamp
-            if bead_timedelta < timedelta():
-                bead_timedelta = -bead_timedelta
-            if (
-                (best_guess_timedelta is None) or
-                (bead_timedelta < best_guess_timedelta) or
-                (
-                    (bead_timedelta == best_guess_timedelta) and
-                    (bead_freeze_time > best_guess_freeze_time)
-                )
-            ):
-                best_guess = bead.name
-                best_guess_freeze_time = bead_freeze_time
-                best_guess_timedelta = bead_timedelta
-            #
-            names.add(bead.name)
-
-        return exact_match, best_guess, best_guess_freeze_time, names
 
     def search(self):
         """
