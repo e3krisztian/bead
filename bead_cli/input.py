@@ -12,7 +12,7 @@ from .common import (
     die, warning
 )
 from .common import BEAD_REF_BASE_defaulting_to, BEAD_OFFSET, BEAD_TIME, resolve_bead, TIME_LATEST
-from bead.box import UnionBox
+from bead.box import search_boxes
 from bead.meta import BeadName
 import bead.spec as bead_spec
 from bead.workspace import Workspace
@@ -149,13 +149,9 @@ class CmdUpdate(Command):
             die("--next, --prev can not be specified when updating all inputs")
         workspace = get_workspace(args)
         env = args.get_env()
-        unionbox = UnionBox(env.get_boxes())
         for input in workspace.inputs:
             try:
-                bead = unionbox.get_at(
-                    check_type=bead_spec.KIND,
-                    check_param=input.kind,
-                    time=args.bead_time)
+                bead = search_boxes(env.get_boxes()).by_kind(input.kind).at_or_older(args.bead_time).newest()
             except LookupError:
                 if workspace.is_loaded(input.name):
                     print(
@@ -206,6 +202,7 @@ class CmdUpdate(Command):
 
 
 def _get_context(boxes, bead_name, time):
+    from bead.box import UnionBox
     unionbox = UnionBox(boxes)
     return unionbox.get_context(
         check_type=bead_spec.BEAD_NAME,
@@ -214,6 +211,7 @@ def _get_context(boxes, bead_name, time):
 
 
 def _get_context_by_kind(boxes, kind, time):
+    from bead.box import UnionBox
     unionbox = UnionBox(boxes)
     return unionbox.get_context(
         check_type=bead_spec.KIND,

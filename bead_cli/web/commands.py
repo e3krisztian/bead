@@ -6,7 +6,7 @@ from typing import Set
 import webbrowser
 
 from bead import tech
-from bead.box import UnionBox
+from bead.box import search_boxes
 
 from ..common import OPTIONAL_ENV, die
 from ..cmdparse import Command
@@ -253,9 +253,9 @@ def load_all_beads(boxes):
     all_beads = []
     import time
     load_start = time.perf_counter()
-    # This UnionBox.all_beads is the meat, the rest is just user feedback for big/slow
+    # This search_boxes().all() is the meat, the rest is just user feedback for big/slow
     # environments
-    for n, bead in enumerate(UnionBox(boxes).all_beads()):
+    for n, bead in enumerate(search_boxes(boxes).all()):
         load_end = time.perf_counter()
 
         msg = f"\rLoaded bead {n + 1} ({bead.archive_filename})"[:columns]

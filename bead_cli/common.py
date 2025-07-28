@@ -138,9 +138,7 @@ def resolve_bead(env, bead_ref_base, time):
         return ZipArchive(bead_ref_base)
 
     # not a file - try box search
-    unionbox = bead_box.UnionBox(env.get_boxes())
-
-    return unionbox.get_at(bead_spec.BEAD_NAME, bead_ref_base, time)
+    return bead_box.search_boxes(env.get_boxes()).by_name(bead_ref_base).at_or_older(time).newest()
 
 
 def verify_with_feedback(archive: Archive):
