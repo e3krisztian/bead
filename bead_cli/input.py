@@ -14,7 +14,6 @@ from .common import (
 from .common import BEAD_REF_BASE_defaulting_to, BEAD_OFFSET, BEAD_TIME, resolve_bead, TIME_LATEST
 from bead.box import search_boxes
 from bead.meta import BeadName
-import bead.spec as bead_spec
 from bead.workspace import Workspace
 
 # input_nick
@@ -180,14 +179,14 @@ class CmdUpdate(Command):
             try:
                 if args.bead_offset:
                     # handle --prev --next - use kind instead of bead name
-                    context = _get_context_by_kind(boxes, input.kind, input.freeze_time)
+                    search = search_boxes(boxes).by_kind(input.kind)
                     if args.bead_offset == 1:
-                        bead = context.next
+                        bead = search.newer_than(input.freeze_time).oldest()  # next = oldest of newer beads
                     else:
-                        bead = context.prev
+                        bead = search.older_than(input.freeze_time).newest()  # prev = newest of older beads
                 else:
                     # --time - use kind instead of bead name
-                    bead = _get_context_by_kind(boxes, input.kind, args.bead_time).best
+                    bead = search_boxes(boxes).by_kind(input.kind).at_or_older(args.bead_time).newest()
             except LookupError:
                 die(f'Could not find bead for "{input.name}"')
         else:
@@ -200,23 +199,6 @@ class CmdUpdate(Command):
         else:
             die('Can not find matching bead')
 
-
-def _get_context(boxes, bead_name, time):
-    from bead.box import UnionBox
-    unionbox = UnionBox(boxes)
-    return unionbox.get_context(
-        check_type=bead_spec.BEAD_NAME,
-        check_param=bead_name,
-        time=time)
-
-
-def _get_context_by_kind(boxes, kind, time):
-    from bead.box import UnionBox
-    unionbox = UnionBox(boxes)
-    return unionbox.get_context(
-        check_type=bead_spec.KIND,
-        check_param=kind,
-        time=time)
 
 
 def _update_input(workspace, input, bead):
