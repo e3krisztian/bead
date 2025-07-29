@@ -21,10 +21,15 @@ from .ziparchive import ZipArchive
 from .bead import Archive
 from .exceptions import InvalidArchive
 from .exceptions import BoxError
-from . import spec as bead_spec
 from .tech.timestamp import time_from_timestamp
 from .import tech
 Path = tech.fs.Path
+
+
+# QUERY_WHERE:
+BEAD_NAME = 'BEAD_NAME'
+KIND = 'KIND'
+CONTENT_ID = 'CONTENT_ID'
 
 
 # private and specific to Box implementation, when Box gains more power,
@@ -74,9 +79,9 @@ def _make_checkers():
         return filter
 
     return {
-        bead_spec.BEAD_NAME:  has_name,
-        bead_spec.KIND:       has_kind,
-        bead_spec.CONTENT_ID: has_content_prefix,
+        BEAD_NAME:  has_name,
+        KIND:       has_kind,
+        CONTENT_ID: has_content_prefix,
         'at_time': at_time,
         'newer_than': newer_than,
         'older_than': older_than,
@@ -222,15 +227,15 @@ class FileBasedSearch(BeadSearch):
         self._unique_filter = False
 
     def by_name(self, name):
-        self.conditions.append((bead_spec.BEAD_NAME, name))
+        self.conditions.append((BEAD_NAME, name))
         return self
 
     def by_kind(self, kind):
-        self.conditions.append((bead_spec.KIND, kind))
+        self.conditions.append((KIND, kind))
         return self
 
     def by_content_id(self, content_id):
-        self.conditions.append((bead_spec.CONTENT_ID, content_id))
+        self.conditions.append((CONTENT_ID, content_id))
         return self
 
     def at_time(self, timestamp):
@@ -330,15 +335,15 @@ class MultiBoxSearch(BeadSearch):
         self._unique_filter = False
 
     def by_name(self, name):
-        self.conditions.append((bead_spec.BEAD_NAME, name))
+        self.conditions.append((BEAD_NAME, name))
         return self
 
     def by_kind(self, kind):
-        self.conditions.append((bead_spec.KIND, kind))
+        self.conditions.append((KIND, kind))
         return self
 
     def by_content_id(self, content_id):
-        self.conditions.append((bead_spec.CONTENT_ID, content_id))
+        self.conditions.append((CONTENT_ID, content_id))
         return self
 
     def at_time(self, timestamp):
@@ -483,7 +488,7 @@ class Box:
         bead_names = {
             value
             for tag, value in conditions
-            if tag == bead_spec.BEAD_NAME}
+            if tag == BEAD_NAME}
         if bead_names:
             if len(bead_names) > 1:
                 # easy path: names disagree
