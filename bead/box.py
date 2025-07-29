@@ -16,7 +16,7 @@ Boxes can be used to:
 
 from typing import Iterator, Iterable
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import Enum, auto
 
 from .ziparchive import ZipArchive
 from .bead import Archive
@@ -28,14 +28,14 @@ Path = tech.fs.Path
 
 
 class QueryCondition(Enum):
-    BEAD_NAME = 'bead_name'
-    KIND = 'kind'
-    CONTENT_ID = 'content_id'
-    AT_TIME = 'at_time'
-    NEWER_THAN = 'newer_than'
-    OLDER_THAN = 'older_than'
-    AT_OR_NEWER = 'at_or_newer'
-    AT_OR_OLDER = 'at_or_older'
+    BEAD_NAME = auto()
+    KIND = auto()
+    CONTENT_ID = auto()
+    AT_TIME = auto()
+    NEWER_THAN = auto()
+    OLDER_THAN = auto()
+    AT_OR_NEWER = auto()
+    AT_OR_OLDER = auto()
 
 
 # private and specific to Box implementation, when Box gains more power,
@@ -278,17 +278,20 @@ class FileBasedSearch(BeadSearch):
         self._unique_filter = True
         return self
 
-    def _get_beads(self):
+    def _apply_unique_filter(self, beads: list[Archive]) -> list[Archive]:
+        if not self._unique_filter:
+            return beads
+        seen_content_ids = set()
+        unique_beads = []
+        for bead in beads:
+            if bead.content_id not in seen_content_ids:
+                seen_content_ids.add(bead.content_id)
+                unique_beads.append(bead)
+        return unique_beads
+
+    def _get_beads(self) -> list[Archive]:
         beads = list(self.box._beads(self.conditions))
-        if self._unique_filter:
-            seen_content_ids = set()
-            unique_beads = []
-            for bead in beads:
-                if bead.content_id not in seen_content_ids:
-                    seen_content_ids.add(bead.content_id)
-                    unique_beads.append(bead)
-            beads = unique_beads
-        return beads
+        return self._apply_unique_filter(beads)
 
     def first(self) -> Archive:
         beads = self._get_beads()
@@ -386,36 +389,33 @@ class MultiBoxSearch(BeadSearch):
         self._unique_filter = True
         return self
 
-    def _get_beads(self):
+    def _apply_unique_filter(self, beads: list[Archive]) -> list[Archive]:
+        if not self._unique_filter:
+            return beads
+        seen_content_ids = set()
+        unique_beads = []
+        for bead in beads:
+            if bead.content_id not in seen_content_ids:
+                seen_content_ids.add(bead.content_id)
+                unique_beads.append(bead)
+        return unique_beads
+
+    def _get_beads(self) -> list[Archive]:
         all_beads = []
         for box in self.boxes:
             beads = list(box._beads(self.conditions))
             all_beads.extend(beads)
         
-        if self._unique_filter:
-            seen_content_ids = set()
-            unique_beads = []
-            for bead in all_beads:
-                if bead.content_id not in seen_content_ids:
-                    seen_content_ids.add(bead.content_id)
-                    unique_beads.append(bead)
-            all_beads = unique_beads
-        
-        return all_beads
+        return self._apply_unique_filter(all_beads)
 
     def first(self) -> Archive:
         for box in self.boxes:
             try:
                 beads = list(box._beads(self.conditions))
-                if self._unique_filter:
-                    seen_content_ids = set()
-                    for bead in beads:
-                        if bead.content_id not in seen_content_ids:
-                            seen_content_ids.add(bead.content_id)
-                            return bead
-                elif beads:
-                    return beads[0]
-            except:
+                filtered_beads = self._apply_unique_filter(beads)
+                if filtered_beads:
+                    return filtered_beads[0]
+            except (InvalidArchive, IOError, OSError):
                 continue
         raise LookupError("No beads found")
 
@@ -485,7 +485,7 @@ class Box:
         '''
         return iter(self._beads([]))
 
-    def _beads(self, conditions) -> Iterable[Archive]:
+    def _beads(self, conditions) -> Iterator[Archive]:
         '''
         Retrieve matching beads.
         '''
@@ -509,7 +509,7 @@ class Box:
         candidates = (bead for bead in beads if match(bead))
         return candidates
 
-    def _archives_from(self, paths: Iterable[Path]):
+    def _archives_from(self, paths: Iterable[Path]) -> Iterator[Archive]:
         for path in paths:
             try:
                 archive = ZipArchive(path, self.name)
@@ -519,7 +519,7 @@ class Box:
             else:
                 yield archive
 
-    def store(self, workspace, freeze_time):
+    def store(self, workspace, freeze_time) -> Path:
         # -> Bead
         if not self.directory.exists():
             raise BoxError(f'Box "{self.name}": directory {self.directory} does not exist')
