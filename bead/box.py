@@ -17,6 +17,7 @@ Boxes can be used to:
 from typing import Iterator, Iterable
 from abc import ABC, abstractmethod
 from enum import Enum, auto
+from dataclasses import dataclass
 
 from .ziparchive import ZipArchive
 from .bead import Archive
@@ -43,60 +44,16 @@ class QueryCondition(Enum):
 # or CONTENT_ID directly through an index)
 
 
-def _make_checkers():
-    def has_name(name):
-        def filter(bead):
-            return bead.name == name
-        return filter
-
-    def has_kind(kind):
-        def filter(bead):
-            return bead.kind == kind
-        return filter
-
-    def has_content_prefix(prefix):
-        def filter(bead):
-            return bead.content_id.startswith(prefix)
-        return filter
-
-    def at_time(timestamp):
-        def filter(bead):
-            return bead.freeze_time == timestamp
-        return filter
-
-    def newer_than(timestamp):
-        def filter(bead):
-            return bead.freeze_time > timestamp
-        return filter
-
-    def older_than(timestamp):
-        def filter(bead):
-            return bead.freeze_time < timestamp
-        return filter
-
-    def at_or_newer(timestamp):
-        def filter(bead):
-            return bead.freeze_time >= timestamp
-        return filter
-
-    def at_or_older(timestamp):
-        def filter(bead):
-            return bead.freeze_time <= timestamp
-        return filter
-
-    return {
-        QueryCondition.BEAD_NAME:  has_name,
-        QueryCondition.KIND:       has_kind,
-        QueryCondition.CONTENT_ID: has_content_prefix,
-        QueryCondition.AT_TIME: at_time,
-        QueryCondition.NEWER_THAN: newer_than,
-        QueryCondition.OLDER_THAN: older_than,
-        QueryCondition.AT_OR_NEWER: at_or_newer,
-        QueryCondition.AT_OR_OLDER: at_or_older,
-    }
-
-
-_CHECKERS = _make_checkers()
+_CHECKERS = {
+    QueryCondition.BEAD_NAME: lambda name: lambda bead: bead.name == name,
+    QueryCondition.KIND: lambda kind: lambda bead: bead.kind == kind,
+    QueryCondition.CONTENT_ID: lambda prefix: lambda bead: bead.content_id.startswith(prefix),
+    QueryCondition.AT_TIME: lambda timestamp: lambda bead: bead.freeze_time == timestamp,
+    QueryCondition.NEWER_THAN: lambda timestamp: lambda bead: bead.freeze_time > timestamp,
+    QueryCondition.OLDER_THAN: lambda timestamp: lambda bead: bead.freeze_time < timestamp,
+    QueryCondition.AT_OR_NEWER: lambda timestamp: lambda bead: bead.freeze_time >= timestamp,
+    QueryCondition.AT_OR_OLDER: lambda timestamp: lambda bead: bead.freeze_time <= timestamp,
+}
 
 
 def compile_conditions(conditions):
@@ -222,25 +179,30 @@ class BeadSearch(ABC):
         pass
 
 
-class FileBasedSearch(BeadSearch):
+class BaseSearch(BeadSearch):
     """
-    Concrete implementation of BeadSearch for file-based boxes.
+    Base implementation of BeadSearch with common functionality.
     """
 
-    def __init__(self, box):
-        self.box = box
+    def __init__(self):
         self.conditions = []
         self._unique_filter = False
 
-    def by_name(self, name):
+    def by_name(self, name: str):
+        if not name:
+            raise ValueError("Name cannot be empty")
         self.conditions.append((QueryCondition.BEAD_NAME, name))
         return self
 
-    def by_kind(self, kind):
+    def by_kind(self, kind: str):
+        if not kind:
+            raise ValueError("Kind cannot be empty")
         self.conditions.append((QueryCondition.KIND, kind))
         return self
 
-    def by_content_id(self, content_id):
+    def by_content_id(self, content_id: str):
+        if not content_id:
+            raise ValueError("Content ID cannot be empty")
         self.conditions.append((QueryCondition.CONTENT_ID, content_id))
         return self
 
@@ -288,10 +250,6 @@ class FileBasedSearch(BeadSearch):
                 seen_content_ids.add(bead.content_id)
                 unique_beads.append(bead)
         return unique_beads
-
-    def _get_beads(self) -> list[Archive]:
-        beads = list(self.box._beads(self.conditions))
-        return self._apply_unique_filter(beads)
 
     def first(self) -> Archive:
         beads = self._get_beads()
@@ -332,73 +290,34 @@ class FileBasedSearch(BeadSearch):
     def all(self) -> list[Archive]:
         return self._get_beads()
 
+    @abstractmethod
+    def _get_beads(self) -> list[Archive]:
+        """Subclasses must implement this method to retrieve beads."""
+        pass
 
-class MultiBoxSearch(BeadSearch):
+
+class FileBasedSearch(BaseSearch):
+    """
+    Concrete implementation of BeadSearch for file-based boxes.
+    """
+
+    def __init__(self, box):
+        super().__init__()
+        self.box = box
+
+    def _get_beads(self) -> list[Archive]:
+        beads = list(self.box._beads(self.conditions))
+        return self._apply_unique_filter(beads)
+
+
+class MultiBoxSearch(BaseSearch):
     """
     Search across multiple boxes.
     """
 
     def __init__(self, boxes):
+        super().__init__()
         self.boxes = boxes
-        self.conditions = []
-        self._unique_filter = False
-
-    def by_name(self, name):
-        self.conditions.append((QueryCondition.BEAD_NAME, name))
-        return self
-
-    def by_kind(self, kind):
-        self.conditions.append((QueryCondition.KIND, kind))
-        return self
-
-    def by_content_id(self, content_id):
-        self.conditions.append((QueryCondition.CONTENT_ID, content_id))
-        return self
-
-    def at_time(self, timestamp):
-        if isinstance(timestamp, str):
-            timestamp = time_from_timestamp(timestamp)
-        self.conditions.append((QueryCondition.AT_TIME, timestamp))
-        return self
-
-    def newer_than(self, timestamp):
-        if isinstance(timestamp, str):
-            timestamp = time_from_timestamp(timestamp)
-        self.conditions.append((QueryCondition.NEWER_THAN, timestamp))
-        return self
-
-    def older_than(self, timestamp):
-        if isinstance(timestamp, str):
-            timestamp = time_from_timestamp(timestamp)
-        self.conditions.append((QueryCondition.OLDER_THAN, timestamp))
-        return self
-
-    def at_or_newer(self, timestamp):
-        if isinstance(timestamp, str):
-            timestamp = time_from_timestamp(timestamp)
-        self.conditions.append((QueryCondition.AT_OR_NEWER, timestamp))
-        return self
-
-    def at_or_older(self, timestamp):
-        if isinstance(timestamp, str):
-            timestamp = time_from_timestamp(timestamp)
-        self.conditions.append((QueryCondition.AT_OR_OLDER, timestamp))
-        return self
-
-    def unique(self):
-        self._unique_filter = True
-        return self
-
-    def _apply_unique_filter(self, beads: list[Archive]) -> list[Archive]:
-        if not self._unique_filter:
-            return beads
-        seen_content_ids = set()
-        unique_beads = []
-        for bead in beads:
-            if bead.content_id not in seen_content_ids:
-                seen_content_ids.add(bead.content_id)
-                unique_beads.append(bead)
-        return unique_beads
 
     def _get_beads(self) -> list[Archive]:
         all_beads = []
@@ -419,40 +338,6 @@ class MultiBoxSearch(BeadSearch):
                 continue
         raise LookupError("No beads found")
 
-    def oldest(self) -> Archive:
-        beads = self._get_beads()
-        if not beads:
-            raise LookupError("No beads found")
-        return min(beads, key=lambda b: b.freeze_time)
-
-    def newest(self) -> Archive:
-        beads = self._get_beads()
-        if not beads:
-            raise LookupError("No beads found")
-        return max(beads, key=lambda b: b.freeze_time)
-
-    def newer(self, n: int = 1) -> Archive:
-        beads = self._get_beads()
-        if not beads:
-            raise LookupError("No beads found")
-        sorted_beads = sorted(beads, key=lambda b: b.freeze_time)
-        if n >= len(sorted_beads):
-            raise LookupError(f"Not enough beads found (requested index {n}, found {len(sorted_beads)})")
-        return sorted_beads[n]
-
-    def older(self, n: int = 1) -> Archive:
-        beads = self._get_beads()
-        if not beads:
-            raise LookupError("No beads found")
-        sorted_beads = sorted(beads, key=lambda b: b.freeze_time, reverse=True)
-        if n >= len(sorted_beads):
-            raise LookupError(f"Not enough beads found (requested index {n}, found {len(sorted_beads)})")
-        return sorted_beads[n]
-
-    def all(self) -> list[Archive]:
-        return self._get_beads()
-
-
 def search_boxes(boxes):
     """
     Module-level convenience function that returns a MultiBoxSearch.
@@ -460,14 +345,13 @@ def search_boxes(boxes):
     return MultiBoxSearch(boxes)
 
 
+@dataclass
 class Box:
     """
     Store Beads.
     """
-
-    def __init__(self, name: str, location: Path):
-        self.location = location
-        self.name = name
+    name: str
+    location: Path
 
     @property
     def directory(self):
