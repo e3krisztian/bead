@@ -16,6 +16,7 @@ Boxes can be used to:
 
 from typing import Iterator, Iterable
 from abc import ABC, abstractmethod
+from enum import Enum
 
 from .ziparchive import ZipArchive
 from .bead import Archive
@@ -26,10 +27,15 @@ from .import tech
 Path = tech.fs.Path
 
 
-# QUERY_WHERE:
-BEAD_NAME = 'BEAD_NAME'
-KIND = 'KIND'
-CONTENT_ID = 'CONTENT_ID'
+class QueryCondition(Enum):
+    BEAD_NAME = 'bead_name'
+    KIND = 'kind'
+    CONTENT_ID = 'content_id'
+    AT_TIME = 'at_time'
+    NEWER_THAN = 'newer_than'
+    OLDER_THAN = 'older_than'
+    AT_OR_NEWER = 'at_or_newer'
+    AT_OR_OLDER = 'at_or_older'
 
 
 # private and specific to Box implementation, when Box gains more power,
@@ -79,14 +85,14 @@ def _make_checkers():
         return filter
 
     return {
-        BEAD_NAME:  has_name,
-        KIND:       has_kind,
-        CONTENT_ID: has_content_prefix,
-        'at_time': at_time,
-        'newer_than': newer_than,
-        'older_than': older_than,
-        'at_or_newer': at_or_newer,
-        'at_or_older': at_or_older,
+        QueryCondition.BEAD_NAME:  has_name,
+        QueryCondition.KIND:       has_kind,
+        QueryCondition.CONTENT_ID: has_content_prefix,
+        QueryCondition.AT_TIME: at_time,
+        QueryCondition.NEWER_THAN: newer_than,
+        QueryCondition.OLDER_THAN: older_than,
+        QueryCondition.AT_OR_NEWER: at_or_newer,
+        QueryCondition.AT_OR_OLDER: at_or_older,
     }
 
 
@@ -227,45 +233,45 @@ class FileBasedSearch(BeadSearch):
         self._unique_filter = False
 
     def by_name(self, name):
-        self.conditions.append((BEAD_NAME, name))
+        self.conditions.append((QueryCondition.BEAD_NAME, name))
         return self
 
     def by_kind(self, kind):
-        self.conditions.append((KIND, kind))
+        self.conditions.append((QueryCondition.KIND, kind))
         return self
 
     def by_content_id(self, content_id):
-        self.conditions.append((CONTENT_ID, content_id))
+        self.conditions.append((QueryCondition.CONTENT_ID, content_id))
         return self
 
     def at_time(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('at_time', timestamp))
+        self.conditions.append((QueryCondition.AT_TIME, timestamp))
         return self
 
     def newer_than(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('newer_than', timestamp))
+        self.conditions.append((QueryCondition.NEWER_THAN, timestamp))
         return self
 
     def older_than(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('older_than', timestamp))
+        self.conditions.append((QueryCondition.OLDER_THAN, timestamp))
         return self
 
     def at_or_newer(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('at_or_newer', timestamp))
+        self.conditions.append((QueryCondition.AT_OR_NEWER, timestamp))
         return self
 
     def at_or_older(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('at_or_older', timestamp))
+        self.conditions.append((QueryCondition.AT_OR_OLDER, timestamp))
         return self
 
     def unique(self):
@@ -335,45 +341,45 @@ class MultiBoxSearch(BeadSearch):
         self._unique_filter = False
 
     def by_name(self, name):
-        self.conditions.append((BEAD_NAME, name))
+        self.conditions.append((QueryCondition.BEAD_NAME, name))
         return self
 
     def by_kind(self, kind):
-        self.conditions.append((KIND, kind))
+        self.conditions.append((QueryCondition.KIND, kind))
         return self
 
     def by_content_id(self, content_id):
-        self.conditions.append((CONTENT_ID, content_id))
+        self.conditions.append((QueryCondition.CONTENT_ID, content_id))
         return self
 
     def at_time(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('at_time', timestamp))
+        self.conditions.append((QueryCondition.AT_TIME, timestamp))
         return self
 
     def newer_than(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('newer_than', timestamp))
+        self.conditions.append((QueryCondition.NEWER_THAN, timestamp))
         return self
 
     def older_than(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('older_than', timestamp))
+        self.conditions.append((QueryCondition.OLDER_THAN, timestamp))
         return self
 
     def at_or_newer(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('at_or_newer', timestamp))
+        self.conditions.append((QueryCondition.AT_OR_NEWER, timestamp))
         return self
 
     def at_or_older(self, timestamp):
         if isinstance(timestamp, str):
             timestamp = time_from_timestamp(timestamp)
-        self.conditions.append(('at_or_older', timestamp))
+        self.conditions.append((QueryCondition.AT_OR_OLDER, timestamp))
         return self
 
     def unique(self):
@@ -488,7 +494,7 @@ class Box:
         bead_names = {
             value
             for tag, value in conditions
-            if tag == BEAD_NAME}
+            if tag == QueryCondition.BEAD_NAME}
         if bead_names:
             if len(bead_names) > 1:
                 # easy path: names disagree
