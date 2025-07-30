@@ -130,7 +130,7 @@ class Parser:
             if 'default' in kwargs:
                 # extend help with default
                 arg_kwargs['help'] = (
-                    f"{kwargs.get('help', '')} (default: {kwargs['default']!r})")
+                    f"{kwargs.get('help', '')} (default: {kwargs['default']!s})")
             self.argparser.add_argument(*args, **arg_kwargs)
 
     def command(self, name: str, commandish: Command | type, title: str) -> None:
