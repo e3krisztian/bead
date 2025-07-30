@@ -18,8 +18,6 @@ from typing import Any
 
 import argcomplete
 
-__all__ = ['Command', 'Parser']
-
 
 class Command:
     '''
@@ -100,7 +98,7 @@ class Parser:
             self.__subparsers = self.argparser.add_subparsers()
         return self.__subparsers
 
-    def _make_command(self, commandish: Command | type) -> Command | None:
+    def _make_command(self, commandish: Command | type[Command]) -> Command:
         '''
         Make a proper Command instance.
 
@@ -113,8 +111,6 @@ class Parser:
         if issubclass(commandish, Command):
             instance = commandish()
             return instance
-
-        return None
 
     def arg(self, *args: Any, **kwargs: Any) -> None:
         '''

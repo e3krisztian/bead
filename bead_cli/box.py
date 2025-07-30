@@ -1,5 +1,4 @@
 from bead import tech
-from bead.ziparchive import ZipArchive
 from .cmdparse import Command
 from .common import OPTIONAL_ENV
 
@@ -76,18 +75,3 @@ class CmdForget(Command):
             print(f'Box "{name}" is forgotten')
         else:
             print(f'WARNING: no box defined with "{name}"')
-
-
-class CmdXmeta(Command):
-    '''
-    eXport eXtended meta attributes to a file next to zip archive.
-    '''
-    def declare(self, arg):
-        arg('zip_archive_filename')
-
-    def run(self, args):
-        archive = ZipArchive(args.zip_archive_filename)
-        archive.save_cache()
-        print(f'Saved {archive.cache_path}')
-
-
