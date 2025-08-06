@@ -146,12 +146,6 @@ def test_load_finds_renamed_bead_by_content_id(
     cli('input', 'load', 'b')
     check.loaded('b', bead_b)
 
-    # mapping still works for updating the bead name reference
-    cli('input', 'map', 'b', 'c')
-    print(robot.stderr)
-    cli('input', 'load', 'b')
-    check.loaded('b', bead_b)
-
 
 def _copy(box, bead_name, bead_freeze_time, new_name):
     """

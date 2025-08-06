@@ -37,7 +37,7 @@ def generate_input_edges(bead_index: Dict[Ref, Dummy], bead: Dummy) -> Iterator[
     An edge is a triple of (src, dest, label), where both 'src' and 'dest' are Dummy-s.
     """
     for input in bead.inputs:
-        src_ref = Ref.from_bead_input(bead, input)
+        src_ref = Ref.from_bead(input)
         try:
             src = bead_index[src_ref]
         except LookupError:

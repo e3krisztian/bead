@@ -93,7 +93,6 @@ def make_argument_parser(defaults):
             ('add', input.CmdAdd, 'Define dependency and load its data.'),
             ('delete', input.CmdDelete, 'Forget all about an input.'),
             ('rm', input.CmdDelete, 'Forget all about an input. (alias for delete)'),
-            ('map', input.CmdMap, 'Change the name of the bead from which the input is loaded/updated.'),
             ('update', input.CmdUpdate, 'Update input[s] to newest version or defined bead.'),
             ('load', input.CmdLoad, 'Load data from already defined dependency.'),
             ('unload', input.CmdUnload, 'Unload input data.'),

@@ -148,38 +148,6 @@ class Workspace(Bead):
         del m[meta.INPUTS][input_nick]
         self.meta = m
 
-    @property
-    def _input_map_filename(self):
-        return self.directory / layouts.Workspace.INPUT_MAP
-
-    @property
-    def input_map(self):
-        """
-        Map from local (bead specific) input nicks to real (more widely recognised) bead names
-        """
-        try:
-            return persistence.file_load(self._input_map_filename)
-        except:
-            return {}
-
-    @input_map.setter
-    def input_map(self, input_map):
-        persistence.file_dump(input_map, self._input_map_filename)
-
-    def get_input_bead_name(self, input_nick):
-        '''
-        Returns the name on which update works.
-        '''
-        return self.input_map.get(input_nick, input_nick)
-
-    def set_input_bead_name(self, input_nick, bead_name):
-        '''
-        Sets the name to be used for updates in the future.
-        '''
-        input_map = self.input_map
-        input_map[input_nick] = bead_name
-        self.input_map = input_map
-
     def load(self, input_nick, archive):
         '''
         Make output data files in archive available under input directory
@@ -328,4 +296,3 @@ class _ZipCreator:
 
         self.add_string_content(layouts.Archive.BEAD_META, persistence.dumps(bead_meta))
         self.add_string_content(layouts.Archive.MANIFEST, persistence.dumps(self.hashes))
-        persistence.zip_dump(workspace.input_map, self.zipfile, layouts.Archive.INPUT_MAP)

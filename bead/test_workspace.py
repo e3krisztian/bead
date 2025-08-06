@@ -270,37 +270,6 @@ def add_input(workspace, input_nick):
     workspace.add_input(input_nick, A_KIND, 'content_id', timestamp())
 
 
-def test_input_map_default_value(workspace_with_input, input_nick):
-    """Test that input map returns default value."""
-    assert input_nick == workspace_with_input.get_input_bead_name(input_nick)
-
-
-def test_input_map_define(workspace_with_input, input_nick):
-    """Test defining input bead name."""
-    bead_name = f'{input_nick}2'
-    workspace_with_input.set_input_bead_name(input_nick, bead_name)
-    assert bead_name == workspace_with_input.get_input_bead_name(input_nick)
-
-
-def test_input_map_update(workspace_with_input, input_nick):
-    """Test updating input bead name."""
-    workspace_with_input.set_input_bead_name(input_nick, f'{input_nick}2')
-    bead_name = f'{input_nick}42'
-    workspace_with_input.set_input_bead_name(input_nick, bead_name)
-    assert bead_name == workspace_with_input.get_input_bead_name(input_nick)
-
-
-def test_input_map_independent_update(workspace_with_input, input_nick):
-    """Test that input updates are independent."""
-    input_nick2 = f'{input_nick}2'
-    add_input(workspace_with_input, input_nick2)
-
-    workspace_with_input.set_input_bead_name(input_nick, f'{input_nick}1111')
-    workspace_with_input.set_input_bead_name(input_nick2, f'{input_nick2}222')
-    assert f'{input_nick}1111' == workspace_with_input.get_input_bead_name(input_nick)
-    assert f'{input_nick2}222' == workspace_with_input.get_input_bead_name(input_nick2)
-
-
 def unzip(archive_path, directory):
     """Helper function to unzip an archive."""
     ensure_directory(directory)

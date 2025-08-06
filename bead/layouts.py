@@ -16,9 +16,6 @@ class Archive:
     BEAD_META = f'{META}/bead'
     MANIFEST = f'{META}/manifest'
 
-    # volatile content, not included in generation of content_id
-    INPUT_MAP = f'{META}/input.map'
-
 
 class Workspace:
 
@@ -28,4 +25,3 @@ class Workspace:
     META = Path('.bead-meta')
 
     BEAD_META = META / 'bead'
-    INPUT_MAP = META / 'input.map'

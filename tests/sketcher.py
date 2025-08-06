@@ -41,10 +41,6 @@ class Sketcher:
         bead = self._create(proto, name, proto_bead.kind, box_name, proto_bead.inputs)
         self._by_name[name] = bead
 
-    def map_input(self, bead_name: str, input_name: str, input_bead_name: str):
-        bead = self._by_name[bead_name]
-        self._map_input(bead, input_name, input_bead_name)
-
     def compile(self, dag: str):
         # 'a1 -a-> b2 -> c4 a2 -another-a-> b2'
         label = None
@@ -97,11 +93,6 @@ class Sketcher:
             freeze_time_str=input_bead.freeze_time_str,
         )
         bead.inputs.append(input_spec)
-        self._map_input(bead, input_name, input_bead.name)
-
-    def _map_input(self, bead, input_name, input_bead_name):
-        assert input_name in [i.name for i in bead.inputs]
-        bead.set_input_bead_name(input_name, input_bead_name)
 
     @property
     def beads(self):
@@ -137,8 +128,6 @@ if __name__ == '__main__':
         """
     )
     sketcher.clone('b2', 'clone123', 'clone-box')
-    sketcher.map_input('clone123', 'newer', 'axon')
-    sketcher.map_input('clone123', 'older', 'neuron')
 
     from pprint import pprint
     pprint(list(sketcher.beads))

@@ -141,13 +141,6 @@ class ZipArchive(Archive):
         return persistence.zip_load(self.zipfile, filename)
 
     @property
-    def input_map(self):
-        try:
-            return self.zip_load(layouts.Archive.INPUT_MAP)
-        except:
-            return {}
-
-    @property
     def inputs(self):
         return tuple(meta.parse_inputs(self.meta))
 
@@ -196,7 +189,6 @@ class ZipArchive(Archive):
 
     def unpack_meta_to(self, workspace):
         workspace.meta = self.meta
-        workspace.input_map = self.input_map
 
 
 def bead_name_from_file_path(path):

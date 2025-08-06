@@ -17,10 +17,6 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "SUPERSEDED"
         },
-        "input_map": {
-            "ood1": "ood1",
-            "root2": "root2"
-        },
         "inputs": [
             {
                 "@class": "InputSpec",
@@ -53,9 +49,6 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "UP_TO_DATE"
         },
-        "input_map": {
-            "root": "root1"
-        },
         "inputs": [
             {
                 "@class": "InputSpec",
@@ -80,7 +73,6 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "OUT_OF_DATE"
         },
-        "input_map": {},
         "inputs": [],
         "kind": "kind_root_2",
         "name": "root2"
@@ -96,7 +88,6 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "SUPERSEDED"
         },
-        "input_map": {},
         "inputs": [],
         "kind": "kind_root_1",
         "name": "root1"
@@ -112,7 +103,6 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "SUPERSEDED"
         },
-        "input_map": {},
         "inputs": [],
         "kind": "kind_root_1",
         "name": "root1"
@@ -127,9 +117,6 @@ META_JSON = """\
             "@class": "Freshness",
             "@encoding": "enum",
             "value": "UP_TO_DATE"
-        },
-        "input_map": {
-            "phantom": "real_name_of_phantom"
         },
         "inputs": [
             {

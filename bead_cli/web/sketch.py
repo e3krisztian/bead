@@ -282,7 +282,7 @@ def drop_deleted_inputs(sketch: Sketch) -> Sketch:
     for bead in sketch.beads:
         inputs_to_keep = []
         for input in bead.inputs:
-            input_ref = Ref.from_bead_input(bead, input)
+            input_ref = Ref.from_bead(input)
             if (input_ref, bead.ref) in edges_as_refs:
                 inputs_to_keep.append(input)
         beads.append(attr.evolve(bead, inputs=inputs_to_keep))

@@ -14,7 +14,7 @@ class Bead:
 
     content_id guarantees same data content, but beads with same content can have
     different metadata, including where it is to be found (box_name) and under which name,
-    or how to find the referenced input beads (see input_map).
+    or how to find the referenced input beads.
     '''
 
     # high level view of computation
