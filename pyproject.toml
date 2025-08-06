@@ -30,6 +30,8 @@ dev = [
     "pytest",
     "mypy",
     "pytype>=2024.10.11",
+    "pysnooper",
+    "ruff",
 ]
 
 [tool.pyright]
