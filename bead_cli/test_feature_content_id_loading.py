@@ -2,7 +2,7 @@ import os
 import shutil
 from typing import Dict
 
-from bead.bead import Archive
+from bead.ziparchive import ZipArchive
 
 
 def test_status_displays_input_information_correctly(robot, bead_a, bead_with_history, box, check, times):
@@ -123,7 +123,7 @@ def test_save_and_develop_preserves_content_id_references(robot, bead_a, bead_wi
 
 
 def test_load_finds_renamed_bead_by_content_id(
-    robot, bead_a, bead_b, box, beads: Dict[str, Archive], check, times
+    robot, bead_a, bead_b, box, beads: Dict[str, ZipArchive], check, times
 ):
     # Test that loading works even after renaming bead files, since content_id matching is used
     # This demonstrates the robustness of content_id-based loading

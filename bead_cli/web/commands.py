@@ -258,7 +258,7 @@ def load_all_beads(boxes):
     for n, bead in enumerate(search_boxes(boxes).all()):
         load_end = time.perf_counter()
 
-        msg = f"\rLoaded bead {n + 1} ({bead.archive_filename})"[:columns]
+        msg = f"\rLoaded bead {n + 1} ({bead.location})"[:columns]
         msg = msg + ' ' * (columns - len(msg))
         print(msg, end="", flush=True)
         if load_end - load_start > 1:

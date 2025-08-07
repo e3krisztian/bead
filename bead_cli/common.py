@@ -141,7 +141,7 @@ def resolve_bead(env, bead_ref_base, time):
 
 
 def verify_with_feedback(archive: Archive):
-    print(f'Verifying archive {archive.archive_filename} ...', end='', flush=True)
+    print(f'Verifying archive {archive.location} ...', end='', flush=True)
     try:
         archive.validate()
         print(' OK', flush=True)

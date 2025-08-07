@@ -41,6 +41,10 @@ class ZipArchive(Archive):
         except (zipopener.BadZipFile, OSError):
             raise InvalidArchive(self.archive_filename)
 
+    @property
+    def location(self) -> str:
+        return str(self.archive_filename)
+
     def validate(self):
         '''
         verify, that

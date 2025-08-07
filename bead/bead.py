@@ -1,5 +1,5 @@
-from abc import ABCMeta, abstractmethod
-from typing import Any, Sequence
+from abc import ABCMeta, abstractmethod, abstractproperty
+from typing import Sequence
 
 from .tech.timestamp import time_from_timestamp
 from .meta import BeadName, InputSpec
@@ -67,6 +67,6 @@ class Archive(Bead, metaclass=ABCMeta):
     def validate(self):
         raise InvalidArchive
 
-    # FIXME: rename archive_filename to Archive.location, maybe make it str?
-    #        also rework code not to depend on it, there is Bead.name and other attributes to display
-    archive_filename: Any
+    @abstractproperty
+    def location(self) -> str:
+        ...
