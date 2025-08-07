@@ -86,9 +86,11 @@ Thank you for your interest!
 
 ## TODOs
 
-Updated by script ([./ci](https://github.com/e3krisztian/bead/blob/wip/ci)), text in this section and afterwards will be overwritten
+Updated by script ([./ci](https://github.com/e3krisztian/bead/blob/next/ci)), text in this section and afterwards will be overwritten
 
-- [FIXME: this test helper uses private to box implementation information](https://github.com/e3krisztian/bead/blob/wip/bead_cli/test_feature_update_by_name.py#L102)
-- [TODO: log/report problem](https://github.com/e3krisztian/bead/blob/wip/bead/box.py#L160)
-- [XXX: (usability) save - support saving directly to a directory outside of workspace](https://github.com/e3krisztian/bead/blob/wip/bead_cli/workspace.py#L87)
-- [XXX: try to load smaller inputs?](https://github.com/e3krisztian/bead/blob/wip/bead_cli/workspace.py#L163)
+- [FIXME: rename archive_filename to Archive.location, maybe make it str?](https://github.com/e3krisztian/bead/blob/next/bead/bead.py#L70)
+- [FIXME: this test helper uses private to box implementation information](https://github.com/e3krisztian/bead/blob/next/bead_cli/test_feature_content_id_loading.py#L154)
+- [TODO: log/report problem](https://github.com/e3krisztian/bead/blob/next/bead/box.py#L397)
+- [XXX/future: implement different input resolution strategies in graph output?](https://github.com/e3krisztian/bead/blob/next/tests/web/test_closure.py#L36)
+- [XXX: (usability) save - support saving directly to a directory outside of workspace](https://github.com/e3krisztian/bead/blob/next/bead_cli/workspace.py#L86)
+- [XXX: try to load smaller inputs?](https://github.com/e3krisztian/bead/blob/next/bead_cli/workspace.py#L162)
