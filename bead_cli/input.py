@@ -13,7 +13,6 @@ from .common import (
 )
 from .common import BEAD_REF_BASE_defaulting_to, BEAD_OFFSET, BEAD_TIME, resolve_bead, TIME_LATEST
 from bead.box import search_boxes
-from bead.meta import BeadName
 from bead.workspace import Workspace
 
 # input_nick

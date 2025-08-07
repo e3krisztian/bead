@@ -148,8 +148,8 @@ class ZipArchive(Archive):
     def _load_meta(self):
         try:
             return self.zip_load(layouts.Archive.BEAD_META)
-        except:
-            raise InvalidArchive(self.archive_filename)
+        except Exception as e:
+            raise InvalidArchive(self.archive_filename) from e
 
     def extract_file(self, zip_path: str, fs_path: tech.fs.Path):
         '''

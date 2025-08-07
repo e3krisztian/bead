@@ -365,7 +365,7 @@ class Box:
         '''
         return iter(self._beads([]))
 
-    def _beads(self, conditions) -> Iterator[Archive]:
+    def _beads(self, conditions) -> Iterable[Archive]:
         '''
         Retrieve matching beads.
         '''

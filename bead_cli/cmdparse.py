@@ -112,6 +112,8 @@ class Parser:
             instance = commandish()
             return instance
 
+        raise TypeError
+
     def arg(self, *args: Any, **kwargs: Any) -> None:
         '''
         Declare one or more arguments.

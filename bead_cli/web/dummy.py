@@ -3,7 +3,7 @@ from typing import Iterable, Dict, List, TypeVar
 import attr
 from cached_property import cached_property
 
-from bead.meta import InputSpec, InputName, BeadName
+from bead.meta import InputSpec
 from bead.tech.timestamp import time_from_timestamp
 from .freshness import Freshness
 
