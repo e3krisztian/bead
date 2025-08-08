@@ -1,11 +1,16 @@
 from collections import defaultdict
-from typing import Iterable, Dict, List, Set, Iterator, Sequence
+from typing import Dict
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import Sequence
+from typing import Set
 
 import attr
 from cached_property import cached_property
 
-from .dummy import Dummy, Ref
-
+from .dummy import Dummy
+from .dummy import Ref
 
 Node = Dummy
 

@@ -1,9 +1,10 @@
 import os
 import zipfile
+
 import pytest
 
-from . import ziparchive as m
 from . import layouts
+from . import ziparchive as m
 
 
 @pytest.fixture

@@ -1,8 +1,9 @@
 import pytest
 
-from bead_cli.web.io import loads, read_beads, write_beads
 from bead_cli.web.freshness import Freshness
-
+from bead_cli.web.io import loads
+from bead_cli.web.io import read_beads
+from bead_cli.web.io import write_beads
 
 META_JSON = """\
 [

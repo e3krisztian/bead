@@ -1,8 +1,10 @@
 import os
+
 import pytest
 
-from bead.workspace import Workspace
 from bead.box import Box
+from bead.workspace import Workspace
+
 from .test_robot import Robot
 
 

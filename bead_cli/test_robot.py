@@ -2,13 +2,13 @@ import contextlib
 import io
 import os
 import tempfile
-from tracelog import TRACELOG
 
 from bead import tech
 import bead.zipopener
+from tracelog import TRACELOG
 
-from .main import run
 from .environment import Environment
+from .main import run
 
 
 @contextlib.contextmanager

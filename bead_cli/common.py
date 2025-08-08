@@ -2,17 +2,18 @@ import os
 import sys
 from typing import NoReturn
 
+from bead import box as bead_box
+from bead.bead import Archive
 from bead.exceptions import InvalidArchive
+from bead.tech.fs import Path
+from bead.tech.timestamp import parse_iso8601
+from bead.tech.timestamp import time_from_user
 from bead.workspace import Workspace
 from bead.ziparchive import ZipArchive
-from bead.bead import Archive
-from bead import box as bead_box
-from bead.tech.fs import Path
-from bead.tech.timestamp import time_from_user, parse_iso8601
+
 from . import arg_help
 from . import arg_metavar
 from .environment import Environment
-
 
 TIME_LATEST = parse_iso8601('9999-12-31')
 

@@ -1,9 +1,12 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta
+from abc import abstractmethod
+from abc import abstractproperty
 from typing import Sequence
 
-from .tech.timestamp import time_from_timestamp
-from .meta import BeadName, InputSpec
 from .exceptions import InvalidArchive
+from .meta import BeadName
+from .meta import InputSpec
+from .tech.timestamp import time_from_timestamp
 
 
 class Bead:

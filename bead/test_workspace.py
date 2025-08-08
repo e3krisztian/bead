@@ -1,13 +1,14 @@
-from bead.exceptions import InvalidArchive
-from . import workspace as m
-
 import os
 import zipfile
+
 import pytest
 
-from .ziparchive import ZipArchive
+from bead.exceptions import InvalidArchive
+
 from . import layouts
 from . import tech
+from . import workspace as m
+from .ziparchive import ZipArchive
 
 write_file = tech.fs.write_file
 ensure_directory = tech.fs.ensure_directory

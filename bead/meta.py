@@ -25,8 +25,9 @@ with the following minimum structure:
 }
 '''
 
-from .tech.timestamp import time_from_timestamp
 import attr
+
+from .tech.timestamp import time_from_timestamp
 
 # Metadata versions determine the content_id used and potentially
 # other processing differences. Having it in the metadata potentially

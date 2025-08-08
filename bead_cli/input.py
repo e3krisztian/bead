@@ -1,19 +1,24 @@
-from bead.exceptions import InvalidArchive
 import os.path
 
-from .cmdparse import Command
-
-from . import arg_metavar
-from . import arg_help
-from .common import (
-    OPTIONAL_WORKSPACE, OPTIONAL_ENV,
-    DefaultArgSentinel, assert_valid_workspace,
-    verify_with_feedback,
-    die, warning
-)
-from .common import BEAD_REF_BASE_defaulting_to, BEAD_OFFSET, BEAD_TIME, resolve_bead, TIME_LATEST
 from bead.box import search_boxes
+from bead.exceptions import InvalidArchive
 from bead.workspace import Workspace
+
+from . import arg_help
+from . import arg_metavar
+from .cmdparse import Command
+from .common import BEAD_OFFSET
+from .common import BEAD_TIME
+from .common import OPTIONAL_ENV
+from .common import OPTIONAL_WORKSPACE
+from .common import TIME_LATEST
+from .common import BEAD_REF_BASE_defaulting_to
+from .common import DefaultArgSentinel
+from .common import assert_valid_workspace
+from .common import die
+from .common import resolve_bead
+from .common import verify_with_feedback
+from .common import warning
 
 # input_nick
 ALL_INPUTS = DefaultArgSentinel('all inputs')
@@ -169,7 +174,6 @@ class CmdUpdate(Command):
             _update_input(workspace, input, bead)
         else:
             die('Can not find matching bead')
-
 
 
 def _update_input(workspace, input, bead):

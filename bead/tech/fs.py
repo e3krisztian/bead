@@ -1,9 +1,9 @@
-import os
-import stat
 import contextlib
-import shutil
-import tempfile
+import os
 from pathlib import Path
+import shutil
+import stat
+import tempfile
 
 
 def ensure_directory(path: Path):

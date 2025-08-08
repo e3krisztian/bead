@@ -1,10 +1,11 @@
 import os
-import pytest
 
-from .test_robot import Robot
+import pytest
 
 from bead.tech.timestamp import timestamp as now_ts
 from bead.workspace import Workspace
+
+from .test_robot import Robot
 
 
 @pytest.fixture
@@ -142,5 +143,3 @@ def test_forget_box(robot, dir1, dir2):
 def test_forget_nonexisting_box(robot):
     robot.cli('box', 'forget', 'non-existing')
     assert 'WARNING' in robot.stdout
-
-

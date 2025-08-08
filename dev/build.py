@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-import os
-import stat
-from subprocess import run, PIPE
-from glob import glob
-import shutil
-from zipfile import ZipFile, ZIP_DEFLATED
 import contextlib
-
+from glob import glob
+import os
+import shutil
+import stat
+from subprocess import PIPE
+from subprocess import run
+from zipfile import ZIP_DEFLATED
+from zipfile import ZipFile
 
 BUILD = 'executables'
 PKGS = BUILD + '/pkgs'

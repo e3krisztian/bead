@@ -10,17 +10,21 @@ Boxes can be used to:
   (this is naive access control, but could work)
 '''
 
-from typing import Iterator, Iterable
-from abc import ABC, abstractmethod
-from enum import Enum, auto
+from abc import ABC
+from abc import abstractmethod
 from dataclasses import dataclass
+from enum import Enum
+from enum import auto
+from typing import Iterable
+from typing import Iterator
 
-from .ziparchive import ZipArchive
+from . import tech
 from .bead import Archive
-from .exceptions import InvalidArchive
 from .exceptions import BoxError
+from .exceptions import InvalidArchive
 from .tech.timestamp import time_from_timestamp
-from .import tech
+from .ziparchive import ZipArchive
+
 Path = tech.fs.Path
 
 
@@ -320,7 +324,7 @@ class MultiBoxSearch(BaseSearch):
         for box in self.boxes:
             beads = list(box._beads(self.conditions))
             all_beads.extend(beads)
-        
+
         return self._apply_unique_filter(all_beads)
 
     def first(self) -> Archive:
@@ -333,6 +337,7 @@ class MultiBoxSearch(BaseSearch):
             except (InvalidArchive, IOError, OSError):
                 continue
         raise LookupError("No beads found")
+
 
 def search_boxes(boxes):
     """
@@ -357,7 +362,6 @@ class Box:
         Valid only for local boxes.
         '''
         return Path(self.location)
-
 
     def all_beads(self) -> Iterator[Archive]:
         '''
@@ -415,4 +419,3 @@ class Box:
         Return a FileBasedSearch instance for fluent search operations.
         """
         return FileBasedSearch(self)
-

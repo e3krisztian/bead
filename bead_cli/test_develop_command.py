@@ -1,8 +1,9 @@
 import os
+
 import pytest
 
-from bead.workspace import Workspace
 from bead import layouts
+from bead.workspace import Workspace
 
 
 def test_by_name(robot, bead_a):

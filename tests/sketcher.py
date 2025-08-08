@@ -1,12 +1,12 @@
 import datetime
 import string
-from typing import Dict, Optional
+from typing import Dict
+from typing import Optional
 
 from bead.meta import InputSpec
 from bead_cli.web.dummy import Dummy
 from bead_cli.web.graph import Ref
 from bead_cli.web.sketch import Sketch
-
 
 TS_BASE = datetime.datetime(
     year=2000, month=1, day=1, tzinfo=datetime.timezone.utc

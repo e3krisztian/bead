@@ -3,12 +3,12 @@ import os
 import re
 import shutil
 
-from .bead import Archive
-from .exceptions import InvalidArchive
-from . import tech
 from . import layouts
 from . import meta
+from . import tech
 from . import zipopener
+from .bead import Archive
+from .exceptions import InvalidArchive
 
 # technology modules
 timestamp = tech.timestamp

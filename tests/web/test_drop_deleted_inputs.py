@@ -1,5 +1,6 @@
-from tests.sketcher import Sketcher, bead
 from bead_cli.web.sketch import Sketch
+from tests.sketcher import Sketcher
+from tests.sketcher import bead
 
 
 def test_new_version_marks_older_superseded():

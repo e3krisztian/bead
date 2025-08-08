@@ -8,12 +8,14 @@ import webbrowser
 from bead import tech
 from bead.box import search_boxes
 
-from ..common import OPTIONAL_ENV, die
-from ..cmdparse import Command
-from .io import read_beads, write_beads
-from .sketch import Sketch
 from . import sketch as web_sketch
+from ..cmdparse import Command
+from ..common import OPTIONAL_ENV
+from ..common import die
 from .dummy import Dummy
+from .io import read_beads
+from .io import write_beads
+from .sketch import Sketch
 
 
 class CmdWeb(Command):
@@ -232,7 +234,6 @@ class SetFreshness(SketchProcessor):
 class KeepOnlyHeads(SketchProcessor):
     def __call__(self, sketch):
         return web_sketch.heads_of(sketch).drop_deleted_inputs()
-
 
 
 SUBCOMMANDS = {

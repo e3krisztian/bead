@@ -11,7 +11,7 @@ def test_status_displays_input_information_correctly(robot, bead_a, bead_with_hi
     """
     cd = robot.cd
     cli = robot.cli
-    
+
     # Create copies of the original bead with different names
     _copy(box, bead_with_history, times.TS1, 'copied_bead1')
     _copy(box, bead_with_history, times.TS2, 'copied_bead2')
@@ -21,7 +21,7 @@ def test_status_displays_input_information_correctly(robot, bead_a, bead_with_hi
     cd(bead_a)
     cli('input', 'add', 'input1', 'copied_bead1')
     cli('input', 'add', 'input2', 'copied_bead2')
-    
+
     # Verify inputs are loaded with correct timestamps
     check.loaded('input1', times.TS1)
     check.loaded('input2', times.TS2)
@@ -41,7 +41,7 @@ def test_update_finds_newest_by_kind_not_name(robot, bead_a, bead_with_history, 
     """
     cd = robot.cd
     cli = robot.cli
-    
+
     # Create older copies with different names
     _copy(box, bead_with_history, times.TS1, 'old_copy1')
     _copy(box, bead_with_history, times.TS2, 'old_copy2')
@@ -67,7 +67,7 @@ def test_explicit_bead_update_with_new_reference(robot, bead_a, bead_with_histor
     """
     cd = robot.cd
     cli = robot.cli
-    
+
     # Set up workspace with one input
     _copy(box, bead_with_history, times.TS1, 'initial_bead')
     cli('develop', bead_a)
@@ -77,11 +77,11 @@ def test_explicit_bead_update_with_new_reference(robot, bead_a, bead_with_histor
 
     # Create a new copy to update to
     _copy(box, bead_with_history, times.TS3, 'newer_bead')
-    
+
     # Update specific input with explicit bead reference
     cli('input', 'update', 'test_input', 'newer_bead')
     check.loaded('test_input', times.TS3)
-    
+
     # Update without explicit reference should find newest by kind
     cli('input', 'update', 'test_input')
     check.loaded('test_input', times.TS5)  # finds newest of the kind
@@ -93,11 +93,11 @@ def test_save_and_develop_preserves_content_id_references(robot, bead_a, bead_wi
     """
     cd = robot.cd
     cli = robot.cli
-    
+
     # Set up workspace with inputs
     _copy(box, bead_with_history, times.TS1, 'test_bead1')
     _copy(box, bead_with_history, times.TS2, 'test_bead2')
-    
+
     cli('develop', bead_a)
     cd(bead_a)
     cli('input', 'add', 'input1', 'test_bead1')

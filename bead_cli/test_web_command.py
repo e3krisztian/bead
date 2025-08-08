@@ -1,7 +1,10 @@
 import re
-import pytest
-from bead.tech.fs import read_file, rmtree, write_file
 
+import pytest
+
+from bead.tech.fs import read_file
+from bead.tech.fs import rmtree
+from bead.tech.fs import write_file
 from bead_cli.web.sketch import Sketch
 from tests.sketcher import Sketcher
 from tests.web.test_graphviz import needs_dot
@@ -124,5 +127,3 @@ def test_filter_filtered_out_sink(robot, indirect_links_sketch):
 
     sketch = Sketch.from_file(robot.cwd / 'filtered.web')
     assert sketch.cluster_by_name.keys() == set('bc')
-
-

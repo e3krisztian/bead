@@ -1,10 +1,14 @@
-from typing import Iterable, Dict, List, TypeVar
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import TypeVar
 
 import attr
 from cached_property import cached_property
 
 from bead.meta import InputSpec
 from bead.tech.timestamp import time_from_timestamp
+
 from .freshness import Freshness
 
 

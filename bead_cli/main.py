@@ -1,21 +1,22 @@
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Sequence
 import os
 import subprocess
 import sys
 import textwrap
 import traceback
 
-from collections.abc import Sequence
-
 import appdirs
-from .cmdparse import Parser, Command
 
 from bead.tech.fs import Path
 from bead.tech.timestamp import timestamp
-from .common import warning
-from . import workspace
-from . import input
+
 from . import box
+from . import input
+from . import workspace
+from .cmdparse import Command
+from .cmdparse import Parser
+from .common import warning
 from .web import commands as web
 
 

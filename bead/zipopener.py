@@ -10,8 +10,10 @@ run ~4% faster (5.14 -> 4.94 = 0.2s faster).
 """
 
 import atexit
-from typing import Dict, Tuple
-from zipfile import BadZipFile, ZipFile
+from typing import Dict
+from typing import Tuple
+from zipfile import BadZipFile
+from zipfile import ZipFile
 
 from tracelog import TRACELOG
 

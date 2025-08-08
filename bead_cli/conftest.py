@@ -1,15 +1,16 @@
 import os
 import warnings
 import zipfile
-import pytest
-from tracelog import TRACELOG
 
-from bead.workspace import Workspace
+import pytest
+
 from bead import layouts
 from bead import tech
+from bead.workspace import Workspace
 from bead.ziparchive import ZipArchive
-from .test_robot import Robot
+from tracelog import TRACELOG
 
+from .test_robot import Robot
 
 # timestamps
 TS1 = '20150901T151015000001+0200'

@@ -12,8 +12,8 @@ For single command scripts, be more minimalist and just use argparse directly.
 
 
 import argparse
-import shlex
 from collections.abc import Sequence
+import shlex
 from typing import Any
 
 import argcomplete

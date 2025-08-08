@@ -1,27 +1,34 @@
 import itertools
-from typing import Set, Dict, List, Tuple, Sequence, Iterable
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Sequence
+from typing import Set
+from typing import Tuple
 
 import attr
 from cached_property import cached_property
 
 from bead.tech.timestamp import EPOCH_STR
-from .freshness import UP_TO_DATE, OUT_OF_DATE
-from .dummy import Dummy
-from .cluster import Cluster, create_cluster_index
-from .io import read_beads, write_beads
+
 from . import graphviz
-from .graph import (
-    Edge,
-    Ref,
-    generate_input_edges,
-    group_by_src,
-    group_by_dest,
-    toposort,
-    closure,
-    bead_index_from_edges,
-    refs_from_beads,
-    refs_from_edges,
-)
+from .cluster import Cluster
+from .cluster import create_cluster_index
+from .dummy import Dummy
+from .freshness import OUT_OF_DATE
+from .freshness import UP_TO_DATE
+from .graph import Edge
+from .graph import Ref
+from .graph import bead_index_from_edges
+from .graph import closure
+from .graph import generate_input_edges
+from .graph import group_by_dest
+from .graph import group_by_src
+from .graph import refs_from_beads
+from .graph import refs_from_edges
+from .graph import toposort
+from .io import read_beads
+from .io import write_beads
 
 
 @attr.s(frozen=True, auto_attribs=True)

@@ -1,0 +1,22 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+    -   id: end-of-file-fixer
+        files: '[.](py|md|toml)$'
+    -   id: trailing-whitespace
+        files: '[.](py|toml)$'
+  - repo: https://github.com/PyCQA/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        args: ["--show-source", "--max-line-length=120"]
+  - repo: https://github.com/google/pytype
+    rev: 2024.10.11
+    hooks:
+      - id: pytype
+        files: '[.]py$'

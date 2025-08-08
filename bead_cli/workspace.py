@@ -1,19 +1,25 @@
-from bead.exceptions import InvalidArchive
 import os
 
-from bead import tech
-from bead.workspace import Workspace
 from bead import layouts
+from bead import tech
 from bead.exceptions import BoxError
+from bead.exceptions import InvalidArchive
+from bead.workspace import Workspace
 
-from .cmdparse import Command
-from .common import assert_valid_workspace, die, warning, info
-from .common import DefaultArgSentinel
-from .common import OPTIONAL_WORKSPACE, OPTIONAL_ENV
-from .common import BEAD_REF_BASE, BEAD_TIME, resolve_bead
-from .common import verify_with_feedback
-from . import arg_metavar
 from . import arg_help
+from . import arg_metavar
+from .cmdparse import Command
+from .common import BEAD_REF_BASE
+from .common import BEAD_TIME
+from .common import OPTIONAL_ENV
+from .common import OPTIONAL_WORKSPACE
+from .common import DefaultArgSentinel
+from .common import assert_valid_workspace
+from .common import die
+from .common import info
+from .common import resolve_bead
+from .common import verify_with_feedback
+from .common import warning
 
 timestamp = tech.timestamp.timestamp
 
@@ -181,7 +187,7 @@ def print_inputs(env, workspace, verbose):
             has_not_loaded = has_not_loaded or is_not_loaded
             print(f'input/{input.name}')
             print(f'\tStatus:      {"**NOT LOADED**" if is_not_loaded else "loaded"}')
-            
+
             # Find bead name by content_id
             bead_name = None
             for box in boxes:
@@ -191,12 +197,12 @@ def print_inputs(env, workspace, verbose):
                     break
                 except LookupError:
                     continue
-            
+
             if bead_name:
                 print(f'\tBead:        {bead_name} # {input.freeze_time_str}')
             else:
                 print(f'\tBead:        **MISSING** # {input.freeze_time_str}')
-            
+
             if verbose:
                 print(f'\tKind:        {input.kind}')
                 print(f'\tContent id:  {input.content_id}')
