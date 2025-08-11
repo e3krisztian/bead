@@ -5,6 +5,7 @@ import subprocess
 import sys
 import textwrap
 import traceback
+from typing import TYPE_CHECKING
 
 import appdirs
 
@@ -17,7 +18,11 @@ from . import workspace
 from .cmdparse import Command
 from .cmdparse import Parser
 from .common import warning
+from .common import get_env
 from .web import commands as web
+
+if TYPE_CHECKING:
+    from .environment import Environment
 
 
 def output_of(shell_cmd: str):
@@ -71,7 +76,7 @@ class CmdVersion(Command):
     Show program version info
     '''
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         print(git.version_info)
 
 
@@ -115,7 +120,8 @@ def make_argument_parser(defaults):
 def run(config_dir: str, argv: Sequence[str]):
     parser_defaults = dict(config_dir=Path(config_dir))
     parser = make_argument_parser(parser_defaults)
-    return parser.dispatch(argv)
+    env = get_env(config_dir)()
+    return parser.dispatch(argv, env)
 
 
 FAILURE_TEMPLATE = """\

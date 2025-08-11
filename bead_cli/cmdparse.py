@@ -15,8 +15,12 @@ import argparse
 from collections.abc import Sequence
 import shlex
 from typing import Any
+from typing import TYPE_CHECKING
 
 import argcomplete
+
+if TYPE_CHECKING:
+    from .environment import Environment
 
 
 class Command:
@@ -50,9 +54,9 @@ class Command:
         assert self.__doc__ is not None, self.__class__
         return self.__doc__
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         '''
-        This is the function that gets called with the parsed arguments.
+        This is the function that gets called with the parsed arguments and environment.
 
         You will want to override it!
         '''
@@ -172,11 +176,11 @@ class Parser:
             name, help=title + '...', description=help)
         return self.__class__(parser, self.defaults)
 
-    def dispatch(self, argv: Sequence[str]) -> int:
+    def dispatch(self, argv: Sequence[str], env: 'Environment') -> int:
         '''
         Parse `argv` and dispatch to the appropriate command.
         '''
-        def print_help(args):
+        def print_help(args, env: 'Environment'):
             print(
                 'ERROR: not a full command <%s>\n'
                 % ' '.join(shlex.quote(arg) for arg in argv))
@@ -196,7 +200,7 @@ class Parser:
             # this is worked around here
             return -1
         run = getattr(args, '_cmdparse__run', print_help)
-        return run(args) or 0
+        return run(args, env) or 0
 
     def autocomplete(self):
         """Enable shell autocomplete"""

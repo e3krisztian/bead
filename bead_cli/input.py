@@ -1,4 +1,5 @@
 import os.path
+from typing import TYPE_CHECKING
 
 from bead.box import search_boxes
 from bead.exceptions import InvalidArchive
@@ -9,7 +10,6 @@ from . import arg_metavar
 from .cmdparse import Command
 from .common import BEAD_OFFSET
 from .common import BEAD_TIME
-from .common import OPTIONAL_ENV
 from .common import OPTIONAL_WORKSPACE
 from .common import TIME_LATEST
 from .common import BEAD_REF_BASE_defaulting_to
@@ -19,6 +19,9 @@ from .common import die
 from .common import resolve_bead
 from .common import verify_with_feedback
 from .common import warning
+
+if TYPE_CHECKING:
+    from .environment import Environment
 
 # input_nick
 ALL_INPUTS = DefaultArgSentinel('all inputs')
@@ -57,13 +60,11 @@ class CmdAdd(Command):
         arg(BEAD_REF_BASE_defaulting_to(USE_INPUT_NICK))
         arg(BEAD_TIME)
         arg(OPTIONAL_WORKSPACE)
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         input_nick = args.input_nick
         bead_ref_base = args.bead_ref_base
         workspace = get_workspace(args)
-        env = args.get_env()
 
         if os.path.dirname(input_nick):
             die(f'Invalid input name: {input_nick}')
@@ -88,7 +89,7 @@ class CmdDelete(Command):
         arg(INPUT_NICK)
         arg(OPTIONAL_WORKSPACE)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         input_nick = args.input_nick
         workspace = get_workspace(args)
         if workspace.has_input(input_nick):
@@ -109,21 +110,19 @@ class CmdUpdate(Command):
         arg(BEAD_TIME)
         arg(BEAD_OFFSET)
         arg(OPTIONAL_WORKSPACE)
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         if args.input_nick is ALL_INPUTS:
-            self.update_all_inputs(args)
+            self.update_all_inputs(args, env)
         else:
-            self.update_one_input(args)
+            self.update_one_input(args, env)
 
-    def update_all_inputs(self, args):
+    def update_all_inputs(self, args, env):
         if args.bead_ref_base is not SAME_BEAD_NEWEST_VERSION:
             die('Too many arguments')
         if args.bead_offset:
             die("--next, --prev can not be specified when updating all inputs")
         workspace = get_workspace(args)
-        env = args.get_env()
         for input in workspace.inputs:
             try:
                 bead = search_boxes(env.get_boxes()).by_kind(input.kind).at_or_older(args.bead_time).newest()
@@ -138,11 +137,10 @@ class CmdUpdate(Command):
                 _update_input(workspace, input, bead)
         print('All inputs are up to date.')
 
-    def update_one_input(self, args):
+    def update_one_input(self, args, env):
         input_nick = args.input_nick
         bead_ref_base = args.bead_ref_base
         workspace = get_workspace(args)
-        env = args.get_env()
         input = workspace.get_input(input_nick)
         if input is None:
             die(f'Workspace does not have input "{input_nick}"'
@@ -197,12 +195,10 @@ class CmdLoad(Command):
     def declare(self, arg):
         arg(OPTIONAL_INPUT_NICK)
         arg(OPTIONAL_WORKSPACE)
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         input_nick = args.input_nick
         workspace = get_workspace(args)
-        env = args.get_env()
         if input_nick is ALL_INPUTS:
             inputs = workspace.inputs
             if inputs:
@@ -259,7 +255,7 @@ class CmdUnload(Command):
         arg(OPTIONAL_INPUT_NICK)
         arg(OPTIONAL_WORKSPACE)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         input_nick = args.input_nick
         workspace = get_workspace(args)
         if input_nick is ALL_INPUTS:

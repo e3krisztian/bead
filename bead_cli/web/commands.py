@@ -3,6 +3,7 @@ import os
 import subprocess
 import textwrap
 from typing import Set
+from typing import TYPE_CHECKING
 import webbrowser
 
 from bead import tech
@@ -10,12 +11,14 @@ from bead.box import search_boxes
 
 from . import sketch as web_sketch
 from ..cmdparse import Command
-from ..common import OPTIONAL_ENV
 from ..common import die
 from .dummy import Dummy
 from .io import read_beads
 from .io import write_beads
 from .sketch import Sketch
+
+if TYPE_CHECKING:
+    from ..environment import Environment
 
 
 class CmdWeb(Command):
@@ -72,7 +75,6 @@ class CmdWeb(Command):
     FORMATTER_CLASS = argparse.RawDescriptionHelpFormatter
 
     def declare(self, arg):
-        arg(OPTIONAL_ENV)
         arg(
             'words',
             metavar='...',
@@ -80,12 +82,11 @@ class CmdWeb(Command):
             help='Sub-commands and their arguments'
         )
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         if not args.words:
             print('No sub-commands given, see usage below:')
             print(textwrap.dedent(self.__doc__))
             return
-        env = args.get_env()
 
         commands, remaining_words = parse_commands(env, args.words)
         if remaining_words:

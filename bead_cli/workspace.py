@@ -1,4 +1,5 @@
 import os
+from typing import TYPE_CHECKING
 
 from bead import layouts
 from bead import tech
@@ -11,7 +12,6 @@ from . import arg_metavar
 from .cmdparse import Command
 from .common import BEAD_REF_BASE
 from .common import BEAD_TIME
-from .common import OPTIONAL_ENV
 from .common import OPTIONAL_WORKSPACE
 from .common import DefaultArgSentinel
 from .common import assert_valid_workspace
@@ -20,6 +20,9 @@ from .common import info
 from .common import resolve_bead
 from .common import verify_with_feedback
 from .common import warning
+
+if TYPE_CHECKING:
+    from .environment import Environment
 
 timestamp = tech.timestamp.timestamp
 
@@ -48,7 +51,7 @@ class CmdNew(Command):
         arg('workspace', type=Workspace, metavar=arg_metavar.WORKSPACE,
             help='bead and directory to create')
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         workspace: Workspace = args.workspace
         assert_may_be_valid_name(workspace.name)
         if os.path.exists(workspace.directory):
@@ -82,12 +85,10 @@ class CmdSave(Command):
         arg('box_name', nargs='?', default=USE_THE_ONLY_BOX, type=str,
             metavar=arg_metavar.BOX, help=arg_help.BOX)
         arg(OPTIONAL_WORKSPACE)
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         box_name = args.box_name
         workspace = args.workspace
-        env = args.get_env()
         assert_valid_workspace(workspace)
         # XXX: (usability) save - support saving directly to a directory outside of workspace
         if box_name is USE_THE_ONLY_BOX:
@@ -136,11 +137,9 @@ class CmdDevelop(Command):
         arg('-x', '--extract-output', dest='extract_output',
             default=False, action='store_true',
             help='Extract output data as well (normally it is not needed!).')
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         extract_output = args.extract_output
-        env = args.get_env()
         try:
             bead = resolve_bead(env, args.bead_ref_base, args.bead_time)
         except LookupError:
@@ -243,12 +242,10 @@ class CmdStatus(Command):
         arg(OPTIONAL_WORKSPACE)
         arg('-v', '--verbose', default=False, action='store_true',
             help='show more detailed information')
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         workspace = args.workspace
         verbose = args.verbose
-        env = args.get_env()
         kind_needed = verbose
         if workspace.is_valid:
             print(f'Bead Name: {workspace.name}')
@@ -272,7 +269,7 @@ class CmdZap(Command):
                   ' Removes partially removed (damaged/invalid) workspaces,'
                   ' and (DANGER ZONE!) non-workspace directories as well!'))
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         workspace = args.workspace
         if not args.force:
             assert_valid_workspace(workspace)

@@ -77,16 +77,6 @@ class get_env:
         return f'Environment at {self.config_dir}'
 
 
-def OPTIONAL_ENV(parser):
-    '''
-    Define `env` as option, defaulting to environment config in user's home directory
-    '''
-    config_dir = parser.defaults['config_dir']
-    parser.arg(
-        '--env', '--environment', metavar=arg_metavar.ENV,
-        dest='get_env',
-        type=get_env, default=get_env(config_dir),
-        help=arg_help.ENV)
 
 
 class DefaultArgSentinel:

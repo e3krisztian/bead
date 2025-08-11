@@ -1,7 +1,11 @@
+from typing import TYPE_CHECKING
+
 from bead import tech
 
 from .cmdparse import Command
-from .common import OPTIONAL_ENV
+
+if TYPE_CHECKING:
+    from .environment import Environment
 
 
 class CmdAdd(Command):
@@ -12,15 +16,13 @@ class CmdAdd(Command):
     def declare(self, arg):
         arg('name')
         arg('directory', type=tech.fs.Path)
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         '''
         Define a box.
         '''
         name: str = args.name
         directory: tech.fs.Path = args.directory
-        env = args.get_env()
 
         if not directory.is_dir():
             print(f'ERROR: "{directory}" is not an existing directory!')
@@ -41,10 +43,10 @@ class CmdList(Command):
     '''
 
     def declare(self, arg):
-        arg(OPTIONAL_ENV)
+        pass
 
-    def run(self, args):
-        boxes = args.get_env().get_boxes()
+    def run(self, args, env: 'Environment'):
+        boxes = env.get_boxes()
 
         def print_box(box):
             print(f'{box.name}: {box.location}')
@@ -64,11 +66,9 @@ class CmdForget(Command):
 
     def declare(self, arg):
         arg('name')
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         name = args.name
-        env = args.get_env()
 
         if env.is_known_box(name):
             env.forget_box(name)
