@@ -2,8 +2,8 @@ import argparse
 import os
 import subprocess
 import textwrap
-from typing import Set
 from typing import TYPE_CHECKING
+from typing import Set
 import webbrowser
 
 from bead import tech

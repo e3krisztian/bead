@@ -14,8 +14,8 @@ For single command scripts, be more minimalist and just use argparse directly.
 import argparse
 from collections.abc import Sequence
 import shlex
-from typing import Any
 from typing import TYPE_CHECKING
+from typing import Any
 
 import argcomplete
 

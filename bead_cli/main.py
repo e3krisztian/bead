@@ -18,7 +18,7 @@ from . import workspace
 from .cmdparse import Command
 from .cmdparse import Parser
 from .common import warning
-from .common import get_env
+from .environment import Environment
 from .web import commands as web
 
 if TYPE_CHECKING:
@@ -120,7 +120,16 @@ def make_argument_parser(defaults):
 def run(config_dir: str, argv: Sequence[str]):
     parser_defaults = dict(config_dir=Path(config_dir))
     parser = make_argument_parser(parser_defaults)
-    env = get_env(config_dir)()
+
+    # Create config directory if it doesn't exist
+    config_path = Path(config_dir)
+    try:
+        os.makedirs(config_path)
+    except OSError:
+        if not os.path.isdir(config_path):
+            raise
+
+    env = Environment.from_dir(config_path)
     return parser.dispatch(argv, env)
 
 

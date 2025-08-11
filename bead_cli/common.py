@@ -5,7 +5,6 @@ from typing import NoReturn
 from bead import box as bead_box
 from bead.bead import Archive
 from bead.exceptions import InvalidArchive
-from bead.tech.fs import Path
 from bead.tech.timestamp import parse_iso8601
 from bead.tech.timestamp import time_from_user
 from bead.workspace import Workspace
@@ -13,7 +12,6 @@ from bead.ziparchive import ZipArchive
 
 from . import arg_help
 from . import arg_metavar
-from .environment import Environment
 
 TIME_LATEST = parse_iso8601('9999-12-31')
 
@@ -51,31 +49,6 @@ def OPTIONAL_WORKSPACE(parser):
 def assert_valid_workspace(workspace):
     if not workspace.is_valid:
         die(f'{workspace.directory} is not a valid workspace')
-
-
-class get_env:
-    '''
-    Make an Environment when called.
-
-    It will also create a missing config directory and provides a meaningful
-    text when used as default for an argparse argument.
-    '''
-
-    def __init__(self, config_dir):
-        self.config_dir = Path(config_dir)
-
-    def __call__(self):
-        config_dir = self.config_dir
-        try:
-            os.makedirs(config_dir)
-        except OSError:
-            if not os.path.isdir(config_dir):
-                raise
-        return Environment.from_dir(config_dir)
-
-    def __repr__(self):
-        return f'Environment at {self.config_dir}'
-
 
 
 
