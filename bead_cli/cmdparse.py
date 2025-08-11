@@ -135,7 +135,7 @@ class Parser:
                     f"{kwargs.get('help', '')} (default: {kwargs['default']!s})")
             self.argparser.add_argument(*args, **arg_kwargs)
 
-    def command(self, name: str, commandish: Command | type, title: str) -> None:
+    def command(self, name: str, commandish: Command | type[Command], title: str) -> None:
         '''
         Declare a command.
 
@@ -153,7 +153,7 @@ class Parser:
         command.declare(self.__class__(parser, self.defaults).arg)
         parser.set_defaults(_cmdparse__run=command.run)
 
-    def commands(self, *commands_sequence: tuple[str, Command | type, str]) -> None:
+    def commands(self, *commands_sequence: tuple[str, Command | type[Command], str]) -> None:
         '''
         Declare any number of commands in one step.
 
