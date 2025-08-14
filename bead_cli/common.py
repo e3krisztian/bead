@@ -51,7 +51,6 @@ def assert_valid_workspace(workspace):
         die(f'{workspace.directory} is not a valid workspace')
 
 
-
 class DefaultArgSentinel:
     '''
     I am a sentinel for default values.

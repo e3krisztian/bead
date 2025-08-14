@@ -1,6 +1,5 @@
 from abc import ABCMeta
 from abc import abstractmethod
-from abc import abstractproperty
 from typing import Sequence
 
 from .exceptions import InvalidArchive
@@ -70,6 +69,7 @@ class Archive(Bead, metaclass=ABCMeta):
     def validate(self):
         raise InvalidArchive
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def location(self) -> str:
         ...

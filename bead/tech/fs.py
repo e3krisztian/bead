@@ -15,20 +15,13 @@ def ensure_directory(path: Path):
 
 def write_file(path: Path, content: bytes | str):
     if isinstance(content, bytes):
-        f = open(path, 'wb')
-
-        with f:
-            f.write(content)
+        path.write_bytes(content)
     else:
-        f = open(path, 'w', encoding='utf-8')
-
-        with f:
-            f.write(content)
+        path.write_text(content)
 
 
 def read_file(path: Path):
-    with open(path, encoding='utf-8') as f:
-        return f.read()
+    return path.read_text()
 
 
 @contextlib.contextmanager

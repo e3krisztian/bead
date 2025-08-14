@@ -5,7 +5,6 @@ import subprocess
 import sys
 import textwrap
 import traceback
-from typing import TYPE_CHECKING
 
 import appdirs
 
@@ -20,9 +19,6 @@ from .cmdparse import Parser
 from .common import warning
 from .environment import Environment
 from .web import commands as web
-
-if TYPE_CHECKING:
-    from .environment import Environment
 
 
 def output_of(shell_cmd: str):
@@ -59,13 +55,13 @@ class _git:
 
             Bead source:
             -----------
-            origin:  {self.repo}
-            branch:  {self.branch}
-            date:    {self.date}
-            hash:    {self.commit}
-            version: {self.tag}{version_suffix}
+            origin:  {git.repo}
+            branch:  {git.branch}
+            date:    {git.date}
+            hash:    {git.commit}
+            version: {git.tag}{version_suffix}
             '''
-        ).format(self=self, sys=sys, version_suffix='-dirty' if self.dirty else '')
+        ).format(git=self, sys=sys, version_suffix='-dirty' if self.dirty else '')
 
 
 git = _git()
