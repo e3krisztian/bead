@@ -13,3 +13,6 @@ shiv: git-info
 
 git-info:
 	./add-git-info.sh
+
+container-image:
+	podman build -t bead-dev - < dev/Containerfile
