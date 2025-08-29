@@ -32,7 +32,7 @@ def test_symlink_is_resolved_on_save(robot, box):
     # save to box & clean up
     robot.cli('save')
     robot.cd('..')
-    robot.cli('zap', 'bead')
+    robot.cli('discard', 'bead')
 
     robot.cli('develop', 'bead')
     assert 'content' in robot.read_file(robot.cwd / 'bead/symlink')

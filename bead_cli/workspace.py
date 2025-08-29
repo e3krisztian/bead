@@ -257,7 +257,7 @@ class CmdStatus(Command):
             warning(f'Invalid workspace ({workspace.directory})')
 
 
-class CmdZap(Command):
+class CmdDiscard(Command):
     '''
     Delete the current workspace directory - like rm -rf "$PWD", only more aggressive.
     '''

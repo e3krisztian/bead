@@ -59,10 +59,11 @@ def make_argument_parser(defaults):
         .commands(
             ('new', workspace.CmdNew, 'Create and initialize new workspace directory with a new bead.'),
             ('develop', workspace.CmdDevelop, 'Create workspace from specified bead.'),
+            ('discard', workspace.CmdDiscard, 'Delete workspace.'),
             ('save', workspace.CmdSave, 'Save workspace in a box.'),
             ('status', workspace.CmdStatus, 'Show workspace information.'),
             ('web', web.CmdWeb, 'Manage/visualize the big picture - connections between beads.'),
-            ('zap', workspace.CmdZap, 'Delete workspace.'),
+            ('zap', workspace.CmdDiscard, 'Delete workspace.'),
             ('version', CmdVersion, 'Show program version.'),
         ))
 

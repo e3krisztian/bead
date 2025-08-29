@@ -100,7 +100,7 @@ def _new_bead(robot, beads, box, bead_name, inputs=None, tmp_path_factory=None):
         TRACELOG('store', robot.cwd, TS1, 'to', box.location)
         beads[bead_name] = ZipArchive(box.store(Workspace('.'), TS1))
     robot.cd('..')
-    robot.cli('zap', bead_name)
+    robot.cli('discard', bead_name)
     return bead_name
 
 

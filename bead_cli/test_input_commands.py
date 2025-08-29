@@ -14,7 +14,7 @@ def test_basic_usage(robot, bead_with_history, check, times):
     check.loaded('input1', times.TS2)
     robot.cli('save')
     robot.cd('..')
-    robot.cli('zap', 'nextbead')
+    robot.cli('discard', 'nextbead')
 
     robot.cli('develop', 'nextbead')
     robot.cd('nextbead')

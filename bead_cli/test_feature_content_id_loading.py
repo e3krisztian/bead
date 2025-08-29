@@ -108,7 +108,7 @@ def test_save_and_develop_preserves_content_id_references(robot, bead_a, bead_wi
     # Save and develop new version
     cli('save')
     cd('..')
-    cli('zap', bead_a)
+    cli('discard', bead_a)
     cli('develop', bead_a)
     cd(bead_a)
 
