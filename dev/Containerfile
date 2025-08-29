@@ -2,7 +2,7 @@
 FROM python:3.12-slim-trixie
 
 RUN apt update
-RUN apt install -y direnv fd-find fzf git less ripgrep tree
+RUN apt install -y direnv fd-find fzf git less ripgrep tree graphviz unzip
 
 # uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
