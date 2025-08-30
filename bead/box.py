@@ -19,7 +19,8 @@ from typing import Iterable
 from typing import Iterator
 
 from . import tech
-from .bead import Archive, Bead
+from .bead import Archive
+from .bead import Bead
 from .exceptions import BoxError
 from .exceptions import InvalidArchive
 from .tech.timestamp import time_from_timestamp
@@ -240,7 +241,7 @@ class BaseSearch(BeadSearch):
         self._unique_filter = True
         return self
 
-    def _apply_unique_filter(self, beads: list[Archive]) -> list[Archive]:
+    def _apply_unique_filter(self, beads: list[Bead]) -> list[Bead]:
         if not self._unique_filter:
             return beads
         seen_content_ids = set()
@@ -307,18 +308,7 @@ class BoxSearch(BaseSearch):
 
     def _get_beads(self) -> list[Bead]:
         beads = self.box.get_beads(self.conditions)
-        return self._apply_unique_filter_beads(beads)
-
-    def _apply_unique_filter_beads(self, beads: list[Bead]) -> list[Bead]:
-        if not self._unique_filter:
-            return beads
-        seen_content_ids = set()
-        unique_beads = []
-        for bead in beads:
-            if bead.content_id not in seen_content_ids:
-                seen_content_ids.add(bead.content_id)
-                unique_beads.append(bead)
-        return unique_beads
+        return self._apply_unique_filter(beads)
 
 
 class MultiBoxSearch(BaseSearch):
@@ -336,18 +326,7 @@ class MultiBoxSearch(BaseSearch):
             beads = box.get_beads(self.conditions)
             all_beads.extend(beads)
 
-        return self._apply_unique_filter_beads(all_beads)
-
-    def _apply_unique_filter_beads(self, beads: list[Bead]) -> list[Bead]:
-        if not self._unique_filter:
-            return beads
-        seen_content_ids = set()
-        unique_beads = []
-        for bead in beads:
-            if bead.content_id not in seen_content_ids:
-                seen_content_ids.add(bead.content_id)
-                unique_beads.append(bead)
-        return unique_beads
+        return self._apply_unique_filter(all_beads)
 
     def first(self) -> Bead:
         for box in self.boxes:
@@ -372,14 +351,14 @@ def resolve(boxes, bead: Bead) -> Archive:
     Locate an extractable Archive for bead.
 
     Finds the appropriate box by matching bead.box_name and resolves the bead in that box.
-    
+
     Args:
         boxes: List of Box instances to search
         bead: Bead instance to resolve
-        
+
     Returns:
         Archive instance corresponding to the bead
-        
+
     Raises:
         LookupError: If no box with matching name is found
         ValueError: If the bead cannot be resolved in the found box
@@ -387,7 +366,7 @@ def resolve(boxes, bead: Bead) -> Archive:
     for box in boxes:
         if box.name == bead.box_name:
             return box.resolve(bead)
-    
+
     raise LookupError(f"Could not find box '{bead.box_name}' to resolve bead '{bead.name}'")
 
 
@@ -466,40 +445,41 @@ class Box:
     def resolve(self, bead: Bead) -> Archive:
         '''
         Resolve a Bead instance to its corresponding Archive.
-        
+
         Uses (box_name, name, content_id) tuple for resolution.
         Validates that the resolved Archive matches the input Bead.
         '''
         if bead.box_name != self.name:
             raise ValueError(f"Bead box_name '{bead.box_name}' does not match this box '{self.name}'")
-        
+
         # Find archive by name and content_id
         conditions = [
             (QueryCondition.BEAD_NAME, bead.name),
             (QueryCondition.CONTENT_ID, bead.content_id)
         ]
-        
+
         # Use existing filesystem-based implementation to find the archive
         match = compile_conditions(conditions)
         glob = bead.name + '_????????T????????????[-+]????.zip'
         paths = self.directory.glob(glob)
-        
+
         for path in paths:
             try:
                 archive = ZipArchive(path, self.name)
                 if match(archive):
                     # Validate that resolved Archive matches input Bead
-                    if (archive.name != bead.name or 
+                    if (archive.name != bead.name or
                         archive.content_id != bead.content_id or
                         archive.box_name != bead.box_name):
-                        raise ValueError(f"Resolved Archive does not match Bead: "
-                                       f"Archive({archive.name}, {archive.content_id}, {archive.box_name}) != "
-                                       f"Bead({bead.name}, {bead.content_id}, {bead.box_name})")
+                        raise ValueError(
+                            "Resolved Archive does not match Bead: "
+                            + f"Archive({archive.name}, {archive.content_id}, {archive.box_name}) != "
+                            + f"Bead({bead.name}, {bead.content_id}, {bead.box_name})")
                     return archive
             except InvalidArchive:
                 # TODO: log/report problem
                 continue
-        
+
         raise LookupError(f"Could not resolve Bead({bead.name}, {bead.content_id}) in box '{self.name}'")
 
     def store(self, workspace, freeze_time) -> Path:
