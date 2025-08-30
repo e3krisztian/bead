@@ -306,7 +306,7 @@ class FileBasedSearch(BaseSearch):
         self.box = box
 
     def _get_beads(self) -> list[Archive]:
-        beads = list(self.box._beads(self.conditions))
+        beads = self.box.get_beads(self.conditions)
         return self._apply_unique_filter(beads)
 
 
@@ -322,7 +322,7 @@ class MultiBoxSearch(BaseSearch):
     def _get_beads(self) -> list[Archive]:
         all_beads = []
         for box in self.boxes:
-            beads = list(box._beads(self.conditions))
+            beads = box.get_beads(self.conditions)
             all_beads.extend(beads)
 
         return self._apply_unique_filter(all_beads)
@@ -330,16 +330,15 @@ class MultiBoxSearch(BaseSearch):
     def first(self) -> Archive:
         for box in self.boxes:
             try:
-                beads = list(box._beads(self.conditions))
-                filtered_beads = self._apply_unique_filter(beads)
-                if filtered_beads:
-                    return filtered_beads[0]
+                beads = box.get_beads(self.conditions)
+                if beads:
+                    return beads[0]
             except (InvalidArchive, IOError, OSError):
                 continue
         raise LookupError("No beads found")
 
 
-def search_boxes(boxes):
+def search_boxes(boxes) -> BeadSearch:
     """
     Module-level convenience function that returns a MultiBoxSearch.
     """
@@ -363,13 +362,13 @@ class Box:
         '''
         return Path(self.location)
 
-    def all_beads(self) -> Iterator[Archive]:
+    def all_beads(self) -> list[Archive]:
         '''
         Iterator for all beads in this Box
         '''
-        return iter(self._beads([]))
+        return self.search().all()
 
-    def _beads(self, conditions) -> Iterable[Archive]:
+    def get_beads(self, conditions) -> list[Archive]:
         '''
         Retrieve matching beads.
         '''
@@ -390,8 +389,7 @@ class Box:
 
         paths = self.directory.glob(glob)
         beads = self._archives_from(paths)
-        candidates = (bead for bead in beads if match(bead))
-        return candidates
+        return [bead for bead in beads if match(bead)]
 
     def _archives_from(self, paths: Iterable[Path]) -> Iterator[Archive]:
         for path in paths:
@@ -414,7 +412,7 @@ class Box:
         workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT)
         return zipfilename
 
-    def search(self):
+    def search(self) -> BeadSearch:
         """
         Return a FileBasedSearch instance for fluent search operations.
         """
