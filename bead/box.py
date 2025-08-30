@@ -19,7 +19,7 @@ from typing import Iterable
 from typing import Iterator
 
 from . import tech
-from .bead import Archive
+from .bead import Archive, Bead
 from .exceptions import BoxError
 from .exceptions import InvalidArchive
 from .tech.timestamp import time_from_timestamp
@@ -296,9 +296,9 @@ class BaseSearch(BeadSearch):
         pass
 
 
-class FileBasedSearch(BaseSearch):
+class BoxSearch(BaseSearch):
     """
-    Concrete implementation of BeadSearch for file-based boxes.
+    Concrete implementation of BeadSearch for boxes.
     """
 
     def __init__(self, box):
@@ -306,7 +306,7 @@ class FileBasedSearch(BaseSearch):
         self.box = box
 
     def _get_beads(self) -> list[Archive]:
-        beads = self.box.get_beads(self.conditions)
+        beads = self.box.get_archives(self.conditions)
         return self._apply_unique_filter(beads)
 
 
@@ -322,7 +322,7 @@ class MultiBoxSearch(BaseSearch):
     def _get_beads(self) -> list[Archive]:
         all_beads = []
         for box in self.boxes:
-            beads = box.get_beads(self.conditions)
+            beads = box.get_archives(self.conditions)
             all_beads.extend(beads)
 
         return self._apply_unique_filter(all_beads)
@@ -330,7 +330,7 @@ class MultiBoxSearch(BaseSearch):
     def first(self) -> Archive:
         for box in self.boxes:
             try:
-                beads = box.get_beads(self.conditions)
+                beads = box.get_archives(self.conditions)
                 if beads:
                     return beads[0]
             except (InvalidArchive, IOError, OSError):
@@ -362,13 +362,15 @@ class Box:
         '''
         return Path(self.location)
 
-    def all_beads(self) -> list[Archive]:
+    def all_beads(self) -> list[Bead]:
         '''
-        Iterator for all beads in this Box
-        '''
-        return self.search().all()
+        List of all beads in this Box.
 
-    def get_beads(self, conditions) -> list[Archive]:
+        This is a list of Bead-s, not extractable Archives - intended for fast analytics.
+        '''
+        return list(self.search().all())
+
+    def get_archives(self, conditions) -> list[Archive]:
         '''
         Retrieve matching beads.
         '''
@@ -414,6 +416,6 @@ class Box:
 
     def search(self) -> BeadSearch:
         """
-        Return a FileBasedSearch instance for fluent search operations.
+        Return a BoxSearch instance for fluent search operations.
         """
-        return FileBasedSearch(self)
+        return BoxSearch(self)
