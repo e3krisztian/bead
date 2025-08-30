@@ -144,3 +144,99 @@ The `compile_conditions()` function in the index module will translate these enu
 - Input dependency queries execute efficiently
 - Index rebuilds complete in reasonable time for large boxes
 - Graceful handling of filesystem inconsistencies
+
+## Implementation Plan
+
+### Phase 1: API Transition (Bead vs Archive)
+**Goal**: Change Box and BeadSearch to work with Bead instances instead of Archive instances
+
+1. **Modify Box.get_archives() method**:
+   - Change return type from `list[Archive]` to `list[Bead]`
+   - Keep existing filesystem-based implementation initially
+   - Create Bead instances from Archive metadata
+
+2. **Add Box.resolve(Bead) → Archive method**:
+   - Take a Bead instance and return corresponding Archive
+   - Use `(box_name, name, content_id)` tuple for resolution
+   - Validate that resolved Archive matches input Bead
+   - Initially implement by re-parsing the archive file
+
+3. **Update BaseSearch and BoxSearch classes**:
+   - Change `_get_beads()` to work with new Box.get_archives() signature
+   - All search methods (first, newest, oldest, etc.) now return Archives by calling Box.resolve()
+   - Keep existing fluent API unchanged for backward compatibility
+
+4. **Update MultiBoxSearch**:
+   - Adapt to work with Bead instances from multiple boxes
+   - Handle Box.resolve() calls across different boxes
+
+### Phase 2: SQLite Index Implementation
+**Goal**: Create the SQLite-based index infrastructure
+
+1. **Create bead/box_index.py module**:
+   - `BoxIndex` class managing SQLite database lifecycle
+   - Schema creation with beads and inputs tables
+   - Database file location: `{Box.directory}/.index.sqlite`
+
+2. **Implement core index operations**:
+   - `rebuild()`: Scan box directory, parse all archives, rebuild index from scratch
+   - `sync()`: Check file mtimes, add new/changed files to index
+   - `add_bead(archive_path)`: Add single bead when Box.store() creates new archive
+   - `remove_bead(archive_path)`: Remove bead when file deleted (manual only)
+
+3. **Implement query functionality**:
+   - `compile_conditions(conditions)`: Convert QueryCondition list to SQL WHERE clause
+   - `query(conditions)`: Execute SQL query and return list of Bead instances
+   - Handle all existing QueryCondition enum values
+
+4. **Add error handling and recovery**:
+   - Auto-create index on first access if missing
+   - Detect corrupted index and trigger rebuild
+   - Graceful degradation when SQLite operations fail
+   - File locking for concurrent access protection
+
+### Phase 3: Integration and Optimization
+**Goal**: Replace filesystem operations with SQLite queries
+
+1. **Integrate BoxIndex into Box class**:
+   - Initialize BoxIndex in Box constructor
+   - Call `sync()` on Box initialization
+   - Call `add_bead()` in Box.store() method
+
+2. **Replace Box.get_archives() implementation**:
+   - Remove filesystem globbing and Archive parsing
+   - Use BoxIndex.query() to get Bead instances directly
+   - Maintain same method signature and behavior
+
+3. **Optimize Box.resolve() method**:
+   - Use index to look up file_path from `(name, content_id)`
+   - Create Archive directly from file path
+   - Validate Archive matches Bead (FR3.5 requirement)
+   - No caching needed - index serves as lookup table
+
+4. **Input dependency support**:
+   - Store input specifications in inputs table during add_bead()
+   - Implement queries for dependency graph construction
+   - Add methods to query beads by their input dependencies
+
+### Phase 4: Testing and Validation
+**Goal**: Ensure reliability and performance
+
+1. **Comprehensive testing**:
+   - All existing Box and BeadSearch functionality works unchanged
+   - Performance benchmarks show >50% improvement
+   - Concurrent access testing on shared filesystems
+   - Index corruption and recovery scenarios
+
+2. **Migration strategy**:
+   - Existing boxes work immediately (auto-rebuild index)
+   - No data migration required
+   - Backward compatibility maintained
+
+### Key Design Principles
+
+- **No caching**: Index provides file paths, Archives created on-demand
+- **Simple resolution**: `(name, content_id)` → file_path → Archive
+- **Validation**: Every resolve() validates index vs filesystem consistency
+- **Existing API preserved**: All current Box and BeadSearch methods work unchanged
+- **Performance**: SQLite queries replace filesystem operations and Python filtering
