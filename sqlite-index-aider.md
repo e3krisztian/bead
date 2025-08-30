@@ -22,7 +22,7 @@ Implement an SQLite-based index for bead storage and retrieval used from `Box`.
 - **FR2.1**: `rebuild()` - Enumerate all files in box directory and rebuild index from scratch
 - **FR2.2**: `sync()` - Discover new files to add to index
 - **FR2.3**: `add_bead()` - Add single bead to index when stored
-- **FR2.4**: `remove_bead()` - Remove bead from index when file deleted
+- **FR2.4**: `remove_bead()` - Remove bead from index when file deleted (manual only)
 - **FR2.5**: `compile_conditions()` - Build an SQL query and parameters from a list of (`QueryCondition`, value) pairs
 - **FR2.6**: `query()` - Run a query against the index, returning a list of `Bead`s using `compile_conditions` to translate the query
 - **FR2.7**: Manual removal only - no automatic cleanup
@@ -108,7 +108,7 @@ CREATE INDEX idx_inputs_name ON inputs(input_name);
 - `freeze_name`: Immutable name, not used for resolution
 - `freeze_time_str`: ISO timestamp when bead was frozen
 - `file_path`: Relative path to archive file from box directory
-- `file_mtime`: File modification time for sync detection
+- `file_mtime`: File modification time for detecting new files during sync
 
 #### Inputs Table
 - `input_id`: Primary key, auto-increment
@@ -180,9 +180,9 @@ The `compile_conditions()` function in the index module will translate these enu
 
 2. **Implement core index operations**:
    - `rebuild()`: Scan box directory, parse all archives, rebuild index from scratch
-   - `sync()`: Check file mtimes, add new/changed files to index
+   - `sync()`: Discover new files and add them to index (no updates to existing beads)
    - `add_bead(archive_path)`: Add single bead when Box.store() creates new archive
-   - `remove_bead(archive_path)`: Remove bead when file deleted (manual only)
+   - `remove_bead(archive_path)`: Remove bead from index when file deleted (manual only)
 
 3. **Implement query functionality**:
    - `compile_conditions(conditions)`: Convert QueryCondition list to SQL WHERE clause
