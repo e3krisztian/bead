@@ -148,7 +148,8 @@ The `compile_conditions()` function in the index module will translate these enu
 ### Phase 1: API Transition (Bead vs Archive)
 **Goal**: Change Box and BeadSearch to work with Bead instances instead of Archive instances
 
-1. **Modify Box.get_archives() method**:
+1. **Rename Box.get_archives() to Box.get_beads()**:
+   - Rename method from `get_archives()` to `get_beads()`
    - Change return type from `list[Archive]` to `list[Bead]`
    - Keep existing filesystem-based implementation initially
    - Create Bead instances from Archive metadata
@@ -158,15 +159,17 @@ The `compile_conditions()` function in the index module will translate these enu
    - Use `(box_name, name, content_id)` tuple for resolution
    - Validate that resolved Archive matches input Bead
    - Initially implement by re-parsing the archive file
+   - Add helper method `_bead_from_archive(archive)` to create Bead from Archive
 
 3. **Update BaseSearch and BoxSearch classes**:
-   - Change `_get_beads()` to work with new Box.get_archives() signature
+   - Change `_get_beads()` to work with new Box.get_beads() signature
    - All search methods (first, newest, oldest, etc.) now return Archives by calling Box.resolve()
    - Keep existing fluent API unchanged for backward compatibility
 
 4. **Update MultiBoxSearch**:
    - Adapt to work with Bead instances from multiple boxes
    - Handle Box.resolve() calls across different boxes
+   - Update first() method to use get_beads() and resolve()
 
 ### Phase 2: SQLite Index Implementation
 **Goal**: Create the SQLite-based index infrastructure
@@ -201,7 +204,7 @@ The `compile_conditions()` function in the index module will translate these enu
    - Call `sync()` on Box initialization
    - Call `add_bead()` in Box.store() method
 
-2. **Replace Box.get_archives() implementation**:
+2. **Replace Box.get_beads() implementation**:
    - Remove filesystem globbing and Archive parsing
    - Use BoxIndex.query() to get Bead instances directly
    - Maintain same method signature and behavior
