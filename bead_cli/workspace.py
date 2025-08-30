@@ -59,7 +59,7 @@ class CmdNew(Command):
 
         kind = tech.identifier.uuid()
         workspace.create(kind)
-        print(f'Created "{workspace.name}"')
+        print(f'Created workspace "{workspace.name}"')
 
 
 def WORKSPACE_defaulting_to(default_workspace):
