@@ -119,22 +119,21 @@ CREATE INDEX idx_inputs_name ON inputs(input_name);
 
 ### Query Conditions
 
-Define `QueryCondition` types for building SQL queries:
+The existing `QueryCondition` enum from `bead/box.py` will be used unchanged:
 
 ```python
-@dataclass
-class QueryCondition:
-    field: str
-    operator: str
-    value: Any
-
-# Supported operators:
-# '=' - exact match
-# 'LIKE' - pattern match
-# '<=' - less than or equal (for timestamps)
-# '>=' - greater than or equal (for timestamps)
-# 'IN' - value in list
+class QueryCondition(Enum):
+    BEAD_NAME = auto()
+    KIND = auto()
+    CONTENT_ID = auto()
+    AT_TIME = auto()
+    NEWER_THAN = auto()
+    OLDER_THAN = auto()
+    AT_OR_NEWER = auto()
+    AT_OR_OLDER = auto()
 ```
+
+The `compile_conditions()` function in the index module will translate these enum values to appropriate SQL WHERE clauses and parameters.
 
 ## Success Criteria
 
