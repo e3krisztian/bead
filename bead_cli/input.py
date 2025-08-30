@@ -2,7 +2,7 @@ import os.path
 from typing import TYPE_CHECKING
 
 from bead.box import resolve
-from bead.box import search_boxes
+from bead.box import search
 from bead.exceptions import InvalidArchive
 from bead.workspace import Workspace
 
@@ -126,7 +126,7 @@ class CmdUpdate(Command):
         workspace = get_workspace(args)
         for input in workspace.inputs:
             try:
-                bead = search_boxes(env.get_boxes()).by_kind(input.kind).at_or_older(args.bead_time).newest()
+                bead = search(env.get_boxes()).by_kind(input.kind).at_or_older(args.bead_time).newest()
                 # Resolve bead to archive for _update_input
                 archive = resolve(env.get_boxes(), bead)
             except LookupError:
@@ -156,40 +156,40 @@ class CmdUpdate(Command):
             try:
                 if args.bead_offset:
                     # handle --prev --next - use kind instead of bead name
-                    search = search_boxes(boxes).by_kind(input.kind)
+                    query = search(boxes).by_kind(input.kind)
                     if args.bead_offset == 1:
-                        bead = search.newer_than(input.freeze_time).oldest()  # next = oldest of newer beads
+                        bead = query.newer_than(input.freeze_time).oldest()  # next = oldest of newer beads
                     else:
-                        bead = search.older_than(input.freeze_time).newest()  # prev = newest of older beads
+                        bead = query.older_than(input.freeze_time).newest()  # prev = newest of older beads
                 else:
                     # --time - use kind instead of bead name
-                    bead = search_boxes(boxes).by_kind(input.kind).at_or_older(args.bead_time).newest()
+                    bead = search(boxes).by_kind(input.kind).at_or_older(args.bead_time).newest()
                 # Resolve bead to archive
-                bead = resolve(boxes, bead)
+                archive = resolve(boxes, bead)
             except LookupError:
                 die(f'Could not find bead for "{input.name}"')
         else:
             # path or new bead by name - same as input add, develop
             if args.bead_offset:
                 die('--prev/--next is not supported when an input is replaced with another bead')
-            bead = resolve_bead(env, bead_ref_base, args.bead_time)
-        if bead:
-            _update_input(workspace, input, bead)
+            archive = resolve_bead(env, bead_ref_base, args.bead_time)
+        if archive:
+            _update_input(workspace, input, archive)
         else:
             die('Can not find matching bead')
 
 
-def _update_input(workspace, input, bead):
-    if workspace.is_loaded(input.name) and input.content_id == bead.content_id:
-        assert input.kind == bead.kind
-        assert input.freeze_time == bead.freeze_time
+def _update_input(workspace, input, archive):
+    if workspace.is_loaded(input.name) and input.content_id == archive.content_id:
+        assert input.kind == archive.kind
+        assert input.freeze_time == archive.freeze_time
         print(
             f'Skipping update of {input.name}:'
             + f' it is already at requested version ({input.freeze_time})')
     else:
-        if input.kind != bead.kind:
+        if input.kind != archive.kind:
             warning(f'Updating input "{input.name}" with a bead of different kind')
-        _check_load_with_feedback(workspace, input.name, bead)
+        _check_load_with_feedback(workspace, input.name, archive)
 
 
 class CmdLoad(Command):
@@ -238,9 +238,9 @@ def _load(env, workspace, input):
         print(f'"{input.name}" is already loaded - skipping')
 
 
-def _check_load_with_feedback(workspace: Workspace, input_nick, bead):
+def _check_load_with_feedback(workspace: Workspace, input_nick, archive):
     try:
-        verify_with_feedback(bead)
+        verify_with_feedback(archive)
     except InvalidArchive:
         warning(f'Bead for {input_nick} is found but damaged - not loading.')
     else:
@@ -248,7 +248,7 @@ def _check_load_with_feedback(workspace: Workspace, input_nick, bead):
             print(f'Removing current data from {input_nick}')
             workspace.unload(input_nick)
         print(f'Loading new data to {input_nick} ...', end='', flush=True)
-        workspace.load(input_nick, bead)
+        workspace.load(input_nick, archive)
         print(' Done')
 
 

@@ -360,9 +360,9 @@ class MultiBoxSearch(BaseSearch):
         raise LookupError("No beads found")
 
 
-def search_boxes(boxes) -> BeadSearch:
+def search(boxes) -> BeadSearch:
     """
-    Module-level convenience function that returns a MultiBoxSearch.
+    Search across multiple boxes.
     """
     return MultiBoxSearch(boxes)
 

@@ -101,7 +101,7 @@ def resolve_bead(env, bead_ref_base, time) -> Archive:
 
     # not a file - try box search
     boxes = env.get_boxes()
-    bead = bead_box.search_boxes(boxes).by_name(bead_ref_base).at_or_older(time).newest()
+    bead = bead_box.search(boxes).by_name(bead_ref_base).at_or_older(time).newest()
     return bead_box.resolve(boxes, bead)
 
 

@@ -8,7 +8,7 @@ import webbrowser
 
 from bead import tech
 from bead.box import resolve
-from bead.box import search_boxes
+from bead.box import search
 
 from . import sketch as web_sketch
 from ..cmdparse import Command
@@ -255,9 +255,9 @@ def load_all_beads(boxes):
     all_beads = []
     import time
     load_start = time.perf_counter()
-    # This search_boxes().all() is the meat, the rest is just user feedback for big/slow
+    # This search().all() is the meat, the rest is just user feedback for big/slow
     # environments
-    for n, bead in enumerate(search_boxes(boxes).all()):
+    for n, bead in enumerate(search(boxes).all()):
         load_end = time.perf_counter()
         
         # Resolve bead to archive to get location
