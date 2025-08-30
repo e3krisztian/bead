@@ -149,32 +149,32 @@ class BeadSearch(ABC):
         return self
 
     @abstractmethod
-    def first(self) -> Archive:
+    def first(self) -> Bead:
         """Return first bead found or raise LookupError if none found."""
         pass
 
     @abstractmethod
-    def oldest(self) -> Archive:
+    def oldest(self) -> Bead:
         """Return oldest (by timestamp) matching bead or raise LookupError if none found."""
         pass
 
     @abstractmethod
-    def newest(self) -> Archive:
+    def newest(self) -> Bead:
         """Return newest (by timestamp) matching bead or raise LookupError if none found."""
         pass
 
     @abstractmethod
-    def newer(self, n: int = 1) -> Archive:
+    def newer(self, n: int = 1) -> Bead:
         """Return nth newest bead (0=oldest, 1=2nd oldest, etc.) or raise LookupError if less items found."""
         pass
 
     @abstractmethod
-    def older(self, n: int = 1) -> Archive:
+    def older(self, n: int = 1) -> Bead:
         """Return nth oldest bead (0=newest, 1=2nd newest, etc.) or raise LookupError if less items found."""
         pass
 
     @abstractmethod
-    def all(self) -> list[Archive]:
+    def all(self) -> list[Bead]:
         """Return list of all matching beads."""
         pass
 
@@ -251,25 +251,25 @@ class BaseSearch(BeadSearch):
                 unique_beads.append(bead)
         return unique_beads
 
-    def first(self) -> Archive:
+    def first(self) -> Bead:
         beads = self._get_beads()
         if not beads:
             raise LookupError("No beads found")
         return beads[0]
 
-    def oldest(self) -> Archive:
+    def oldest(self) -> Bead:
         beads = self._get_beads()
         if not beads:
             raise LookupError("No beads found")
         return min(beads, key=lambda b: b.freeze_time)
 
-    def newest(self) -> Archive:
+    def newest(self) -> Bead:
         beads = self._get_beads()
         if not beads:
             raise LookupError("No beads found")
         return max(beads, key=lambda b: b.freeze_time)
 
-    def newer(self, n: int = 1) -> Archive:
+    def newer(self, n: int = 1) -> Bead:
         beads = self._get_beads()
         if not beads:
             raise LookupError("No beads found")
@@ -278,7 +278,7 @@ class BaseSearch(BeadSearch):
             raise LookupError(f"Not enough beads found (requested index {n}, found {len(sorted_beads)})")
         return sorted_beads[n]
 
-    def older(self, n: int = 1) -> Archive:
+    def older(self, n: int = 1) -> Bead:
         beads = self._get_beads()
         if not beads:
             raise LookupError("No beads found")
@@ -287,11 +287,11 @@ class BaseSearch(BeadSearch):
             raise LookupError(f"Not enough beads found (requested index {n}, found {len(sorted_beads)})")
         return sorted_beads[n]
 
-    def all(self) -> list[Archive]:
+    def all(self) -> list[Bead]:
         return self._get_beads()
 
     @abstractmethod
-    def _get_beads(self) -> list[Archive]:
+    def _get_beads(self) -> list[Bead]:
         """Subclasses must implement this method to retrieve beads."""
         pass
 
@@ -305,11 +305,20 @@ class BoxSearch(BaseSearch):
         super().__init__()
         self.box = box
 
-    def _get_beads(self) -> list[Archive]:
+    def _get_beads(self) -> list[Bead]:
         beads = self.box.get_beads(self.conditions)
-        # Convert Bead instances to Archive instances using resolve
-        archives = [self.box.resolve(bead) for bead in beads]
-        return self._apply_unique_filter(archives)
+        return self._apply_unique_filter_beads(beads)
+
+    def _apply_unique_filter_beads(self, beads: list[Bead]) -> list[Bead]:
+        if not self._unique_filter:
+            return beads
+        seen_content_ids = set()
+        unique_beads = []
+        for bead in beads:
+            if bead.content_id not in seen_content_ids:
+                seen_content_ids.add(bead.content_id)
+                unique_beads.append(bead)
+        return unique_beads
 
 
 class MultiBoxSearch(BaseSearch):
@@ -321,22 +330,31 @@ class MultiBoxSearch(BaseSearch):
         super().__init__()
         self.boxes = boxes
 
-    def _get_beads(self) -> list[Archive]:
-        all_archives = []
+    def _get_beads(self) -> list[Bead]:
+        all_beads = []
         for box in self.boxes:
             beads = box.get_beads(self.conditions)
-            # Convert Bead instances to Archive instances using resolve
-            archives = [box.resolve(bead) for bead in beads]
-            all_archives.extend(archives)
+            all_beads.extend(beads)
 
-        return self._apply_unique_filter(all_archives)
+        return self._apply_unique_filter_beads(all_beads)
 
-    def first(self) -> Archive:
+    def _apply_unique_filter_beads(self, beads: list[Bead]) -> list[Bead]:
+        if not self._unique_filter:
+            return beads
+        seen_content_ids = set()
+        unique_beads = []
+        for bead in beads:
+            if bead.content_id not in seen_content_ids:
+                seen_content_ids.add(bead.content_id)
+                unique_beads.append(bead)
+        return unique_beads
+
+    def first(self) -> Bead:
         for box in self.boxes:
             try:
                 beads = box.get_beads(self.conditions)
                 if beads:
-                    return box.resolve(beads[0])
+                    return beads[0]
             except (InvalidArchive, IOError, OSError):
                 continue
         raise LookupError("No beads found")
