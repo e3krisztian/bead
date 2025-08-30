@@ -47,7 +47,7 @@ class QueryCondition(Enum):
 _CHECKERS = {
     QueryCondition.BEAD_NAME: lambda name: lambda bead: bead.name == name,
     QueryCondition.KIND: lambda kind: lambda bead: bead.kind == kind,
-    QueryCondition.CONTENT_ID: lambda prefix: lambda bead: bead.content_id.startswith(prefix),
+    QueryCondition.CONTENT_ID: lambda content_id: lambda bead: bead.content_id == content_id,
     QueryCondition.AT_TIME: lambda timestamp: lambda bead: bead.freeze_time == timestamp,
     QueryCondition.NEWER_THAN: lambda timestamp: lambda bead: bead.freeze_time > timestamp,
     QueryCondition.OLDER_THAN: lambda timestamp: lambda bead: bead.freeze_time < timestamp,
