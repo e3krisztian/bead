@@ -68,7 +68,6 @@ CREATE TABLE beads (
     freeze_name TEXT NOT NULL,
     freeze_time_str TEXT NOT NULL,
     file_path TEXT NOT NULL,
-    file_mtime REAL NOT NULL,
     UNIQUE(file_path),
     UNIQUE(name, content_id)
 );
@@ -108,7 +107,6 @@ CREATE INDEX idx_inputs_name ON inputs(input_name);
 - `freeze_name`: Immutable name, not used for resolution
 - `freeze_time_str`: ISO timestamp when bead was frozen
 - `file_path`: Relative path to archive file from box directory
-- `file_mtime`: File modification time for detecting new files during sync
 
 #### Inputs Table
 - `input_id`: Primary key, auto-increment
@@ -180,7 +178,7 @@ The `compile_conditions()` function in the index module will translate these enu
 
 2. **Implement core index operations**:
    - `rebuild()`: Scan box directory, parse all archives, rebuild index from scratch
-   - `sync()`: Discover new files and add them to index (no updates to existing beads)
+   - `sync()`: Scan directory and add any files not already in index
    - `add_bead(archive_path)`: Add single bead when Box.store() creates new archive
    - `remove_bead(archive_path)`: Remove bead from index when file deleted (manual only)
 
