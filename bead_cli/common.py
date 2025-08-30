@@ -94,13 +94,15 @@ def BEAD_REF_BASE_defaulting_to(name):
 BEAD_REF_BASE = arg_bead_ref_base(nargs=None, default=None)
 
 
-def resolve_bead(env, bead_ref_base, time):
+def resolve_bead(env, bead_ref_base, time) -> Archive:
     # prefer exact file name over box search
     if os.path.isfile(bead_ref_base):
         return ZipArchive(bead_ref_base)
 
     # not a file - try box search
-    return bead_box.search_boxes(env.get_boxes()).by_name(bead_ref_base).at_or_older(time).newest()
+    boxes = env.get_boxes()
+    bead = bead_box.search_boxes(boxes).by_name(bead_ref_base).at_or_older(time).newest()
+    return bead_box.resolve(boxes, bead)
 
 
 def verify_with_feedback(archive: Archive):
