@@ -8,6 +8,7 @@ import zipfile
 from . import layouts
 from . import meta
 from . import tech
+from .bead import Archive
 from .bead import Bead
 
 # technology modules
@@ -148,7 +149,7 @@ class Workspace(Bead):
         del m[meta.INPUTS][input_nick]
         self.meta = m
 
-    def load(self, input_nick, archive):
+    def load(self, input_nick, archive: Archive):
         '''
         Make output data files in archive available under input directory
         '''
