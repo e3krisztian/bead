@@ -7,6 +7,7 @@ from typing import Set
 import webbrowser
 
 from bead import tech
+from bead.box import resolve
 from bead.box import search_boxes
 
 from . import sketch as web_sketch
@@ -250,7 +251,6 @@ SUBCOMMANDS = {
 
 
 def load_all_beads(boxes):
-    from bead.box import resolve
     columns = int(os.environ.get('COLUMNS', 80))
     all_beads = []
     import time

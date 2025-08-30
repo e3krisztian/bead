@@ -1,6 +1,7 @@
 import os.path
 from typing import TYPE_CHECKING
 
+from bead.box import resolve
 from bead.box import search_boxes
 from bead.exceptions import InvalidArchive
 from bead.workspace import Workspace
@@ -127,7 +128,6 @@ class CmdUpdate(Command):
             try:
                 bead = search_boxes(env.get_boxes()).by_kind(input.kind).at_or_older(args.bead_time).newest()
                 # Resolve bead to archive for _update_input
-                from bead.box import resolve
                 archive = resolve(env.get_boxes(), bead)
             except LookupError:
                 if workspace.is_loaded(input.name):
@@ -165,7 +165,6 @@ class CmdUpdate(Command):
                     # --time - use kind instead of bead name
                     bead = search_boxes(boxes).by_kind(input.kind).at_or_older(args.bead_time).newest()
                 # Resolve bead to archive
-                from bead.box import resolve
                 bead = resolve(boxes, bead)
             except LookupError:
                 die(f'Could not find bead for "{input.name}"')
