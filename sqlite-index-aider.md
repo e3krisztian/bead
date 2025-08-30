@@ -23,8 +23,8 @@ Implement an SQLite-based index for bead storage and retrieval used from `Box`.
 - **FR2.2**: `sync()` - Discover new files to add to index
 - **FR2.3**: `add_bead()` - Add single bead to index when stored
 - **FR2.4**: `remove_bead()` - Remove bead from index when file deleted
-- **FR2.5**: `compile_conditions()` - Build an SQL query and parameters from a list of `QueryCondition`-s
-- **FR2.6**: `query()` - Run a query against the index, returning a list of (file_path, Bead) pairs using `compile_conditions` to translate the query
+- **FR2.5**: `compile_conditions()` - Build an SQL query and parameters from a list of (`QueryCondition`, value) pairs
+- **FR2.6**: `query()` - Run a query against the index, returning a list of `Bead`s using `compile_conditions` to translate the query
 - **FR2.7**: Manual removal only - no automatic cleanup
 
 ### FR3: Failure Handling
@@ -32,6 +32,7 @@ Implement an SQLite-based index for bead storage and retrieval used from `Box`.
 - **FR3.2**: Handle corrupted index - detect and rebuild
 - **FR3.3**: Concurrent access protection for NFS/SSHFS environments
 - **FR3.4**: Graceful degradation when index operations fail
+- **FR3.5**: Recognize index mismatch (`Bead`) against actual created `Archive` from referenced file, and abort with a message
 
 ### FR4: Search Implementation
 - **FR4.1**: Provide `SQLiteBeadSearch` class implementing `BeadSearch` interface
