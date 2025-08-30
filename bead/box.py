@@ -367,6 +367,30 @@ def search_boxes(boxes) -> BeadSearch:
     return MultiBoxSearch(boxes)
 
 
+def resolve(boxes, bead: Bead) -> Archive:
+    """
+    Locate an extractable Archive for bead.
+
+    Finds the appropriate box by matching bead.box_name and resolves the bead in that box.
+    
+    Args:
+        boxes: List of Box instances to search
+        bead: Bead instance to resolve
+        
+    Returns:
+        Archive instance corresponding to the bead
+        
+    Raises:
+        LookupError: If no box with matching name is found
+        ValueError: If the bead cannot be resolved in the found box
+    """
+    for box in boxes:
+        if box.name == bead.box_name:
+            return box.resolve(bead)
+    
+    raise LookupError(f"Could not find box '{bead.box_name}' to resolve bead '{bead.name}'")
+
+
 @dataclass
 class Box:
     """
