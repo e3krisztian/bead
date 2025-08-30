@@ -250,6 +250,7 @@ SUBCOMMANDS = {
 
 
 def load_all_beads(boxes):
+    from bead.box import resolve
     columns = int(os.environ.get('COLUMNS', 80))
     all_beads = []
     import time
@@ -258,13 +259,16 @@ def load_all_beads(boxes):
     # environments
     for n, bead in enumerate(search_boxes(boxes).all()):
         load_end = time.perf_counter()
+        
+        # Resolve bead to archive to get location
+        archive = resolve(boxes, bead)
 
-        msg = f"\rLoaded bead {n + 1} ({bead.location})"[:columns]
+        msg = f"\rLoaded bead {n + 1} ({archive.location})"[:columns]
         msg = msg + ' ' * (columns - len(msg))
         print(msg, end="", flush=True)
         if load_end - load_start > 1:
             print(f"\nLoading took {load_end - load_start} seconds")
-        all_beads.append(bead)
+        all_beads.append(archive)
         load_start = time.perf_counter()
     print("\r" + " " * columns + "\r", end="")
     return all_beads

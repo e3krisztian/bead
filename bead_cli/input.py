@@ -126,6 +126,9 @@ class CmdUpdate(Command):
         for input in workspace.inputs:
             try:
                 bead = search_boxes(env.get_boxes()).by_kind(input.kind).at_or_older(args.bead_time).newest()
+                # Resolve bead to archive for _update_input
+                from bead.box import resolve
+                archive = resolve(env.get_boxes(), bead)
             except LookupError:
                 if workspace.is_loaded(input.name):
                     print(
@@ -134,7 +137,7 @@ class CmdUpdate(Command):
                 else:
                     warning(f'Could not find bead for "{input.name}"')
             else:
-                _update_input(workspace, input, bead)
+                _update_input(workspace, input, archive)
         print('All inputs are up to date.')
 
     def update_one_input(self, args, env):
@@ -161,6 +164,9 @@ class CmdUpdate(Command):
                 else:
                     # --time - use kind instead of bead name
                     bead = search_boxes(boxes).by_kind(input.kind).at_or_older(args.bead_time).newest()
+                # Resolve bead to archive
+                from bead.box import resolve
+                bead = resolve(boxes, bead)
             except LookupError:
                 die(f'Could not find bead for "{input.name}"')
         else:
@@ -216,18 +222,19 @@ def _load(env, workspace, input):
     assert input is not None
     if not workspace.is_loaded(input.name):
         content_id = input.content_id
-        bead = None
+        archive = None
         for box in env.get_boxes():
             # Only try to find by exact content_id match
             try:
                 bead = box.search().by_content_id(content_id).first()
+                archive = box.resolve(bead)
                 break
             except LookupError:
                 continue
-        if bead is None:
+        if archive is None:
             warning(f'Could not find bead for input "{input.name}" - not loaded!')
             return
-        _check_load_with_feedback(workspace, input.name, bead)
+        _check_load_with_feedback(workspace, input.name, archive)
     else:
         print(f'"{input.name}" is already loaded - skipping')
 
