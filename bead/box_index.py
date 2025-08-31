@@ -52,13 +52,6 @@ def create_schema(conn):
     conn.commit()
 
 
-def clear_all_data(conn):
-    '''Remove all data from database.'''
-    conn.execute('DELETE FROM inputs')
-    conn.execute('DELETE FROM beads')
-    conn.commit()
-
-
 def get_indexed_files(conn):
     '''Get set of file paths already in index.'''
     cursor = conn.execute('SELECT file_path FROM beads')
@@ -90,12 +83,6 @@ def insert_input_record(conn, bead_name, bead_content_id, input_spec):
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (bead_name, bead_content_id, input_spec.name, 
           input_spec.kind, input_spec.content_id, input_spec.freeze_time_str))
-
-
-def delete_bead_by_path(conn, relative_path):
-    '''Delete bead record by file path.'''
-    conn.execute('DELETE FROM beads WHERE file_path = ?', (str(relative_path),))
-    conn.commit()
 
 
 def find_file_path(conn, name, content_id):
@@ -231,15 +218,6 @@ class BoxIndex:
     def add_bead(self, archive_path: Path):
         '''Add single bead to index.'''
         self.add_archive_file(archive_path)
-    
-    def remove_bead(self, archive_path: Path):
-        '''Remove bead from index.'''
-        try:
-            relative_path = archive_path.relative_to(self.box_directory)
-            with create_update_connection(self.index_path) as conn:
-                delete_bead_by_path(conn, relative_path)
-        except Exception:
-            pass
     
     def add_archive_file(self, archive_path: Path):
         '''Add archive file to index.'''
