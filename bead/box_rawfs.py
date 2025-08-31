@@ -22,6 +22,12 @@ class RawFilesystemResolver:
         self._bead_cache = {}  # (name, content_id) -> Bead
         self._path_cache = {}  # (name, content_id) -> Path
     
+    def _cache_bead_and_path(self, bead: Bead, path: Path) -> None:
+        """Cache both bead and path for given bead."""
+        key = (bead.name, bead.content_id)
+        self._bead_cache[key] = bead
+        self._path_cache[key] = path
+    
     def get_beads(self, conditions, box_name: str) -> list[Bead]:
         """Retrieve beads matching conditions by scanning filesystem."""
         match = compile_conditions(conditions)
@@ -43,9 +49,8 @@ class RawFilesystemResolver:
         for archive in archives:
             if match(archive):
                 bead = self._bead_from_archive(archive)
-                # Cache the bead we just created
-                key = (bead.name, bead.content_id)
-                self._bead_cache[key] = bead
+                # Cache the bead and its path
+                self._cache_bead_and_path(bead, archive.archive_filename)
                 beads.append(bead)
         return beads
 
@@ -85,7 +90,8 @@ class RawFilesystemResolver:
                 archive = ZipArchive(path, box_name='')
                 if archive.name == name and archive.content_id == content_id:
                     # Cache the successful lookup
-                    self._path_cache[key] = path
+                    bead = self._bead_from_archive(archive)
+                    self._cache_bead_and_path(bead, path)
                     return path
             except InvalidArchive:
                 continue
@@ -97,11 +103,8 @@ class RawFilesystemResolver:
         try:
             archive = ZipArchive(archive_path, box_name='')
             bead = self._bead_from_archive(archive)
-            key = (bead.name, bead.content_id)
-            
             # Cache the new bead and its path
-            self._bead_cache[key] = bead
-            self._path_cache[key] = archive_path
+            self._cache_bead_and_path(bead, archive_path)
         except InvalidArchive:
             # Skip invalid archives
             pass
