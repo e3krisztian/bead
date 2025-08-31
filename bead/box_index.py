@@ -20,19 +20,15 @@ class BoxIndex:
     def __init__(self, box_directory: Path):
         self.box_directory = Path(box_directory)
         self.index_path = self.box_directory / '.index.sqlite'
-        self._connection = None
     
     def _get_connection(self):
-        '''Get database connection, creating schema if needed.'''
-        if self._connection is None:
-            self._connection = sqlite3.connect(str(self.index_path))
-            self._create_schema()
-        return self._connection
+        '''Get new database connection, creating schema if needed.'''
+        conn = sqlite3.connect(str(self.index_path))
+        self._create_schema(conn)
+        return conn
     
-    def _create_schema(self):
+    def _create_schema(self, conn):
         '''Create database schema if it doesn't exist.'''
-        conn = self._get_connection()
-        
         conn.execute('''
             CREATE TABLE IF NOT EXISTS beads (
                 name TEXT NOT NULL,
@@ -63,9 +59,10 @@ class BoxIndex:
         Rebuild the index from scratch by scanning all files in the box directory.
         '''
         # Clear existing data
-        conn = self._get_connection()
-        conn.execute('DELETE FROM inputs')
-        conn.execute('DELETE FROM beads')
+        with self._get_connection() as conn:
+            conn.execute('DELETE FROM inputs')
+            conn.execute('DELETE FROM beads')
+            conn.commit()
         
         # Add all zip files
         for zip_path in self.box_directory.glob('*.zip'):
@@ -73,17 +70,15 @@ class BoxIndex:
                 self._add_archive(zip_path)
             except InvalidArchive:
                 pass  # Skip invalid archives
-        
-        conn.commit()
     
     def sync(self):
         '''
         Discover new files and add them to the index.
         '''
         # Get list of files already in index
-        conn = self._get_connection()
-        cursor = conn.execute('SELECT file_path FROM beads')
-        indexed_files = {row[0] for row in cursor.fetchall()}
+        with self._get_connection() as conn:
+            cursor = conn.execute('SELECT file_path FROM beads')
+            indexed_files = {row[0] for row in cursor.fetchall()}
         
         # Add new files
         for archive_path in self.box_directory.glob('*.zip'):
@@ -93,8 +88,6 @@ class BoxIndex:
                     self._add_archive(archive_path)
                 except InvalidArchive:
                     pass  # Skip invalid archives
-        
-        conn.commit()
     
     def add_bead(self, archive_path: Path):
         '''
@@ -102,7 +95,6 @@ class BoxIndex:
         '''
         try:
             self._add_archive(archive_path)
-            self._get_connection().commit()
         except Exception:
             pass  # Best effort
     
@@ -110,9 +102,9 @@ class BoxIndex:
         '''Remove bead from index.'''
         try:
             relative_path = archive_path.relative_to(self.box_directory)
-            conn = self._get_connection()
-            conn.execute('DELETE FROM beads WHERE file_path = ?', (str(relative_path),))
-            conn.commit()
+            with self._get_connection() as conn:
+                conn.execute('DELETE FROM beads WHERE file_path = ?', (str(relative_path),))
+                conn.commit()
         except Exception:
             pass  # Best effort
     
@@ -122,28 +114,30 @@ class BoxIndex:
         archive.validate()
         
         relative_path = archive_path.relative_to(self.box_directory)
-        conn = self._get_connection()
         
-        # Insert bead
-        conn.execute('''
-            INSERT OR REPLACE INTO beads 
-            (name, content_id, kind, freeze_time_str, file_path)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (archive.name, archive.content_id, archive.kind, 
-              archive.freeze_time_str, str(relative_path)))
-        
-        # Delete old inputs and insert new ones
-        conn.execute('DELETE FROM inputs WHERE bead_name = ? AND bead_content_id = ?',
-                    (archive.name, archive.content_id))
-        
-        for input_spec in archive.inputs:
+        with self._get_connection() as conn:
+            # Insert bead
             conn.execute('''
-                INSERT INTO inputs 
-                (bead_name, bead_content_id, input_name, input_kind, 
-                 input_content_id, input_freeze_time_str)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (archive.name, archive.content_id, input_spec.name, 
-                  input_spec.kind, input_spec.content_id, input_spec.freeze_time_str))
+                INSERT OR REPLACE INTO beads 
+                (name, content_id, kind, freeze_time_str, file_path)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (archive.name, archive.content_id, archive.kind, 
+                  archive.freeze_time_str, str(relative_path)))
+            
+            # Delete old inputs and insert new ones
+            conn.execute('DELETE FROM inputs WHERE bead_name = ? AND bead_content_id = ?',
+                        (archive.name, archive.content_id))
+            
+            for input_spec in archive.inputs:
+                conn.execute('''
+                    INSERT INTO inputs 
+                    (bead_name, bead_content_id, input_name, input_kind, 
+                     input_content_id, input_freeze_time_str)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (archive.name, archive.content_id, input_spec.name, 
+                      input_spec.kind, input_spec.content_id, input_spec.freeze_time_str))
+            
+            conn.commit()
     
     def query(self, conditions: List[Tuple[QueryCondition, Any]], box_name: str) -> Optional[List[Bead]]:
         '''Query beads from index. Returns None if index unavailable.'''
@@ -192,41 +186,41 @@ class BoxIndex:
                 sql += ' WHERE ' + ' AND '.join(where_parts)
             sql += ' ORDER BY freeze_time_str'
             
-            conn = self._get_connection()
-            cursor = conn.execute(sql, parameters)
-            
-            beads = []
-            for row in cursor.fetchall():
-                name, content_id, kind, freeze_time_str, file_path = row
+            with self._get_connection() as conn:
+                cursor = conn.execute(sql, parameters)
                 
-                bead = Bead()
-                bead.name = name
-                bead.content_id = content_id
-                bead.kind = kind
-                bead.freeze_time_str = freeze_time_str
-                bead.box_name = box_name
+                beads = []
+                for row in cursor.fetchall():
+                    name, content_id, kind, freeze_time_str, file_path = row
+                    
+                    bead = Bead()
+                    bead.name = name
+                    bead.content_id = content_id
+                    bead.kind = kind
+                    bead.freeze_time_str = freeze_time_str
+                    bead.box_name = box_name
+                    
+                    # Load inputs
+                    input_cursor = conn.execute('''
+                        SELECT input_name, input_kind, input_content_id, input_freeze_time_str
+                        FROM inputs WHERE bead_name = ? AND bead_content_id = ?
+                    ''', (name, content_id))
+                    
+                    inputs = []
+                    for input_row in input_cursor.fetchall():
+                        input_name, input_kind, input_content_id, input_freeze_time_str = input_row
+                        from .meta import InputSpec
+                        inputs.append(InputSpec(
+                            name=input_name,
+                            kind=input_kind,
+                            content_id=input_content_id,
+                            freeze_time_str=input_freeze_time_str
+                        ))
+                    
+                    bead.inputs = inputs
+                    beads.append(bead)
                 
-                # Load inputs
-                input_cursor = conn.execute('''
-                    SELECT input_name, input_kind, input_content_id, input_freeze_time_str
-                    FROM inputs WHERE bead_name = ? AND bead_content_id = ?
-                ''', (name, content_id))
-                
-                inputs = []
-                for input_row in input_cursor.fetchall():
-                    input_name, input_kind, input_content_id, input_freeze_time_str = input_row
-                    from .meta import InputSpec
-                    inputs.append(InputSpec(
-                        name=input_name,
-                        kind=input_kind,
-                        content_id=input_content_id,
-                        freeze_time_str=input_freeze_time_str
-                    ))
-                
-                bead.inputs = inputs
-                beads.append(bead)
-            
-            return beads
+                return beads
             
         except Exception:
             return None  # Index unavailable
@@ -234,18 +228,16 @@ class BoxIndex:
     def get_file_path(self, name: str, content_id: str) -> Optional[Path]:
         '''Get file path for bead. Returns None if not found or index unavailable.'''
         try:
-            conn = self._get_connection()
-            cursor = conn.execute(
-                'SELECT file_path FROM beads WHERE name = ? AND content_id = ?',
-                (name, content_id)
-            )
-            row = cursor.fetchone()
-            return self.box_directory / row[0] if row else None
+            with self._get_connection() as conn:
+                cursor = conn.execute(
+                    'SELECT file_path FROM beads WHERE name = ? AND content_id = ?',
+                    (name, content_id)
+                )
+                row = cursor.fetchone()
+                return self.box_directory / row[0] if row else None
         except Exception:
             return None
     
     def close(self):
         '''Close database connection.'''
-        if self._connection:
-            self._connection.close()
-            self._connection = None
+        pass  # No persistent connection to close
