@@ -517,7 +517,7 @@ class Box:
         workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT)
         
         # Add to index
-        self.index.add_bead(zipfilename)
+        self.index.add_archive_file(zipfilename)
         
         return zipfilename
 

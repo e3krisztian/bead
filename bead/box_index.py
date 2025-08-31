@@ -215,12 +215,8 @@ class BoxIndex:
         except Exception:
             pass
     
-    def add_bead(self, archive_path: Path):
-        '''Add single bead to index.'''
-        self.add_archive_file(archive_path)
-    
     def add_archive_file(self, archive_path: Path):
-        '''Add archive file to index.'''
+        '''Add single bead to index.'''
         try:
             archive = ZipArchive(archive_path, box_name='')
             archive.validate()
