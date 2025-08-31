@@ -7,7 +7,6 @@ from typing import Set
 import webbrowser
 
 from bead import tech
-from bead.box import resolve
 from bead.box import search
 
 from . import sketch as web_sketch
