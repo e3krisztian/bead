@@ -62,183 +62,88 @@ class BoxIndex:
         '''
         Rebuild the index from scratch by scanning all files in the box directory.
         '''
-        if not self.is_available():
-            raise RuntimeError("Index is not available for rebuild")
-            
-        logger.info(f"Rebuilding index for box at {self.box_directory}")
+        # Clear existing data
+        conn = self._get_connection()
+        conn.execute('DELETE FROM inputs')
+        conn.execute('DELETE FROM beads')
         
-        try:
-            # Remove existing database file if it exists
-            if self.index_path.exists():
-                self.close()
-                self.index_path.unlink()
-                self._db_connection = None
-            
-            # Create new database with schema
-            self._create_schema()
-            
-            # Scan directory for archive files
-            archive_files = list(self.box_directory.glob('*.zip'))
-            logger.info(f"Found {len(archive_files)} archive files to index")
-            
-            indexed_count = 0
-            error_count = 0
-            
-            with self._get_connection() as conn:
-                for archive_path in archive_files:
-                    try:
-                        self._add_archive_to_index(conn, archive_path)
-                        indexed_count += 1
-                    except (InvalidArchive, sqlite3.Error) as e:
-                        logger.warning(f"Failed to index {archive_path}: {e}")
-                        error_count += 1
-                
-                conn.commit()
-            
-            logger.info(f"Index rebuild complete: {indexed_count} beads indexed, {error_count} errors")
-            
-        except Exception as e:
-            logger.error(f"Index rebuild failed: {e}")
-            # Clean up partial database
-            if self.index_path.exists():
-                try:
-                    self.close()
-                    self.index_path.unlink()
-                except Exception:
-                    pass
-            raise
+        # Add all zip files
+        for zip_path in self.box_directory.glob('*.zip'):
+            try:
+                self._add_archive(zip_path)
+            except InvalidArchive:
+                pass  # Skip invalid archives
+        
+        conn.commit()
     
     def sync(self):
         '''
         Discover new files and add them to the index.
         '''
-        if not self.is_available():
-            return
-            
-        try:
-            # Get list of files already in index
-            with self._get_connection() as conn:
-                cursor = conn.execute('SELECT file_path FROM beads')
-                indexed_files = {row[0] for row in cursor.fetchall()}
-            
-            # Scan directory for all archive files
-            archive_files = list(self.box_directory.glob('*.zip'))
-            
-            # Find new files
-            new_files = []
-            for archive_path in archive_files:
-                relative_path = archive_path.relative_to(self.box_directory)
-                if str(relative_path) not in indexed_files:
-                    new_files.append(archive_path)
-            
-            if not new_files:
-                return
-                
-            logger.info(f"Syncing {len(new_files)} new files to index")
-            
-            added_count = 0
-            error_count = 0
-            
-            with self._get_connection() as conn:
-                for archive_path in new_files:
-                    try:
-                        self._add_archive_to_index(conn, archive_path)
-                        added_count += 1
-                    except (InvalidArchive, sqlite3.Error) as e:
-                        logger.warning(f"Failed to index {archive_path}: {e}")
-                        error_count += 1
-                
-                conn.commit()
-            
-            logger.info(f"Sync complete: {added_count} beads added, {error_count} errors")
-            
-        except Exception as e:
-            logger.error(f"Index sync failed: {e}")
-            # Don't raise - sync is best effort
+        # Get list of files already in index
+        conn = self._get_connection()
+        cursor = conn.execute('SELECT file_path FROM beads')
+        indexed_files = {row[0] for row in cursor.fetchall()}
+        
+        # Add new files
+        for archive_path in self.box_directory.glob('*.zip'):
+            relative_path = archive_path.relative_to(self.box_directory)
+            if str(relative_path) not in indexed_files:
+                try:
+                    self._add_archive(archive_path)
+                except InvalidArchive:
+                    pass  # Skip invalid archives
+        
+        conn.commit()
     
     def add_bead(self, archive_path: Path):
         '''
         Add a single bead to the index.
         '''
-        if not self.is_available():
-            return
-            
         try:
-            with self._get_connection() as conn:
-                self._add_archive_to_index(conn, archive_path)
-                conn.commit()
-                
-        except Exception as e:
-            logger.error(f"Failed to add bead {archive_path} to index: {e}")
-            # Don't raise - adding to index is best effort
+            self._add_archive(archive_path)
+            self._get_connection().commit()
+        except Exception:
+            pass  # Best effort
     
     def remove_bead(self, archive_path: Path):
-        '''
-        Remove a bead from the index (manual operation only).
-        '''
-        if not self.is_available():
-            return
-            
+        '''Remove bead from index.'''
         try:
             relative_path = archive_path.relative_to(self.box_directory)
-            
-            with self._get_connection() as conn:
-                cursor = conn.execute('DELETE FROM beads WHERE file_path = ?', (str(relative_path),))
-                if cursor.rowcount > 0:
-                    conn.commit()
-                    logger.info(f"Removed bead {relative_path} from index")
-                else:
-                    logger.warning(f"Bead {relative_path} not found in index")
-                    
-        except Exception as e:
-            logger.error(f"Failed to remove bead {archive_path} from index: {e}")
-            # Don't raise - removal from index is best effort
+            conn = self._get_connection()
+            conn.execute('DELETE FROM beads WHERE file_path = ?', (str(relative_path),))
+            conn.commit()
+        except Exception:
+            pass  # Best effort
     
-    def _add_archive_to_index(self, conn: sqlite3.Connection, archive_path: Path):
-        '''
-        Add a single archive to the index within an existing transaction.
-        '''
-        # Create archive instance to extract metadata
-        archive = ZipArchive(archive_path, box_name='')  # box_name will be set by caller
-        
-        # Validate archive
+    def _add_archive(self, archive_path: Path):
+        '''Add archive to index.'''
+        archive = ZipArchive(archive_path, box_name='')
         archive.validate()
         
-        # Calculate relative path
         relative_path = archive_path.relative_to(self.box_directory)
+        conn = self._get_connection()
         
-        # Insert bead record
-        cursor = conn.execute('''
+        # Insert bead
+        conn.execute('''
             INSERT OR REPLACE INTO beads 
-            (name, content_id, kind, freeze_name, freeze_time_str, file_path)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            archive.name,
-            archive.content_id,
-            archive.kind,
-            archive.name,  # freeze_name same as name for now
-            archive.freeze_time_str,
-            str(relative_path)
-        ))
+            (name, content_id, kind, freeze_time_str, file_path)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (archive.name, archive.content_id, archive.kind, 
+              archive.freeze_time_str, str(relative_path)))
         
-        bead_id = cursor.lastrowid
+        # Delete old inputs and insert new ones
+        conn.execute('DELETE FROM inputs WHERE bead_name = ? AND bead_content_id = ?',
+                    (archive.name, archive.content_id))
         
-        # Delete existing inputs for this bead (in case of replacement)
-        conn.execute('DELETE FROM inputs WHERE bead_id = ?', (bead_id,))
-        
-        # Insert input records
         for input_spec in archive.inputs:
             conn.execute('''
                 INSERT INTO inputs 
-                (bead_id, input_name, input_kind, input_content_id, input_freeze_time_str)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (
-                bead_id,
-                input_spec.name,
-                input_spec.kind,
-                input_spec.content_id,
-                input_spec.freeze_time_str
-            ))
+                (bead_name, bead_content_id, input_name, input_kind, 
+                 input_content_id, input_freeze_time_str)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (archive.name, archive.content_id, input_spec.name, 
+                  input_spec.kind, input_spec.content_id, input_spec.freeze_time_str))
     
     def query(self, conditions: List[Tuple[QueryCondition, Any]], box_name: str) -> Optional[List[Bead]]:
         '''Query beads from index. Returns None if index unavailable.'''
