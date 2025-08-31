@@ -49,8 +49,6 @@ class RawFilesystemResolver:
         for archive in archives:
             if match(archive):
                 bead = self._bead_from_archive(archive)
-                # Cache the bead and its path
-                self._cache_bead_and_path(bead, archive.archive_filename)
                 beads.append(bead)
         return beads
 
@@ -58,6 +56,9 @@ class RawFilesystemResolver:
         for path in paths:
             try:
                 archive = ZipArchive(path, box_name)
+                # Cache the archive as we process it
+                bead = self._bead_from_archive(archive)
+                self._cache_bead_and_path(bead, path)
             except InvalidArchive:
                 # TODO: log/report problem
                 pass
