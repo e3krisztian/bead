@@ -5,11 +5,37 @@ from . import tech
 from .bead import Archive
 from .bead import Bead
 from .box import QueryCondition
-from .box import compile_conditions
 from .exceptions import InvalidArchive
 from .ziparchive import ZipArchive
 
 Path = tech.fs.Path
+
+
+# Filesystem-specific condition checking for beads
+_CHECKERS = {
+    QueryCondition.BEAD_NAME: lambda name: lambda bead: bead.name == name,
+    QueryCondition.KIND: lambda kind: lambda bead: bead.kind == kind,
+    QueryCondition.CONTENT_ID: lambda content_id: lambda bead: bead.content_id == content_id,
+    QueryCondition.AT_TIME: lambda timestamp: lambda bead: bead.freeze_time == timestamp,
+    QueryCondition.NEWER_THAN: lambda timestamp: lambda bead: bead.freeze_time > timestamp,
+    QueryCondition.OLDER_THAN: lambda timestamp: lambda bead: bead.freeze_time < timestamp,
+    QueryCondition.AT_OR_NEWER: lambda timestamp: lambda bead: bead.freeze_time >= timestamp,
+    QueryCondition.AT_OR_OLDER: lambda timestamp: lambda bead: bead.freeze_time <= timestamp,
+}
+
+
+def compile_conditions(conditions):
+    '''
+    Compile list of (check-type, check-param)-s into a match function.
+    '''
+    checkers = [_CHECKERS[check_type](check_param) for check_type, check_param in conditions]
+
+    def match(bead):
+        for check in checkers:
+            if not check(bead):
+                return False
+        return True
+    return match
 
 
 class RawFilesystemResolver:
