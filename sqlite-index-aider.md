@@ -30,14 +30,14 @@ Implement an SQLite-based index for bead storage and retrieval used from `Box`.
 ### FR3: Failure Handling
 - **FR3.1**: Handle missing index - auto-rebuild on first access
 - **FR3.2**: Handle corrupted index - detect and rebuild
-- **FR3.3**: Concurrent access protection for NFS/SSHFS environments
+- **FR3.3**: Concurrent access protection for NFS/SSHFS environments - over the network from another computer
 - **FR3.4**: Graceful degradation when index operations fail
+- **FR3.4**: Graceful degradation to current solution, when index use is not possible (e.g. read only filesystem)
 - **FR3.5**: Recognize index mismatch (`Bead`) against actual created `Archive` from referenced file, and abort with a message
 
 ### FR4: Search Implementation
-- **FR4.1**: Provide `SQLiteBeadSearch` class implementing `BeadSearch` interface
-- **FR4.2**: All existing search operations must work (by_name, by_kind, by_content_id, time filters, etc.)
-- **FR4.3**: Performance improvement over current filesystem-based filtering
+- **FR4.1**: All existing search operations must work (by_name, by_kind, by_content_id, time filters, etc.)
+- **FR4.2**: Performance improvement over current filesystem-based filtering
 
 ### FR5: Name Resolution
 - **FR5.1**: Resolve beads by name ONLY when name comes from user input
@@ -142,6 +142,10 @@ The `compile_conditions()` function in the index module will translate these enu
 - Input dependency queries execute efficiently
 - Index rebuilds complete in reasonable time for large boxes
 - Graceful handling of filesystem inconsistencies
+- Should work on Windows, MacOs, Linux, and network file systems
+- Should work with a read-only index database
+- Should work with a read-only filesystem (if there is an index)
+- Fall back to non-index use (current solution), when the box is on a filesystem where the index file can not be re-created
 
 ## Implementation Plan
 
@@ -178,6 +182,9 @@ The `compile_conditions()` function in the index module will translate these enu
    - `BoxIndex` class managing SQLite database lifecycle
    - Schema creation with beads and inputs tables
    - Database file location: `{Box.directory}/.index.sqlite`
+   - should provide a function that decides if the BoxIndex can be used or not:
+      - checks if there is an accessible index file (at least read only access should be allowed)
+      - checks if there is no index, a new index file can be created
 
 2. **Implement core index operations**:
    - `rebuild()`: Scan box directory, parse all archives, rebuild index from scratch
@@ -189,12 +196,14 @@ The `compile_conditions()` function in the index module will translate these enu
    - `compile_conditions(conditions)`: Convert QueryCondition list to SQL WHERE clause
    - `query(conditions)`: Execute SQL query and return list of Bead instances
    - Handle all existing QueryCondition enum values
+   - Index queries MUST work with a read-only database
 
 4. **Add error handling and recovery**:
    - Auto-create index on first access if missing
    - Detect corrupted index and trigger rebuild
    - Graceful degradation when SQLite operations fail
-   - File locking for concurrent access protection
+   - File locking for concurrent access protection - network share, concurrent access is from another computer!
+   - On a read-only database index updates should be skipped
 
 ### Phase 3: Integration and Optimization
 **Goal**: Replace filesystem operations with SQLite queries
