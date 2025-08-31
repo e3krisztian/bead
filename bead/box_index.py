@@ -33,9 +33,16 @@ def create_schema(conn):
             content_id TEXT NOT NULL,
             kind TEXT NOT NULL,
             freeze_time_str TEXT NOT NULL,
+            freeze_time_unix INTEGER NOT NULL,
             file_path TEXT NOT NULL,
             PRIMARY KEY (name, content_id)
         )
+    ''')
+    
+    # Create index on unix timestamp for fast time-based queries
+    conn.execute('''
+        CREATE INDEX IF NOT EXISTS idx_beads_freeze_time_unix 
+        ON beads(freeze_time_unix)
     ''')
     
     conn.execute('''
@@ -61,12 +68,13 @@ def get_indexed_files(conn):
 
 def insert_bead_record(conn, archive, relative_path):
     '''Insert bead record into database.'''
+    freeze_time_unix = timestamp_to_unix_utc_microseconds(archive.freeze_time_str)
     conn.execute('''
         INSERT OR REPLACE INTO beads 
-        (name, content_id, kind, freeze_time_str, file_path)
-        VALUES (?, ?, ?, ?, ?)
+        (name, content_id, kind, freeze_time_str, freeze_time_unix, file_path)
+        VALUES (?, ?, ?, ?, ?, ?)
     ''', (archive.name, archive.content_id, archive.kind, 
-          archive.freeze_time_str, str(relative_path)))
+          archive.freeze_time_str, freeze_time_unix, str(relative_path)))
 
 
 def delete_bead_inputs(conn, name, content_id):
@@ -96,11 +104,27 @@ def find_file_path(conn, name, content_id):
     return row[0] if row else None
 
 
+def timestamp_to_unix_utc_microseconds(timestamp):
+    """Convert timestamp to UTC unix microseconds for database storage."""
+    if hasattr(timestamp, 'timestamp'):
+        return int(timestamp.timestamp() * 1_000_000)
+    elif isinstance(timestamp, str):
+        from .tech.timestamp import time_from_timestamp
+        dt = time_from_timestamp(timestamp)
+        return int(dt.timestamp() * 1_000_000)
+    return timestamp
+
+
+def unix_microseconds_to_timestamp_str(unix_microseconds):
+    """Convert unix microseconds back to ISO string for Bead objects."""
+    import datetime
+    dt = datetime.datetime.fromtimestamp(unix_microseconds / 1_000_000, tz=datetime.timezone.utc)
+    return dt.isoformat().replace('+00:00', '+0000')
+
+
 def normalize_timestamp_value(value):
-    '''Convert timestamp value to string format for database queries.'''
-    if hasattr(value, 'isoformat'):
-        return value.isoformat().replace('+00:00', '+0000')
-    return value
+    '''Convert timestamp value to unix microseconds for database queries.'''
+    return timestamp_to_unix_utc_microseconds(value)
 
 
 def build_where_clause(conditions):
@@ -109,11 +133,11 @@ def build_where_clause(conditions):
         QueryCondition.BEAD_NAME: ('name = ?', lambda v: v),
         QueryCondition.KIND: ('kind = ?', lambda v: v),
         QueryCondition.CONTENT_ID: ('content_id = ?', lambda v: v),
-        QueryCondition.AT_TIME: ('freeze_time_str = ?', normalize_timestamp_value),
-        QueryCondition.NEWER_THAN: ('freeze_time_str > ?', normalize_timestamp_value),
-        QueryCondition.OLDER_THAN: ('freeze_time_str < ?', normalize_timestamp_value),
-        QueryCondition.AT_OR_NEWER: ('freeze_time_str >= ?', normalize_timestamp_value),
-        QueryCondition.AT_OR_OLDER: ('freeze_time_str <= ?', normalize_timestamp_value),
+        QueryCondition.AT_TIME: ('freeze_time_unix = ?', normalize_timestamp_value),
+        QueryCondition.NEWER_THAN: ('freeze_time_unix > ?', normalize_timestamp_value),
+        QueryCondition.OLDER_THAN: ('freeze_time_unix < ?', normalize_timestamp_value),
+        QueryCondition.AT_OR_NEWER: ('freeze_time_unix >= ?', normalize_timestamp_value),
+        QueryCondition.AT_OR_OLDER: ('freeze_time_unix <= ?', normalize_timestamp_value),
     }
     
     where_parts = []
@@ -135,7 +159,7 @@ def query_beads(conn, conditions, box_name):
     sql = 'SELECT name, content_id, kind, freeze_time_str, file_path FROM beads'
     if where_parts:
         sql += ' WHERE ' + ' AND '.join(where_parts)
-    sql += ' ORDER BY freeze_time_str'
+    sql += ' ORDER BY freeze_time_unix'
     
     cursor = conn.execute(sql, parameters)
     
