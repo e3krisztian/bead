@@ -4,7 +4,7 @@ import pytest
 
 
 def test_with_default_workspace(robot, bead_with_inputs):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.cli('discard')
 
@@ -12,7 +12,7 @@ def test_with_default_workspace(robot, bead_with_inputs):
 
 
 def test_with_explicit_workspace(robot, bead_with_inputs):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cli('discard', bead_with_inputs)
 
     assert bead_with_inputs in robot.stdout

@@ -17,7 +17,7 @@ def test_basic_usage(robot, bead_with_history, check, times):
     robot.cd('..')
     robot.cli('discard', 'nextbead')
 
-    robot.cli('develop', 'nextbead')
+    robot.cli('edit', 'nextbead')
     robot.cd('nextbead')
     assert not os.path.exists(robot.cwd / 'input/input1')
 
@@ -37,7 +37,7 @@ def test_basic_usage(robot, bead_with_history, check, times):
 
 
 def test_update_unloaded_input_w_another_bead(robot, bead_with_inputs, bead_a, bead_b, check):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
 
     robot.cli('status')
@@ -53,7 +53,7 @@ def test_update_unloaded_input_w_another_bead(robot, bead_with_inputs, bead_a, b
 
 
 def test_load_on_workspace_without_input_gives_feedback(robot, bead_a):
-    robot.cli('develop', bead_a)
+    robot.cli('edit', bead_a)
     robot.cd(bead_a)
     robot.cli('input', 'load')
 
@@ -62,7 +62,7 @@ def test_load_on_workspace_without_input_gives_feedback(robot, bead_a):
 
 
 def test_load_with_missing_bead_gives_warning(robot, bead_with_inputs, bead_a):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.reset()
     robot.cli('input', 'load')
@@ -72,7 +72,7 @@ def test_load_with_missing_bead_gives_warning(robot, bead_with_inputs, bead_a):
 
 
 def test_load_only_one_input(robot, bead_with_inputs, bead_a, check):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.cli('input', 'load', 'input_a')
     check.loaded('input_a', bead_a)
@@ -84,13 +84,13 @@ def test_deleted_box_does_not_stop_load(robot, bead_with_inputs, tmp_path_factor
     deleted_box = tmp_path_factory.mktemp("deleted_box")
     robot.cli('box', 'add', 'missing', deleted_box)
     rmtree(deleted_box)
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.cli('input', 'load')
 
 
 def test_add_with_unrecognized_bead_name_exits_with_error(robot, bead_a):
-    robot.cli('develop', bead_a)
+    robot.cli('edit', bead_a)
     robot.cd(bead_a)
     with pytest.raises(SystemExit):
         robot.cli('input', 'add', 'x', 'non-existing-bead')
@@ -99,7 +99,7 @@ def test_add_with_unrecognized_bead_name_exits_with_error(robot, bead_a):
 
 
 def test_add_with_path_separator_in_name_is_error(robot, bead_a, bead_b):
-    robot.cli('develop', bead_a)
+    robot.cli('edit', bead_a)
     robot.cd(bead_a)
     with pytest.raises(SystemExit):
         robot.cli('input', 'add', 'name/with/path/separator', bead_b)
@@ -112,7 +112,7 @@ def test_add_with_path_separator_in_name_is_error(robot, bead_a, bead_b):
 
 
 def test_add_with_hacked_bead_is_refused(robot, hacked_bead, bead_a):
-    robot.cli('develop', bead_a)
+    robot.cli('edit', bead_a)
     robot.cd(bead_a)
     robot.cli('input', 'add', 'hack', hacked_bead)
     assert not Workspace(robot.cwd).has_input('hack')
@@ -120,7 +120,7 @@ def test_add_with_hacked_bead_is_refused(robot, hacked_bead, bead_a):
 
 
 def test_update_with_hacked_bead_is_refused(robot, hacked_bead, bead_a, check):
-    robot.cli('develop', bead_a)
+    robot.cli('edit', bead_a)
     robot.cd(bead_a)
     robot.cli('input', 'add', 'intelligence', bead_a)
     robot.cli('input', 'update', 'intelligence', hacked_bead)
@@ -199,7 +199,7 @@ def test_update_with_same_bead_is_noop(robot, bead_a):
 
 
 def test_unload_all(robot, bead_with_inputs):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.cli('input', 'load')
     assert os.path.exists(robot.cwd / 'input/input_a')
@@ -211,7 +211,7 @@ def test_unload_all(robot, bead_with_inputs):
 
 
 def test_unload(robot, bead_with_inputs):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.cli('input', 'load')
     assert os.path.exists(robot.cwd / 'input/input_a')
@@ -231,7 +231,7 @@ def test_unload(robot, bead_with_inputs):
 
 
 def test_delete_nonexisting_input(robot, bead_a):
-    robot.cli('develop', bead_a)
+    robot.cli('edit', bead_a)
     robot.cd(bead_a)
     with pytest.raises(SystemExit):
         robot.cli('input', 'delete', 'nonexisting')

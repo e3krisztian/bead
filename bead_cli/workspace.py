@@ -122,7 +122,7 @@ class CmdSave(Command):
 DERIVE_FROM_BEAD_NAME = DefaultArgSentinel('derive one from bead name')
 
 
-class CmdDevelop(Command):
+class CmdEdit(Command):
     '''
     Unpack a bead as a source tree.
 
@@ -134,12 +134,12 @@ class CmdDevelop(Command):
         arg(BEAD_REF_BASE)
         arg(BEAD_TIME)
         arg(WORKSPACE_defaulting_to(DERIVE_FROM_BEAD_NAME))
-        arg('-x', '--extract-output', dest='extract_output',
+        arg('--review', dest='review',
             default=False, action='store_true',
-            help='Extract output data as well (normally it is not needed!).')
+            help='Include output data for review (normally not needed for editing).')
 
     def run(self, args, env: 'Environment'):
-        extract_output = args.extract_output
+        review = args.review
         try:
             bead = resolve_bead(env, args.bead_ref_base, args.bead_time)
         except LookupError:
@@ -159,7 +159,7 @@ class CmdDevelop(Command):
         bead.unpack_to(workspace)
         assert workspace.is_valid
 
-        if extract_output:
+        if review:
             output_directory = workspace.directory / layouts.Workspace.OUTPUT
             bead.unpack_data_to(output_directory)
 

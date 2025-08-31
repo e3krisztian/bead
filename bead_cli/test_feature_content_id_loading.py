@@ -17,7 +17,7 @@ def test_status_displays_input_information_correctly(robot, bead_a, bead_with_hi
     _copy(box, bead_with_history, times.TS2, 'copied_bead2')
 
     # Add inputs using the copied bead names
-    cli('develop', bead_a)
+    cli('edit', bead_a)
     cd(bead_a)
     cli('input', 'add', 'input1', 'copied_bead1')
     cli('input', 'add', 'input2', 'copied_bead2')
@@ -47,7 +47,7 @@ def test_update_finds_newest_by_kind_not_name(robot, bead_a, bead_with_history, 
     _copy(box, bead_with_history, times.TS2, 'old_copy2')
 
     # Set up workspace with inputs pointing to older copies
-    cli('develop', bead_a)
+    cli('edit', bead_a)
     cd(bead_a)
     cli('input', 'add', 'input1', 'old_copy1')
     cli('input', 'add', 'input2', 'old_copy2')
@@ -70,7 +70,7 @@ def test_explicit_bead_update_with_new_reference(robot, bead_a, bead_with_histor
 
     # Set up workspace with one input
     _copy(box, bead_with_history, times.TS1, 'initial_bead')
-    cli('develop', bead_a)
+    cli('edit', bead_a)
     cd(bead_a)
     cli('input', 'add', 'test_input', 'initial_bead')
     check.loaded('test_input', times.TS1)
@@ -87,9 +87,9 @@ def test_explicit_bead_update_with_new_reference(robot, bead_a, bead_with_histor
     check.loaded('test_input', times.TS5)  # finds newest of the kind
 
 
-def test_save_and_develop_preserves_content_id_references(robot, bead_a, bead_with_history, box, check, times):
+def test_save_and_edit_preserves_content_id_references(robot, bead_a, bead_with_history, box, check, times):
     """
-    Test that save/develop cycle preserves content_id-based input references.
+    Test that save/edit cycle preserves content_id-based input references.
     """
     cd = robot.cd
     cli = robot.cli
@@ -98,18 +98,18 @@ def test_save_and_develop_preserves_content_id_references(robot, bead_a, bead_wi
     _copy(box, bead_with_history, times.TS1, 'test_bead1')
     _copy(box, bead_with_history, times.TS2, 'test_bead2')
 
-    cli('develop', bead_a)
+    cli('edit', bead_a)
     cd(bead_a)
     cli('input', 'add', 'input1', 'test_bead1')
     cli('input', 'add', 'input2', 'test_bead2')
     check.loaded('input1', times.TS1)
     check.loaded('input2', times.TS2)
 
-    # Save and develop new version
+    # Save and edit new version
     cli('save')
     cd('..')
     cli('discard', bead_a)
-    cli('develop', bead_a)
+    cli('edit', bead_a)
     cd(bead_a)
 
     cli('input', 'load')
@@ -130,8 +130,8 @@ def test_load_finds_renamed_bead_by_content_id(
     cd = robot.cd
     cli = robot.cli
 
-    # develop new version of A using B as its input
-    cli('develop', bead_a)
+    # edit new version of A using B as its input
+    cli('edit', bead_a)
     cd(bead_a)
     cli('input', 'add', 'b', bead_b)
     check.loaded('b', bead_b)

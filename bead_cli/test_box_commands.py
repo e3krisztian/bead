@@ -48,7 +48,7 @@ def test_shared_box_update(alice, bob, bead):
     bob.cli('input', 'add', 'alicebead1', bead)
     bob.cli('input', 'add', 'alicebead2', bead)
 
-    alice.cli('develop', bead)
+    alice.cli('edit', bead)
     alice.cd('bead')
     alice.write_file('output/datafile', '''Alice's new data''')
     alice.cli('save')

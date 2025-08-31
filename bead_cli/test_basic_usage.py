@@ -45,10 +45,10 @@ def test_basic_command_line(robot, cli, cd, ls, box_dir):
     cli('save')
 
     cd('..')
-    cli('develop', 'something', 'something-develop')
-    assert robot.cwd / 'something-develop' in ls()
+    cli('edit', 'something', 'something-derived')
+    assert robot.cwd / 'something-derived' in ls()
 
-    cd('something-develop')
+    cd('something-derived')
     cli('input', 'add', 'older-self', 'something')
     cli('status')
     assert 'Inputs' in robot.stdout
@@ -61,11 +61,11 @@ def test_basic_command_line(robot, cli, cd, ls, box_dir):
     cd('..')
     cli('discard', 'something')
 
-    something_develop_dir = robot.home / 'something-develop'
-    if os.path.exists(something_develop_dir):
+    something_derived_dir = robot.home / 'something-derived'
+    if os.path.exists(something_derived_dir):
         # on windows it is not possible to remove
         # the current working directory (discard does this)
         assert os.name != 'posix', 'Must be removed on posix'
-        assert [] == ls(something_develop_dir)
-        os.rmdir(something_develop_dir)
+        assert [] == ls(something_derived_dir)
+        os.rmdir(something_derived_dir)
     assert [] == ls(robot.home)

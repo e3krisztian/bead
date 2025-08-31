@@ -169,7 +169,7 @@ class CmdUpdate(Command):
             except LookupError:
                 die(f'Could not find bead for "{input.name}"')
         else:
-            # path or new bead by name - same as input add, develop
+            # path or new bead by name - same as input add, edit
             if args.bead_offset:
                 die('--prev/--next is not supported when an input is replaced with another bead')
             archive = resolve_bead(env, bead_ref_base, args.bead_time)
