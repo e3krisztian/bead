@@ -249,7 +249,7 @@ class BoxIndex:
         try:
             with create_query_connection(self.index_path) as conn:
                 indexed_files = get_indexed_files(conn)
-            
+
             for archive_path in self.box_directory.glob('*.zip'):
                 relative_path = archive_path.relative_to(self.box_directory)
                 if str(relative_path) not in indexed_files:
