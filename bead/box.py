@@ -413,7 +413,8 @@ class Box:
     def __init__(self, name: str, location: Path):
         self.name = name
         self.location = location
-        self.resolver = self._select_resolver()
+        from .box_index import create_resolver
+        self.resolver = create_resolver(self.directory)
 
     @property
     def directory(self):
@@ -424,50 +425,6 @@ class Box:
         '''
         return Path(self.location)
     
-    def _select_resolver(self) -> BoxResolver:
-        '''
-        Select appropriate resolver strategy based on directory access and SQLite index availability.
-        
-        Strategy selection:
-        1. No SQLite index, no write access -> RawFilesystemResolver
-        2. No SQLite index, have write access -> BoxIndex
-        3. SQLite index exists, no read access -> NullResolver  
-        4. SQLite index exists, read-only access -> BoxIndex
-        5. SQLite index exists, read-write access -> BoxIndex
-        '''
-        index_path = self.directory / '.index.sqlite'
-        
-        # Check if SQLite index exists
-        if index_path.exists():
-            # Index exists - check if we can read it
-            try:
-                # Try to open for reading
-                import sqlite3
-                conn = sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)
-                conn.close()
-                # We can read the index - use BoxIndex
-                from .box_index import BoxIndex
-                index = BoxIndex(self.directory)
-                try:
-                    index.sync()  # Try to sync if we have write access
-                except Exception:
-                    pass  # Read-only is fine
-                return index
-            except Exception:
-                # Cannot read the index - use NullResolver
-                return NullResolver()
-        else:
-            # No index exists - check if we can create one
-            try:
-                # Test write access by trying to create the index
-                from .box_index import BoxIndex
-                index = BoxIndex(self.directory)
-                index.sync()  # This will create the index if we have write access
-                return index
-            except Exception:
-                # Cannot create index - use RawFilesystemResolver
-                from .box_rawfs import RawFilesystemResolver
-                return RawFilesystemResolver(self.directory)
 
     def all_beads(self) -> list[Bead]:
         '''
