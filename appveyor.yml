@@ -6,11 +6,11 @@ environment:
     global:
         SOURCE_DIRS: bead bead_cli tests
     matrix:
-        - PYTHON: "C:/Python37"
+        - PYTHON: "C:/Python310-x64"
           CHECK_SOURCE_CODE: TRUE
           DUMP_CI_VM_INFO: TRUE
 
-        - PYTHON: "C:/Python37"
+        - PYTHON: "C:/Python310-x64"
           RUN_TESTS: TRUE
 
 install:
