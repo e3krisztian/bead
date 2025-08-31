@@ -1,5 +1,6 @@
 import os
 
+from bead.tech.fs import rmtree
 import pytest
 
 from bead.box import Box
@@ -118,7 +119,7 @@ def test_invalid_box_specified(robot_multi_box, box1, box2):
 def test_save_to_box_without_backing_directory(robot_multi_box, box1, box2):
     robot = robot_multi_box
     robot.cli('new', 'bead')
-    os.rmdir(box2.directory)
+    rmtree(box2.directory)
     with pytest.raises(SystemExit):
         robot.cli('save', box2.name, '-w', 'bead')
     assert 'ERROR' in robot.stderr

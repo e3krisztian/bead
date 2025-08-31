@@ -1,5 +1,6 @@
 import os
 
+from bead.tech.fs import rmtree
 import pytest
 
 from bead.workspace import Workspace
@@ -82,7 +83,7 @@ def test_load_only_one_input(robot, bead_with_inputs, bead_a, check):
 def test_deleted_box_does_not_stop_load(robot, bead_with_inputs, tmp_path_factory):
     deleted_box = tmp_path_factory.mktemp("deleted_box")
     robot.cli('box', 'add', 'missing', deleted_box)
-    os.rmdir(deleted_box)
+    rmtree(deleted_box)
     robot.cli('develop', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.cli('input', 'load')
