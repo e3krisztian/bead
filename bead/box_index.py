@@ -105,34 +105,25 @@ def build_where_clause(conditions):
     '''Build SQL WHERE clause from query conditions.'''
     from .box import QueryCondition
     
+    condition_mapping = {
+        QueryCondition.BEAD_NAME: ('name = ?', lambda v: v),
+        QueryCondition.KIND: ('kind = ?', lambda v: v),
+        QueryCondition.CONTENT_ID: ('content_id = ?', lambda v: v),
+        QueryCondition.AT_TIME: ('freeze_time_str = ?', normalize_timestamp_value),
+        QueryCondition.NEWER_THAN: ('freeze_time_str > ?', normalize_timestamp_value),
+        QueryCondition.OLDER_THAN: ('freeze_time_str < ?', normalize_timestamp_value),
+        QueryCondition.AT_OR_NEWER: ('freeze_time_str >= ?', normalize_timestamp_value),
+        QueryCondition.AT_OR_OLDER: ('freeze_time_str <= ?', normalize_timestamp_value),
+    }
+    
     where_parts = []
     parameters = []
     
     for condition_type, value in conditions:
-        if condition_type == QueryCondition.BEAD_NAME:
-            where_parts.append('name = ?')
-            parameters.append(value)
-        elif condition_type == QueryCondition.KIND:
-            where_parts.append('kind = ?')
-            parameters.append(value)
-        elif condition_type == QueryCondition.CONTENT_ID:
-            where_parts.append('content_id = ?')
-            parameters.append(value)
-        elif condition_type == QueryCondition.AT_TIME:
-            where_parts.append('freeze_time_str = ?')
-            parameters.append(normalize_timestamp_value(value))
-        elif condition_type == QueryCondition.NEWER_THAN:
-            where_parts.append('freeze_time_str > ?')
-            parameters.append(normalize_timestamp_value(value))
-        elif condition_type == QueryCondition.OLDER_THAN:
-            where_parts.append('freeze_time_str < ?')
-            parameters.append(normalize_timestamp_value(value))
-        elif condition_type == QueryCondition.AT_OR_NEWER:
-            where_parts.append('freeze_time_str >= ?')
-            parameters.append(normalize_timestamp_value(value))
-        elif condition_type == QueryCondition.AT_OR_OLDER:
-            where_parts.append('freeze_time_str <= ?')
-            parameters.append(normalize_timestamp_value(value))
+        if condition_type in condition_mapping:
+            sql_clause, value_transformer = condition_mapping[condition_type]
+            where_parts.append(sql_clause)
+            parameters.append(value_transformer(value))
     
     return where_parts, parameters
 
