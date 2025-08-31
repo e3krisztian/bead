@@ -78,18 +78,17 @@ def make_argument_parser(defaults):
             ('unload', input.CmdUnload, 'Unload input data.'),
         ))
 
-    (parser
-        .group('box', 'Manage bead boxes')
-        .commands(
-            ('add', box.CmdAdd, 'Define a box.'),
-            ('list', box.CmdList, 'Show known boxes.'),
-            ('forget', box.CmdForget, 'Forget a known box.'),
-        )
-        )
-        # .group('index', 'Manage box indexes')
-        # .commands(
-        #     ('rebuild', box.CmdIndexRebuild, 'Rebuild SQLite index for a box directory.'),
-        # ))
+    box_parser = parser.group('box', 'Manage bead boxes')
+    box_parser.commands(
+        ('add', box.CmdAdd, 'Define a box.'),
+        ('list', box.CmdList, 'Show known boxes.'),
+        ('forget', box.CmdForget, 'Forget a known box.'),
+    )
+
+    index_parser = box_parser.group('index', 'Manage box indexes')
+    index_parser.commands(
+        ('rebuild', box.CmdIndexRebuild, 'Rebuild SQLite index for a box directory.'),
+    )
 
     parser.autocomplete()
 
