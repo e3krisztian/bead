@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .bead import Bead
 from .exceptions import BoxIndexError
+from .meta import InputSpec
 from .ziparchive import ZipArchive
 
 
@@ -166,7 +167,6 @@ def load_bead_inputs(conn, name, content_id):
     inputs = []
     for row in cursor.fetchall():
         input_name, input_kind, input_content_id, input_freeze_time_str = row
-        from .meta import InputSpec
         inputs.append(InputSpec(
             name=input_name,
             kind=input_kind,
