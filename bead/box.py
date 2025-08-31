@@ -46,6 +46,24 @@ class BoxResolver(Protocol):
         ...
 
 
+class NullResolver:
+    """
+    No-op resolver that returns empty results for all operations.
+    """
+    
+    def get_beads(self, conditions, box_name: str) -> list[Bead]:
+        """Return empty list - no beads found."""
+        return []
+    
+    def get_file_path(self, name: str, content_id: str) -> Path:
+        """Always raise LookupError - no beads exist."""
+        raise LookupError(f"Bead not found: name='{name}', content_id='{content_id}'")
+    
+    def add_archive_file(self, archive_path: Path) -> None:
+        """No-op - ignore archive additions."""
+        pass
+
+
 class QueryCondition(Enum):
     BEAD_NAME = auto()
     KIND = auto()
