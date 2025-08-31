@@ -21,6 +21,7 @@ from typing import Protocol
 from . import tech
 from .bead import Archive
 from .bead import Bead
+from .box_query import QueryCondition
 from .exceptions import BoxError
 from .exceptions import InvalidArchive
 from .tech.timestamp import time_from_timestamp
@@ -62,19 +63,6 @@ class NullResolver:
     def add_archive_file(self, archive_path: Path) -> None:
         """No-op - ignore archive additions."""
         pass
-
-
-class QueryCondition(Enum):
-    BEAD_NAME = auto()
-    KIND = auto()
-    CONTENT_ID = auto()
-    AT_TIME = auto()
-    NEWER_THAN = auto()
-    OLDER_THAN = auto()
-    AT_OR_NEWER = auto()
-    AT_OR_OLDER = auto()
-
-
 
 
 ARCHIVE_COMMENT = '''

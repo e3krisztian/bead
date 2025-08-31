@@ -4,7 +4,7 @@ from typing import Iterator
 from . import tech
 from .bead import Archive
 from .bead import Bead
-from .box import QueryCondition
+from .box_query import QueryCondition
 from .exceptions import InvalidArchive
 from .ziparchive import ZipArchive
 

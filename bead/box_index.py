@@ -104,7 +104,7 @@ def normalize_timestamp_value(value):
 
 def build_where_clause(conditions):
     '''Build SQL WHERE clause from query conditions.'''
-    from .box import QueryCondition
+    from .box_query import QueryCondition
     
     condition_mapping = {
         QueryCondition.BEAD_NAME: ('name = ?', lambda v: v),
