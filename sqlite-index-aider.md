@@ -1,60 +1,69 @@
 # Requirements Document: SQLite-Based Box Index
 
-Change `Box` and `BeadSearch` implementation to use and return `Bead` instances, not `Archive` instances as query results.
-`Box` should provide a `.resolve(Bead) -> Archive` method, which can be used to map `BeadSearch` results (`Bead`s) to `Archive`s.
-`Bead`'s (`.box_name`, `.name`, `.content_id`) property-tuple should be enough to properly resolve an `Archive`.
-`Box` should maintain an internal map to back this resolution, and not parse up files again.
-Later this internal map will be directly supported and replaced by an sqlite database based index.
-`Box.resolve(bead)` should validate that the resolved `Archive` matches with the input `bead`.
-This validation is a safety measure, that ensures, that when later we use an index, its content are in sync with the file system.
-
 ## Overview
-Implement an SQLite-based index for bead storage and retrieval used from `Box`.
+Implement an SQLite-based index for bead storage and retrieval to replace filesystem-based operations in the `Box` class. The index will provide fast queries, concurrent access protection, and dependency tracking while maintaining full backward compatibility.
 
 ## Functional Requirements
 
-### FR1: SQLite Index Module
-- **FR1.1**: Create dedicated `bead/box_index.py` module
-- **FR1.2**: No ORM dependency - use raw SQLite3
-- **FR1.3**: Index is authoritative - anything not in index does not exist
+### FR1: API Design (Bead vs Archive)
+- **FR1.1**: `Box` and `BeadSearch` work with `Bead` instances, not `Archive` instances as query results
+- **FR1.2**: `Box.resolve(Bead) -> Archive` method maps `BeadSearch` results to extractable `Archive`s
+- **FR1.3**: `Bead`'s `(box_name, name, content_id)` tuple is sufficient to resolve an `Archive`
+- **FR1.4**: `Box.resolve(bead)` validates that resolved `Archive` matches input `bead`
+- **FR1.5**: Validation ensures index content stays in sync with filesystem
 
-### FR2: Index Operations
-- **FR2.1**: `rebuild()` - Enumerate all files in box directory and rebuild index from scratch
-- **FR2.2**: `sync()` - Discover new files to add to index
-- **FR2.3**: `add_bead()` - Add single bead to index when stored
-- **FR2.4**: `remove_bead()` - Remove bead from index when file deleted (manual only)
-- **FR2.5**: `compile_conditions()` - Build an SQL query and parameters from a list of (`QueryCondition`, value) pairs
-- **FR2.6**: `query()` - Run a query against the index, returning a list of `Bead`s using `compile_conditions` to translate the query
-- **FR2.7**: Manual removal only - no automatic cleanup
+### FR2: SQLite Index Module
+- **FR2.1**: Create dedicated `bead/box_index.py` module
+- **FR2.2**: No ORM dependency - use raw SQLite3
+- **FR2.3**: Index is authoritative - anything not in index does not exist from Box perspective
+- **FR2.4**: Index stored as `.index.sqlite` under `Box.directory`
 
-### FR3: Failure Handling
-- **FR3.1**: Handle missing index - auto-rebuild on first access
-- **FR3.2**: Handle corrupted index - detect and rebuild
-- **FR3.3**: Concurrent access protection for NFS/SSHFS environments - over the network from another computer
-- **FR3.4**: Graceful degradation when index operations fail
-- **FR3.4**: Graceful degradation to current solution, when index use is not possible (e.g. read only filesystem)
-- **FR3.5**: Recognize index mismatch (`Bead`) against actual created `Archive` from referenced file, and abort with a message
+### FR3: Index Operations
+- **FR3.1**: `rebuild()` - Enumerate all files in box directory and rebuild index from scratch
+- **FR3.2**: `sync()` - Discover new files to add to index
+- **FR3.3**: `add_bead()` - Add single bead to index when stored
+- **FR3.4**: `remove_bead()` - Remove bead from index when file deleted (manual only)
+- **FR3.5**: `compile_conditions()` - Build SQL query and parameters from `QueryCondition` list
+- **FR3.6**: `query()` - Run query against index, returning list of `Bead`s
+- **FR3.7**: `get_file_path()` - Resolve `(name, content_id)` to file path for `Box.resolve()`
+- **FR3.8**: Manual removal only - no automatic cleanup
 
-### FR4: Search Implementation
-- **FR4.1**: All existing search operations must work (by_name, by_kind, by_content_id, time filters, etc.)
-- **FR4.2**: Performance improvement over current filesystem-based filtering
+### FR4: Failure Handling and Robustness
+- **FR4.1**: Handle missing index - auto-rebuild on first access
+- **FR4.2**: Handle corrupted index - detect and rebuild
+- **FR4.3**: Graceful degradation when index operations fail
+- **FR4.4**: Graceful degradation to filesystem-based solution when index unusable
+- **FR4.5**: Work with read-only index database (skip updates)
+- **FR4.6**: Work with read-only filesystem (if index exists)
+- **FR4.7**: Fall back to non-index solution when index file cannot be created
+- **FR4.8**: Recognize index mismatch against actual `Archive` and abort with message
 
-### FR5: Name Resolution
-- **FR5.1**: Resolve beads by name ONLY when name comes from user input
-- **FR5.2**: No translation between local names and "real" bead names
-- **FR5.3**: Direct name → bead lookup via SQLite queries
-- **FR5.4**: freeze_name is some immutable name - it is not used for name resolution
-- **FR5.5**: name field is used for name resolution/matching, the name field is derived from the file name
+### FR5: Search and Query Implementation
+- **FR5.1**: All existing search operations work (by_name, by_kind, by_content_id, time filters, etc.)
+- **FR5.2**: Performance improvement over current filesystem-based filtering
+- **FR5.3**: Support all existing `QueryCondition` enum values
+- **FR5.4**: Index queries work with read-only database
 
-### FR6: Input Tracking
-- **FR6.1**: Store input specifications for each bead in the index
-- **FR6.2**: Support querying beads by their input dependencies
-- **FR6.3**: Enable dependency graph construction from index data
-- **FR6.4**: Maintain referential integrity between beads and their inputs
+### FR6: Name Resolution
+- **FR6.1**: Resolve beads by name ONLY when name comes from user input
+- **FR6.2**: No translation between local names and "real" bead names
+- **FR6.3**: Direct name → bead lookup via SQLite queries
+- **FR6.4**: `freeze_name` is immutable - not used for name resolution
+- **FR6.5**: `name` field used for name resolution/matching, derived from file name
+
+### FR7: Input Dependency Tracking
+- **FR7.1**: Store input specifications for each bead in the index
+- **FR7.2**: Support querying beads by their input dependencies
+- **FR7.3**: Enable dependency graph construction from index data
+- **FR7.4**: Maintain referential integrity between beads and their inputs
+
+### FR8: Cross-Platform and Network Support
+- **FR8.1**: Work on Windows, MacOS, Linux
+- **FR8.2**: Work on network filesystems (NFS/SSHFS)
+- **FR8.3**: Concurrent access protection for network environments
+- **FR8.4**: Handle access from multiple computers over network
 
 ## Data Model
-
-Store the index with the name `.index.sqlite` under `Box.directory`.
 
 ### SQLite Schema
 
@@ -118,7 +127,7 @@ CREATE INDEX idx_inputs_name ON inputs(input_name);
 
 ### Query Conditions
 
-The existing `QueryCondition` enum from `bead/box.py` will be used unchanged:
+The existing `QueryCondition` enum from `bead/box.py`:
 
 ```python
 class QueryCondition(Enum):
@@ -132,8 +141,6 @@ class QueryCondition(Enum):
     AT_OR_OLDER = auto()
 ```
 
-The `compile_conditions()` function in the index module will translate these enum values to appropriate SQL WHERE clauses and parameters.
-
 ## Success Criteria
 
 - All existing functionality preserved
@@ -142,111 +149,121 @@ The `compile_conditions()` function in the index module will translate these enu
 - Input dependency queries execute efficiently
 - Index rebuilds complete in reasonable time for large boxes
 - Graceful handling of filesystem inconsistencies
-- Should work on Windows, MacOs, Linux, and network file systems
-- Should work with a read-only index database
-- Should work with a read-only filesystem (if there is an index)
-- Fall back to non-index use (current solution), when the box is on a filesystem where the index file can not be re-created
+- Cross-platform compatibility (Windows, MacOS, Linux)
+- Network filesystem support (NFS/SSHFS)
+- Read-only database and filesystem support
+- Automatic fallback to filesystem-based operations when needed
 
 ## Implementation Plan
 
-### Phase 1: API Transition (Bead vs Archive)
+### Phase 1: API Transition (Bead vs Archive) ✅ COMPLETED
 **Goal**: Change Box and BeadSearch to work with Bead instances instead of Archive instances
 
-1. **Rename Box.get_archives() to Box.get_beads()**:
-   - Rename method from `get_archives()` to `get_beads()`
-   - Change return type from `list[Archive]` to `list[Bead]`
-   - Keep existing filesystem-based implementation initially
-   - Create Bead instances from Archive metadata
+**Completed Work**:
+1. ✅ **Box.get_beads() method**: 
+   - Renamed from `get_archives()` to `get_beads()`
+   - Returns `list[Bead]` instead of `list[Archive]`
+   - Uses existing filesystem-based implementation
+   - Creates Bead instances from Archive metadata via `_bead_from_archive()`
 
-2. **Add Box.resolve(Bead) → Archive method**:
-   - Take a Bead instance and return corresponding Archive
-   - Use `(box_name, name, content_id)` tuple for resolution
-   - Validate that resolved Archive matches input Bead
-   - Initially implement by re-parsing the archive file
-   - Add helper method `_bead_from_archive(archive)` to create Bead from Archive
+2. ✅ **Box.resolve(Bead) → Archive method**:
+   - Takes Bead instance and returns corresponding Archive
+   - Uses `(box_name, name, content_id)` tuple for resolution
+   - Validates that resolved Archive matches input Bead
+   - Implemented by re-parsing archive file with filesystem globbing
 
-3. **Update BaseSearch and BoxSearch classes**:
-   - Change `_get_beads()` to work with new Box.get_beads() signature
-   - All search methods (first, newest, oldest, etc.) now return Archives by calling Box.resolve()
-   - Keep existing fluent API unchanged for backward compatibility
+3. ✅ **Updated Search classes**:
+   - `BaseSearch` and `BoxSearch` work with new `Box.get_beads()` signature
+   - All search methods (first, newest, oldest, etc.) return Beads
+   - Fluent API unchanged for backward compatibility
+   - `MultiBoxSearch` adapted for Bead instances across multiple boxes
 
-4. **Update MultiBoxSearch**:
-   - Adapt to work with Bead instances from multiple boxes
-   - Handle Box.resolve() calls across different boxes
-   - Update first() method to use get_beads() and resolve()
-
-### Phase 2: SQLite Index Implementation
+### Phase 2: SQLite Index Implementation 📋 PLANNED
 **Goal**: Create the SQLite-based index infrastructure
 
+**Planned Work**:
 1. **Create bead/box_index.py module**:
    - `BoxIndex` class managing SQLite database lifecycle
    - Schema creation with beads and inputs tables
    - Database file location: `{Box.directory}/.index.sqlite`
-   - should provide a function that decides if the BoxIndex can be used or not:
-      - checks if there is an accessible index file (at least read only access should be allowed)
-      - checks if there is no index, a new index file can be created
+   - Add filesystem access checks (read-only detection)
 
 2. **Implement core index operations**:
    - `rebuild()`: Scan box directory, parse all archives, rebuild index from scratch
    - `sync()`: Scan directory and add any files not already in index
    - `add_bead(archive_path)`: Add single bead when Box.store() creates new archive
-   - `remove_bead(archive_path)`: Remove bead from index when file deleted (manual only)
+   - `remove_bead(archive_path)`: Remove bead from index when file deleted
+   - Graceful handling of invalid archives during indexing
 
 3. **Implement query functionality**:
    - `compile_conditions(conditions)`: Convert QueryCondition list to SQL WHERE clause
    - `query(conditions)`: Execute SQL query and return list of Bead instances
+   - `get_file_path()`: Resolve `(name, content_id)` to file path
    - Handle all existing QueryCondition enum values
-   - Index queries MUST work with a read-only database
+   - Index queries work with read-only database
 
-4. **Add error handling and recovery**:
+4. **Add error handling and robustness**:
    - Auto-create index on first access if missing
    - Detect corrupted index and trigger rebuild
-   - Graceful degradation when SQLite operations fail
-   - File locking for concurrent access protection - network share, concurrent access is from another computer!
-   - On a read-only database index updates should be skipped
+   - Implement graceful degradation to filesystem-based operations
+   - Add comprehensive error handling for network filesystems
+   - Performance testing and optimization
 
-### Phase 3: Integration and Optimization
+### Phase 3: Integration and Optimization 📋 PLANNED
 **Goal**: Replace filesystem operations with SQLite queries
 
+**Planned Work**:
 1. **Integrate BoxIndex into Box class**:
-   - Initialize BoxIndex in Box constructor
-   - Call `sync()` on Box initialization
-   - Call `add_bead()` in Box.store() method
+   - Initialize BoxIndex in Box constructor with fallback detection
+   - Call `sync()` on Box initialization (if index available)
+   - Call `add_bead()` in Box.store() method (if index available)
+   - Add index availability checking
 
 2. **Replace Box.get_beads() implementation**:
    - Remove filesystem globbing and Archive parsing
    - Use BoxIndex.query() to get Bead instances directly
    - Maintain same method signature and behavior
+   - Fall back to filesystem operations if index unavailable
 
 3. **Optimize Box.resolve() method**:
    - Use index to look up file_path from `(name, content_id)`
    - Create Archive directly from file path
-   - Validate Archive matches Bead (FR3.5 requirement)
-   - No caching needed - index serves as lookup table
+   - Validate Archive matches Bead (FR4.8 requirement)
+   - Fall back to filesystem globbing if index unavailable
 
 4. **Input dependency support**:
    - Store input specifications in inputs table during add_bead()
    - Implement queries for dependency graph construction
    - Add methods to query beads by their input dependencies
 
-### Phase 4: Testing and Validation
+### Phase 4: Testing and Validation 📋 PLANNED
 **Goal**: Ensure reliability and performance
 
+**Planned Work**:
 1. **Comprehensive testing**:
    - All existing Box and BeadSearch functionality works unchanged
    - Performance benchmarks show >50% improvement
    - Concurrent access testing on shared filesystems
    - Index corruption and recovery scenarios
+   - Read-only filesystem and database scenarios
 
-2. **Migration strategy**:
+2. **Cross-platform validation**:
+   - Windows, MacOS, Linux compatibility
+   - Network filesystem testing (NFS/SSHFS)
+   - Concurrent access from multiple computers
+
+3. **Migration and deployment**:
    - Existing boxes work immediately (auto-rebuild index)
    - No data migration required
    - Backward compatibility maintained
+   - Performance monitoring and optimization
 
-### Key Design Principles
+## Key Design Principles
 
 - **No caching**: Index provides file paths, Archives created on-demand
 - **Simple resolution**: `(name, content_id)` → file_path → Archive
 - **Validation**: Every resolve() validates index vs filesystem consistency
 - **Existing API preserved**: All current Box and BeadSearch methods work unchanged
 - **Performance**: SQLite queries replace filesystem operations and Python filtering
+- **Graceful degradation**: Always fall back to filesystem operations when index unavailable
+- **Cross-platform**: Work reliably on all supported platforms and network filesystems
