@@ -16,18 +16,26 @@ class RawFilesystemResolver:
     """
     Filesystem-based bead resolver with lazy caching.
     """
-    
+
     def __init__(self, box_directory: Path):
         self.box_directory = Path(box_directory)
         self._bead_cache = {}  # (name, content_id) -> Bead
         self._path_cache = {}  # (name, content_id) -> Path
-    
+
     def _cache_bead_and_path(self, bead: Bead, path: Path) -> None:
         """Cache both bead and path for given bead."""
         key = (bead.name, bead.content_id)
         self._bead_cache[key] = bead
         self._path_cache[key] = path
-    
+
+    def _glob_bead_files(self, bead_name: str = '') -> Iterator[Path]:
+        """Glob for bead files in box directory, optionally filtered by bead name."""
+        if bead_name:
+            pattern = bead_name + '_????????T????????????[-+]????.zip'
+        else:
+            pattern = '*.zip'
+        return self.box_directory.glob(pattern)
+
     def get_beads(self, conditions, box_name: str) -> list[Bead]:
         """Retrieve beads matching conditions by scanning filesystem."""
         match = compile_conditions(conditions)
@@ -39,14 +47,12 @@ class RawFilesystemResolver:
         if bead_names:
             if len(bead_names) > 1:
                 return []
-            glob = bead_names.pop() + '_????????T????????????[-+]????.zip'
+            paths = self._glob_bead_files(bead_names.pop())
         else:
-            glob = '*'
+            paths = self._glob_bead_files()
 
-        paths = self.box_directory.glob(glob)
-        archives = self._archives_from(paths, box_name)
         beads = []
-        for archive in archives:
+        for archive in self._archives_from(paths, box_name):
             if match(archive):
                 bead = self._bead_from_archive(archive)
                 beads.append(bead)
@@ -75,18 +81,17 @@ class RawFilesystemResolver:
         bead.freeze_time_str = archive.freeze_time_str
         bead.box_name = archive.box_name
         return bead
-    
+
     def get_file_path(self, name: str, content_id: str) -> Path:
         """Get file path for bead by name and content_id."""
         key = (name, content_id)
-        
+
         # Check cache first
         if key in self._path_cache:
             return self._path_cache[key]
-        
+
         # Search filesystem and cache result
-        glob = name + '_????????T????????????[-+]????.zip'
-        for path in self.box_directory.glob(glob):
+        for path in self._glob_bead_files(name):
             try:
                 archive = ZipArchive(path, box_name='')
                 if archive.name == name and archive.content_id == content_id:
@@ -96,9 +101,9 @@ class RawFilesystemResolver:
                     return path
             except InvalidArchive:
                 continue
-        
+
         raise LookupError(f"Bead not found: name='{name}', content_id='{content_id}'")
-    
+
     def add_archive_file(self, archive_path: Path) -> None:
         """Add archive file to resolver cache."""
         try:
