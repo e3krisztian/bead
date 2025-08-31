@@ -4,7 +4,7 @@ SQLite-based index for bead storage and retrieval.
 
 import sqlite3
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Optional
 
 from .bead import Bead
 from .box import QueryCondition
