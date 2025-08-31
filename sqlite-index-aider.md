@@ -160,7 +160,7 @@ class QueryCondition(Enum):
 **Goal**: Change Box and BeadSearch to work with Bead instances instead of Archive instances
 
 **Completed Work**:
-1. ✅ **Box.get_beads() method**: 
+1. ✅ **Box.get_beads() method**:
    - Renamed from `get_archives()` to `get_beads()`
    - Returns `list[Bead]` instead of `list[Archive]`
    - Uses existing filesystem-based implementation
@@ -267,3 +267,89 @@ class QueryCondition(Enum):
 - **Performance**: SQLite queries replace filesystem operations and Python filtering
 - **Graceful degradation**: Always fall back to filesystem operations when index unavailable
 - **Cross-platform**: Work reliably on all supported platforms and network filesystems
+
+## Test Plan for Untested Areas
+
+### Overview
+The current tests focus on happy path workflows but miss many error conditions and edge cases that could occur in real usage. This minimal test plan covers the most impactful untested areas with just 5 test files.
+
+### Proposed Tests (5 files)
+
+#### 1. **Index Fallback and Recovery** (`test_box_index_fallback.py`)
+```python
+def test_index_fallback_scenarios(tmp_path):
+    """Test SQLite index fallback to filesystem when index unavailable."""
+    # Test: corrupted index -> fallback -> rebuild
+    # Test: read-only filesystem -> use filesystem resolver
+    # Test: no write permissions -> graceful degradation
+```
+**Impact**: Critical for production reliability. Index issues are likely in network environments.
+
+#### 2. **Box Error Conditions** (`test_box_error_handling.py`)
+```python
+def test_box_directory_issues(tmp_path):
+    """Test Box behavior when directory has problems."""
+    # Test: missing box directory during store()
+    # Test: corrupted archive files in directory
+    # Test: permission denied scenarios
+
+def test_resolve_validation_failures(tmp_path):
+    """Test Box.resolve() when archive doesn't match Bead."""
+    # Test: archive content_id mismatch
+    # Test: archive name mismatch
+```
+**Impact**: High. These errors will occur in real usage and need proper handling.
+
+#### 3. **Search Edge Cases** (`test_box_search_edge_cases.py`)
+```python
+def test_search_empty_results(tmp_path):
+    """Test search methods when no beads match."""
+    # Test: first(), newest(), oldest() raise LookupError
+    # Test: all() returns empty list
+
+def test_search_complex_queries(tmp_path):
+    """Test multi-condition searches and result ordering."""
+    # Test: by_name().newer_than().by_kind()
+    # Test: newest() vs oldest() with multiple matches
+    # Test: unique() filtering
+```
+**Impact**: Medium-High. Search is core functionality and edge cases will be hit.
+
+#### 4. **Multi-Box Operations** (`test_multi_box.py`)
+```python
+def test_cross_box_resolution(tmp_path):
+    """Test resolving beads across multiple boxes."""
+    # Test: resolve() finds correct box by bead.box_name
+    # Test: LookupError when box_name not found
+    # Test: MultiBoxSearch across several boxes
+
+def test_box_unavailable_scenarios(tmp_path):
+    """Test behavior when some boxes are inaccessible."""
+    # Test: search continues when one box fails
+    # Test: resolve fails gracefully for missing box
+```
+**Impact**: Medium-High. Multi-box setups are common in team environments.
+
+#### 5. **Performance and Concurrency** (`test_box_performance.py`)
+```python
+def test_large_box_performance(tmp_path):
+    """Test Box operations with many beads (100+)."""
+    # Test: search performance vs filesystem scanning
+    # Test: index rebuild time with many files
+
+def test_concurrent_box_access(tmp_path):
+    """Test multiple processes accessing same box."""
+    # Test: concurrent store() operations
+    # Test: index consistency under concurrent access
+```
+**Impact**: Medium. Performance issues will surface in production with large boxes.
+
+### Test Selection Rationale
+
+1. **Index fallback** - Most likely to break in production (network filesystems, permissions)
+2. **Error handling** - Essential for user experience when things go wrong
+3. **Search edge cases** - Core functionality that users will hit
+4. **Multi-box** - Common team setup, cross-box resolution is critical
+5. **Performance** - Will reveal scalability issues before they hit production
+
+Each test covers multiple related scenarios to maximize coverage with minimal test count. Focus is on **failure modes** and **edge cases** that are most likely to occur in real usage but aren't covered by the happy-path integration tests.
