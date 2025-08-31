@@ -236,6 +236,3 @@ class BoxIndex:
         except Exception:
             return None
     
-    def close(self):
-        '''Close database connection.'''
-        pass  # No persistent connection to close
