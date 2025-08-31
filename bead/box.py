@@ -12,6 +12,7 @@ Boxes can be used to:
 
 from abc import ABC
 from abc import abstractmethod
+from typing import Any
 from typing import Protocol
 
 from . import tech
@@ -31,7 +32,7 @@ class BoxResolver(Protocol):
     Interface for bead storage and retrieval implementations.
     """
     
-    def get_beads(self, conditions, box_name: str) -> list[Bead]:
+    def get_beads(self, conditions: list[tuple[QueryCondition, Any]], box_name: str) -> list[Bead]:
         """Retrieve beads matching conditions."""
         ...
     
@@ -49,7 +50,7 @@ class NullResolver:
     No-op resolver that returns empty results for all operations.
     """
     
-    def get_beads(self, conditions, box_name: str) -> list[Bead]:
+    def get_beads(self, conditions: list[tuple[QueryCondition, Any]], box_name: str) -> list[Bead]:
         """Return empty list - no beads found."""
         return []
     
@@ -380,7 +381,7 @@ class Box:
         '''
         return Path(self.location)
 
-    def _create_resolver(self):
+    def _create_resolver(self) -> BoxResolver:
         """
         Create appropriate resolver based on directory access and index availability.
         
