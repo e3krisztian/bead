@@ -405,12 +405,11 @@ class Box:
         Retrieve matching beads.
         '''
         # Try index first
-        beads = self.index.query(conditions, self.name)
-        if beads is not None:
-            return beads
-        
-        # Fall back to filesystem
-        return self._get_beads_from_filesystem(conditions)
+        try:
+            return self.index.query(conditions, self.name)
+        except LookupError:
+            # Fall back to filesystem
+            return self._get_beads_from_filesystem(conditions)
     
     def _get_beads_from_filesystem(self, conditions) -> list[Bead]:
         '''Fallback filesystem-based bead retrieval.'''
@@ -463,11 +462,14 @@ class Box:
             raise ValueError(f"Bead box_name '{bead.box_name}' does not match this box '{self.name}'")
 
         # Try index first
-        file_path = self.index.get_file_path(bead.name, bead.content_id)
-        if file_path and file_path.exists():
-            archive = ZipArchive(file_path, self.name)
-            self._validate_archive_matches_bead(archive, bead)
-            return archive
+        try:
+            file_path = self.index.get_file_path(bead.name, bead.content_id)
+            if file_path.exists():
+                archive = ZipArchive(file_path, self.name)
+                self._validate_archive_matches_bead(archive, bead)
+                return archive
+        except LookupError:
+            pass
         
         # Fall back to filesystem
         return self._resolve_from_filesystem(bead)

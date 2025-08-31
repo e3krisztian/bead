@@ -4,7 +4,6 @@ SQLite-based index for bead storage and retrieval.
 
 import sqlite3
 from pathlib import Path
-from typing import List, Optional
 
 from .bead import Bead
 from .box import QueryCondition
@@ -258,20 +257,24 @@ class BoxIndex:
         except Exception:
             pass
     
-    def query(self, conditions, box_name) -> Optional[List[Bead]]:
+    def query(self, conditions, box_name) -> list[Bead]:
         '''Query beads from index.'''
         try:
             with create_connection(self.index_path) as conn:
                 return query_beads(conn, conditions, box_name)
-        except Exception:
-            return None
+        except Exception as e:
+            raise LookupError(f"Failed to query index: {e}")
     
-    def get_file_path(self, name: str, content_id: str) -> Optional[Path]:
+    def get_file_path(self, name: str, content_id: str) -> Path:
         '''Get file path for bead.'''
         try:
             with create_connection(self.index_path) as conn:
                 file_path = find_file_path(conn, name, content_id)
-                return self.box_directory / file_path if file_path else None
-        except Exception:
-            return None
+                if file_path is None:
+                    raise LookupError(f"Bead not found in index: name='{name}', content_id='{content_id}'")
+                return self.box_directory / file_path
+        except Exception as e:
+            if isinstance(e, LookupError):
+                raise
+            raise LookupError(f"Failed to get file path from index: {e}")
     
