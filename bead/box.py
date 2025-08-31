@@ -12,7 +12,6 @@ Boxes can be used to:
 
 from abc import ABC
 from abc import abstractmethod
-from dataclasses import dataclass
 from enum import Enum
 from enum import auto
 from typing import Iterable
@@ -371,15 +370,14 @@ def resolve(boxes, bead: Bead) -> Archive:
     raise LookupError(f"Could not find box '{bead.box_name}' to resolve bead '{bead.name}'")
 
 
-@dataclass
 class Box:
     """
     Store Beads.
     """
-    name: str
-    location: Path
-
-    def __post_init__(self):
+    
+    def __init__(self, name: str, location: Path):
+        self.name = name
+        self.location = location
         self.index = BoxIndex(self.directory)
         self.index.sync()
 
