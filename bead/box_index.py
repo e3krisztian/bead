@@ -6,7 +6,6 @@ import sqlite3
 from pathlib import Path
 
 from .bead import Bead
-from .box import QueryCondition
 from .exceptions import BoxIndexError
 from .ziparchive import ZipArchive
 
@@ -104,6 +103,8 @@ def normalize_timestamp_value(value):
 
 def build_where_clause(conditions):
     '''Build SQL WHERE clause from query conditions.'''
+    from .box import QueryCondition
+    
     where_parts = []
     parameters = []
     
@@ -187,7 +188,7 @@ def load_bead_inputs(conn, name, content_id):
 
 class BoxIndex:
     '''
-    SQLite-based index for a bead box.
+    SQLite-based index for a bead box implementing BoxResolver protocol.
     '''
     
     def __init__(self, box_directory: Path):
@@ -234,7 +235,7 @@ class BoxIndex:
         except Exception:
             pass
     
-    def query(self, conditions, box_name) -> list[Bead]:
+    def get_beads(self, conditions, box_name: str) -> list[Bead]:
         '''Query beads from index.'''
         try:
             with create_query_connection(self.index_path) as conn:

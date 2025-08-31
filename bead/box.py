@@ -16,17 +16,33 @@ from enum import Enum
 from enum import auto
 from typing import Iterable
 from typing import Iterator
+from typing import Protocol
 
 from . import tech
 from .bead import Archive
 from .bead import Bead
-from .box_index import BoxIndex
 from .exceptions import BoxError
-from .exceptions import InvalidArchive
 from .tech.timestamp import time_from_timestamp
-from .ziparchive import ZipArchive
 
 Path = tech.fs.Path
+
+
+class BoxResolver(Protocol):
+    """
+    Interface for bead storage and retrieval implementations.
+    """
+    
+    def get_beads(self, conditions, box_name: str) -> list[Bead]:
+        """Retrieve beads matching conditions."""
+        ...
+    
+    def get_file_path(self, name: str, content_id: str) -> Path:
+        """Get file path for bead by name and content_id."""
+        ...
+    
+    def add_archive_file(self, archive_path: Path) -> None:
+        """Add archive file to resolver."""
+        ...
 
 
 class QueryCondition(Enum):
@@ -375,11 +391,21 @@ class Box:
     Store Beads.
     """
     
-    def __init__(self, name: str, location: Path):
+    def __init__(self, name: str, location: Path, resolver: BoxResolver = None):
         self.name = name
         self.location = location
-        self.index = BoxIndex(self.directory)
-        self.index.sync()
+        
+        if resolver is None:
+            # Try SQLite index first, fall back to filesystem
+            try:
+                from .box_index import BoxIndex
+                self.resolver = BoxIndex(self.directory)
+                self.resolver.sync()
+            except Exception:
+                from .box_rawfs import RawFilesystemResolver
+                self.resolver = RawFilesystemResolver(self.directory)
+        else:
+            self.resolver = resolver
 
     @property
     def directory(self):
@@ -402,55 +428,7 @@ class Box:
         '''
         Retrieve matching beads.
         '''
-        # Try index first
-        try:
-            return self.index.query(conditions, self.name)
-        except LookupError:
-            # Fall back to filesystem
-            return self._get_beads_from_filesystem(conditions)
-    
-    def _get_beads_from_filesystem(self, conditions) -> list[Bead]:
-        '''Fallback filesystem-based bead retrieval.'''
-        match = compile_conditions(conditions)
-
-        bead_names = {
-            value
-            for tag, value in conditions
-            if tag == QueryCondition.BEAD_NAME}
-        if bead_names:
-            if len(bead_names) > 1:
-                return []
-            glob = bead_names.pop() + '_????????T????????????[-+]????.zip'
-        else:
-            glob = '*'
-
-        paths = self.directory.glob(glob)
-        archives = self._archives_from(paths)
-        beads = [self._bead_from_archive(archive) for archive in archives if match(archive)]
-        return beads
-
-    def _archives_from(self, paths: Iterable[Path]) -> Iterator[Archive]:
-        for path in paths:
-            try:
-                archive = ZipArchive(path, self.name)
-            except InvalidArchive:
-                # TODO: log/report problem
-                pass
-            else:
-                yield archive
-
-    def _bead_from_archive(self, archive: Archive) -> Bead:
-        '''
-        Create a Bead instance from Archive metadata.
-        '''
-        bead = Bead()
-        bead.kind = archive.kind
-        bead.name = archive.name
-        bead.inputs = archive.inputs
-        bead.content_id = archive.content_id
-        bead.freeze_time_str = archive.freeze_time_str
-        bead.box_name = archive.box_name
-        return bead
+        return self.resolver.get_beads(conditions, self.name)
 
     def resolve(self, bead: Bead) -> Archive:
         '''
@@ -459,18 +437,14 @@ class Box:
         if bead.box_name != self.name:
             raise ValueError(f"Bead box_name '{bead.box_name}' does not match this box '{self.name}'")
 
-        # Try index first
-        try:
-            file_path = self.index.get_file_path(bead.name, bead.content_id)
-            if file_path.exists():
-                archive = ZipArchive(file_path, self.name)
-                self._validate_archive_matches_bead(archive, bead)
-                return archive
-        except LookupError:
-            pass
-        
-        # Fall back to filesystem
-        return self._resolve_from_filesystem(bead)
+        file_path = self.resolver.get_file_path(bead.name, bead.content_id)
+        if not file_path.exists():
+            raise LookupError(f"Archive file not found: {file_path}")
+            
+        from .ziparchive import ZipArchive
+        archive = ZipArchive(file_path, self.name)
+        self._validate_archive_matches_bead(archive, bead)
+        return archive
     
     def _validate_archive_matches_bead(self, archive: Archive, bead: Bead):
         '''Validate that resolved Archive matches input Bead.'''
@@ -481,28 +455,6 @@ class Box:
                 "Resolved Archive does not match Bead: "
                 + f"Archive({archive.name}, {archive.content_id}, {archive.box_name}) != "
                 + f"Bead({bead.name}, {bead.content_id}, {bead.box_name})")
-    
-    def _resolve_from_filesystem(self, bead: Bead) -> Archive:
-        '''Fallback filesystem-based resolution.'''
-        conditions = [
-            (QueryCondition.BEAD_NAME, bead.name),
-            (QueryCondition.CONTENT_ID, bead.content_id)
-        ]
-
-        match = compile_conditions(conditions)
-        glob = bead.name + '_????????T????????????[-+]????.zip'
-        paths = self.directory.glob(glob)
-
-        for path in paths:
-            try:
-                archive = ZipArchive(path, self.name)
-                if match(archive):
-                    self._validate_archive_matches_bead(archive, bead)
-                    return archive
-            except InvalidArchive:
-                continue
-
-        raise LookupError(f"Could not resolve Bead({bead.name}, {bead.content_id}) in box '{self.name}'")
 
     def store(self, workspace, freeze_time) -> Path:
         '''Store workspace as bead archive.'''
@@ -514,8 +466,8 @@ class Box:
         zipfilename = self.directory / f'{workspace.name}_{freeze_time}.zip'
         workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT)
         
-        # Add to index
-        self.index.add_archive_file(zipfilename)
+        # Add to resolver
+        self.resolver.add_archive_file(zipfilename)
         
         return zipfilename
 
