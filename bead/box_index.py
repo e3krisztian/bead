@@ -102,6 +102,13 @@ def find_file_path(conn, name, content_id):
     return row[0] if row else None
 
 
+def normalize_timestamp_value(value):
+    '''Convert timestamp value to string format for database queries.'''
+    if hasattr(value, 'isoformat'):
+        return value.isoformat().replace('+00:00', '+0000')
+    return value
+
+
 def build_where_clause(conditions):
     '''Build SQL WHERE clause from query conditions.'''
     where_parts = []
@@ -118,30 +125,20 @@ def build_where_clause(conditions):
             where_parts.append('content_id = ?')
             parameters.append(value)
         elif condition_type == QueryCondition.AT_TIME:
-            if hasattr(value, 'isoformat'):
-                value = value.isoformat().replace('+00:00', '+0000')
             where_parts.append('freeze_time_str = ?')
-            parameters.append(value)
+            parameters.append(normalize_timestamp_value(value))
         elif condition_type == QueryCondition.NEWER_THAN:
-            if hasattr(value, 'isoformat'):
-                value = value.isoformat().replace('+00:00', '+0000')
             where_parts.append('freeze_time_str > ?')
-            parameters.append(value)
+            parameters.append(normalize_timestamp_value(value))
         elif condition_type == QueryCondition.OLDER_THAN:
-            if hasattr(value, 'isoformat'):
-                value = value.isoformat().replace('+00:00', '+0000')
             where_parts.append('freeze_time_str < ?')
-            parameters.append(value)
+            parameters.append(normalize_timestamp_value(value))
         elif condition_type == QueryCondition.AT_OR_NEWER:
-            if hasattr(value, 'isoformat'):
-                value = value.isoformat().replace('+00:00', '+0000')
             where_parts.append('freeze_time_str >= ?')
-            parameters.append(value)
+            parameters.append(normalize_timestamp_value(value))
         elif condition_type == QueryCondition.AT_OR_OLDER:
-            if hasattr(value, 'isoformat'):
-                value = value.isoformat().replace('+00:00', '+0000')
             where_parts.append('freeze_time_str <= ?')
-            parameters.append(value)
+            parameters.append(normalize_timestamp_value(value))
     
     return where_parts, parameters
 
