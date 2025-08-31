@@ -20,9 +20,11 @@ from .bead import Archive
 from .bead import Bead
 from .box_index import index_path_exists, can_read_index, can_create_index, BoxIndex
 from .box_query import QueryCondition
+from .box_rawfs import RawFilesystemResolver
 from .exceptions import BoxError
 from .exceptions import InvalidArchive
 from .tech.timestamp import time_from_timestamp
+from .ziparchive import ZipArchive
 
 Path = tech.fs.Path
 
@@ -401,7 +403,6 @@ class Box:
             if can_create_index(self.directory):
                 return BoxIndex(self.directory)
             else:
-                from .box_rawfs import RawFilesystemResolver
                 return RawFilesystemResolver(self.directory)
 
     def all_beads(self) -> list[Bead]:
@@ -429,7 +430,6 @@ class Box:
         if not file_path.exists():
             raise LookupError(f"Archive file not found: {file_path}")
             
-        from .ziparchive import ZipArchive
         archive = ZipArchive(file_path, self.name)
         self._validate_archive_matches_bead(archive, bead)
         return archive
