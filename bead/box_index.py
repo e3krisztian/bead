@@ -220,6 +220,12 @@ def can_read_index(box_directory: Path) -> bool:
 def can_create_index(box_directory: Path) -> bool:
     """Test if SQLite index can be created and create it if possible."""
     try:
+        # First test basic file creation permissions
+        test_file = box_directory / '.test_write_access'
+        test_file.touch()
+        test_file.unlink()
+        
+        # Then test actual index creation
         index_path = box_directory / '.index.sqlite'
         conn = create_update_connection(index_path)
         conn.close()
