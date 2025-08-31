@@ -220,8 +220,10 @@ def can_read_index(box_directory: Path) -> bool:
 def can_create_index(box_directory: Path) -> bool:
     """Test if SQLite index can be created."""
     try:
-        index = BoxIndex(box_directory)
-        index.sync()
+        # Test if we can write to the directory
+        test_file = box_directory / '.test_write_access'
+        test_file.touch()
+        test_file.unlink()
         return True
     except Exception:
         return False
