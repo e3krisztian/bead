@@ -7,7 +7,6 @@ from pathlib import Path
 
 from .bead import Bead
 from .box import QueryCondition
-from .exceptions import InvalidArchive
 from .exceptions import BoxIndexError
 from .ziparchive import ZipArchive
 
@@ -278,4 +277,3 @@ class BoxIndex:
             raise
         except Exception as e:
             raise BoxIndexError(f"Failed to get file path from index: {e}")
-    
