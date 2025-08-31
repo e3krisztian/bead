@@ -8,6 +8,7 @@ from pathlib import Path
 from .bead import Bead
 from .box import QueryCondition
 from .exceptions import InvalidArchive
+from .exceptions import BoxIndexError
 from .ziparchive import ZipArchive
 
 
@@ -263,7 +264,7 @@ class BoxIndex:
             with create_connection(self.index_path) as conn:
                 return query_beads(conn, conditions, box_name)
         except Exception as e:
-            raise LookupError(f"Failed to query index: {e}")
+            raise BoxIndexError(f"Failed to query index: {e}")
     
     def get_file_path(self, name: str, content_id: str) -> Path:
         '''Get file path for bead.'''
@@ -276,5 +277,5 @@ class BoxIndex:
         except Exception as e:
             if isinstance(e, LookupError):
                 raise
-            raise LookupError(f"Failed to get file path from index: {e}")
+            raise BoxIndexError(f"Failed to get file path from index: {e}")
     

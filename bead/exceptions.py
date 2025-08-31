@@ -4,3 +4,7 @@ class InvalidArchive(Exception):
 
 class BoxError(Exception):
     """Box operation related error"""
+
+
+class BoxIndexError(Exception):
+    """Box index operation related error"""
