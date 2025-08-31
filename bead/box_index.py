@@ -274,8 +274,8 @@ class BoxIndex:
                 if file_path is None:
                     raise LookupError(f"Bead not found in index: name='{name}', content_id='{content_id}'")
                 return self.box_directory / file_path
+        except LookupError:
+            raise
         except Exception as e:
-            if isinstance(e, LookupError):
-                raise
             raise BoxIndexError(f"Failed to get file path from index: {e}")
     
