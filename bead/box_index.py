@@ -58,13 +58,11 @@ class BoxIndex:
         '''
         Rebuild the index from scratch by scanning all files in the box directory.
         '''
-        # Clear existing data
-        with self._get_connection() as conn:
-            conn.execute('DELETE FROM inputs')
-            conn.execute('DELETE FROM beads')
-            conn.commit()
+        # Remove existing database file if it exists
+        if self.index_path.exists():
+            self.index_path.unlink()
         
-        # Add all zip files
+        # Add all zip files (this will create a new database)
         for zip_path in self.box_directory.glob('*.zip'):
             try:
                 self._add_archive(zip_path)
