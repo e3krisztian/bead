@@ -12,15 +12,12 @@ Boxes can be used to:
 
 from abc import ABC
 from abc import abstractmethod
-from enum import Enum
-from enum import auto
-from typing import Iterable
-from typing import Iterator
 from typing import Protocol
 
 from . import tech
 from .bead import Archive
 from .bead import Bead
+from .box_index import index_path_exists, can_read_index, can_create_index, BoxIndex
 from .box_query import QueryCondition
 from .exceptions import BoxError
 from .exceptions import InvalidArchive
@@ -394,8 +391,6 @@ class Box:
         4. SQLite index exists, read-only access -> BoxIndex
         5. SQLite index exists, read-write access -> BoxIndex
         """
-        from .box_index import index_path_exists, can_read_index, can_create_index, BoxIndex
-        
         if index_path_exists(self.directory):
             if can_read_index(self.directory):
                 return BoxIndex(self.directory)

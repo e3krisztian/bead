@@ -6,6 +6,7 @@ import sqlite3
 from pathlib import Path
 
 from .bead import Bead
+from .box_query import QueryCondition
 from .exceptions import BoxIndexError
 from .meta import InputSpec
 from .ziparchive import ZipArchive
@@ -104,8 +105,6 @@ def normalize_timestamp_value(value):
 
 def build_where_clause(conditions):
     '''Build SQL WHERE clause from query conditions.'''
-    from .box_query import QueryCondition
-    
     condition_mapping = {
         QueryCondition.BEAD_NAME: ('name = ?', lambda v: v),
         QueryCondition.KIND: ('kind = ?', lambda v: v),
@@ -187,7 +186,6 @@ def can_read_index(box_directory: Path) -> bool:
     """Test if SQLite index can be read."""
     index_path = box_directory / '.index.sqlite'
     try:
-        import sqlite3
         conn = sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)
         conn.close()
         return True
