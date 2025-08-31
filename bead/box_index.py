@@ -218,14 +218,20 @@ def can_read_index(box_directory: Path) -> bool:
 
 
 def can_create_index(box_directory: Path) -> bool:
-    """Test if SQLite index can be created and create it if possible."""
+    """Test if SQLite index can be created without actually creating it."""
     try:
-        # First test basic file creation permissions
+        # Test basic file creation permissions
         test_file = box_directory / '.test_write_access'
         test_file.touch()
         test_file.unlink()
-        
-        # Then test actual index creation
+        return True
+    except Exception:
+        return False
+
+
+def ensure_index(box_directory: Path) -> bool:
+    """Ensure SQLite index exists, creating it if necessary."""
+    try:
         index_path = box_directory / '.index.sqlite'
         conn = create_update_connection(index_path)
         conn.close()
@@ -242,6 +248,7 @@ class BoxIndex:
     def __init__(self, box_directory: Path):
         self.box_directory = Path(box_directory)
         self.index_path = self.box_directory / '.index.sqlite'
+        ensure_index(self.box_directory)
         self.sync()
     
     def rebuild(self):
