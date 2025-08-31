@@ -22,6 +22,7 @@ from . import tech
 from .bead import Archive
 from .bead import Bead
 from .exceptions import BoxError
+from .exceptions import InvalidArchive
 from .tech.timestamp import time_from_timestamp
 
 Path = tech.fs.Path
