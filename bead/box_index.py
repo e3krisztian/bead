@@ -177,35 +177,15 @@ def load_bead_inputs(conn, name, content_id):
     return inputs
 
 
-def create_resolver(box_directory: Path):
-    """
-    Create appropriate resolver based on directory access and index availability.
-    
-    Strategy selection:
-    1. No SQLite index, no write access -> RawFilesystemResolver
-    2. No SQLite index, have write access -> BoxIndex
-    3. SQLite index exists, no read access -> NullResolver  
-    4. SQLite index exists, read-only access -> BoxIndex
-    5. SQLite index exists, read-write access -> BoxIndex
-    """
+def index_path_exists(box_directory: Path) -> bool:
+    """Check if SQLite index file exists in box directory."""
     index_path = box_directory / '.index.sqlite'
-    
-    if index_path.exists():
-        if _can_read_index(index_path):
-            return BoxIndex(box_directory)
-        else:
-            from .box import NullResolver
-            return NullResolver()
-    else:
-        if _can_create_index(box_directory):
-            return BoxIndex(box_directory)
-        else:
-            from .box_rawfs import RawFilesystemResolver
-            return RawFilesystemResolver(box_directory)
+    return index_path.exists()
 
 
-def _can_read_index(index_path: Path) -> bool:
+def can_read_index(box_directory: Path) -> bool:
     """Test if SQLite index can be read."""
+    index_path = box_directory / '.index.sqlite'
     try:
         import sqlite3
         conn = sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)
@@ -215,7 +195,7 @@ def _can_read_index(index_path: Path) -> bool:
         return False
 
 
-def _can_create_index(box_directory: Path) -> bool:
+def can_create_index(box_directory: Path) -> bool:
     """Test if SQLite index can be created."""
     try:
         index = BoxIndex(box_directory)

@@ -413,8 +413,7 @@ class Box:
     def __init__(self, name: str, location: Path):
         self.name = name
         self.location = location
-        from .box_index import create_resolver
-        self.resolver = create_resolver(self.directory)
+        self.resolver = self._create_resolver()
 
     @property
     def directory(self):
@@ -424,7 +423,31 @@ class Box:
         Valid only for local boxes.
         '''
         return Path(self.location)
-    
+
+    def _create_resolver(self):
+        """
+        Create appropriate resolver based on directory access and index availability.
+        
+        Strategy selection:
+        1. No SQLite index, no write access -> RawFilesystemResolver
+        2. No SQLite index, have write access -> BoxIndex
+        3. SQLite index exists, no read access -> NullResolver  
+        4. SQLite index exists, read-only access -> BoxIndex
+        5. SQLite index exists, read-write access -> BoxIndex
+        """
+        from .box_index import index_path_exists, can_read_index, can_create_index, BoxIndex
+        
+        if index_path_exists(self.directory):
+            if can_read_index(self.directory):
+                return BoxIndex(self.directory)
+            else:
+                return NullResolver()
+        else:
+            if can_create_index(self.directory):
+                return BoxIndex(self.directory)
+            else:
+                from .box_rawfs import RawFilesystemResolver
+                return RawFilesystemResolver(self.directory)
 
     def all_beads(self) -> list[Bead]:
         '''
