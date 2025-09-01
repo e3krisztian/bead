@@ -16,7 +16,11 @@ from .ziparchive import ZipArchive
 def create_update_connection(index_path: Path):
     '''Create database connection for updates and ensure schema exists.'''
     conn = sqlite3.connect(str(index_path))
-    create_schema(conn)
+    try:
+        create_schema(conn)
+    except Exception:
+        conn.close()
+        raise
     return closing(conn)
 
 
