@@ -170,8 +170,18 @@ class CmdIndexSync(Command):
         ])
         
         if options_count == 0:
-            print('ERROR: Must specify either a box name, --dir, or --all')
-            return
+            # No arguments provided - check if we can auto-detect single box
+            boxes = env.get_boxes()
+            if len(boxes) == 1:
+                # Auto-use the single box
+                sync(boxes[0])
+                return
+            elif len(boxes) == 0:
+                print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
+                return
+            else:
+                print('ERROR: Multiple boxes defined. Must specify either a box name, --dir, or --all')
+                return
         
         if options_count > 1:
             print('ERROR: Cannot specify more than one of: box name, --dir, --all')
