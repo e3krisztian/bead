@@ -3,6 +3,7 @@ SQLite-based index for bead storage and retrieval.
 '''
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from .bead import Bead
@@ -210,7 +211,7 @@ def can_read_index(box_directory: Path) -> bool:
     """Test if SQLite index can be read."""
     index_path = box_directory / '.index.sqlite'
     try:
-        with sqlite3.connect(f"file:{index_path}?mode=ro", uri=True) as conn:
+        with closing(sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)) as conn:
             pass  # Connection automatically closed
         return True
     except Exception:
@@ -233,7 +234,7 @@ def ensure_index(box_directory: Path) -> bool:
     """Ensure SQLite index exists, creating it if necessary."""
     try:
         index_path = box_directory / '.index.sqlite'
-        with create_update_connection(index_path) as conn:
+        with closing(create_update_connection(index_path)) as conn:
             pass  # Connection automatically closed
         return True
     except Exception:
@@ -262,7 +263,7 @@ class BoxIndex:
     def sync(self):
         '''Add new files to index.'''
         try:
-            with create_query_connection(self.index_path) as conn:
+            with closing(create_query_connection(self.index_path)) as conn:
                 indexed_files = get_indexed_files(conn)
 
             for archive_path in self.box_directory.glob('*.zip'):
@@ -280,7 +281,7 @@ class BoxIndex:
             
             relative_path = archive_path.relative_to(self.box_directory)
             
-            with create_update_connection(self.index_path) as conn:
+            with closing(create_update_connection(self.index_path)) as conn:
                 insert_bead_record(conn, archive, relative_path)
                 delete_bead_inputs(conn, archive.name, archive.content_id)
                 
@@ -294,7 +295,7 @@ class BoxIndex:
     def get_beads(self, conditions, box_name: str) -> list[Bead]:
         '''Query beads from index.'''
         try:
-            with create_query_connection(self.index_path) as conn:
+            with closing(create_query_connection(self.index_path)) as conn:
                 return query_beads(conn, conditions, box_name)
         except Exception as e:
             raise BoxIndexError(f"Failed to query index: {e}")
@@ -302,7 +303,7 @@ class BoxIndex:
     def get_file_path(self, name: str, content_id: str) -> Path:
         '''Get file path for bead.'''
         try:
-            with create_query_connection(self.index_path) as conn:
+            with closing(create_query_connection(self.index_path)) as conn:
                 file_path = find_file_path(conn, name, content_id)
                 if file_path is None:
                     raise LookupError(f"Bead not found in index: name='{name}', content_id='{content_id}'")
