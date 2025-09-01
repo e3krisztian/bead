@@ -33,10 +33,10 @@ jobs:
       run: uv sync --dev
 
     - name: Run CLI tests
-      run: uv run python -W ignore::ResourceWarning -m pytest bead_cli/ -v
+      run: uv run python -X tracemalloc=20 -W ignore::ResourceWarning -m pytest bead_cli/ -v
 
     - name: Run core tests
-      run: uv run python -W ignore::ResourceWarning -m pytest bead/ -v
+      run: uv run python -X tracemalloc=20 -W ignore::ResourceWarning -m pytest bead/ -v
 
     - name: Run additional tests
-      run: uv run python -W ignore::ResourceWarning -m pytest tests/ -v
+      run: uv run python -X tracemalloc=20 -W ignore::ResourceWarning -m pytest tests/ -v
