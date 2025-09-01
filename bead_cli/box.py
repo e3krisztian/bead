@@ -127,6 +127,8 @@ def rebuild_all(boxes):
 class CmdRebuild(Command):
     '''
     Rebuild the SQLite index for a specific box, directory, or all boxes.
+    
+    If no arguments are provided and only one box is defined, that box will be rebuilt automatically.
     '''
 
     def declare(self, arg):
@@ -233,6 +235,8 @@ def sync_all(boxes):
 class CmdSync(Command):
     '''
     Sync the SQLite index for a specific box, directory, or all boxes.
+    
+    If no arguments are provided and only one box is defined, that box will be synced automatically.
     '''
 
     def declare(self, arg):
