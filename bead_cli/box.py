@@ -103,3 +103,99 @@ class CmdIndexRebuild(Command):
         except Exception as e:
             print(f'ERROR: Failed to rebuild index: {e}')
             return
+
+
+def sync(box):
+    '''Sync index for a single box.'''
+    from bead.box_index import BoxIndex
+    
+    try:
+        print(f'Syncing box "{box.name}" at {box.location}')
+        box_index = BoxIndex(box.location)
+        box_index.sync()
+        print('  ✓ Success')
+        return True
+    except Exception as e:
+        print(f'  ✗ Failed: {e}')
+        return False
+
+
+def sync_directory(directory):
+    '''Sync index for a directory.'''
+    from bead.box_index import BoxIndex
+    
+    try:
+        print(f'Syncing directory {directory}')
+        box_index = BoxIndex(directory)
+        box_index.sync()
+        print('  ✓ Success')
+        return True
+    except Exception as e:
+        print(f'  ✗ Failed: {e}')
+        return False
+
+
+def sync_all(boxes):
+    '''Sync indexes for all boxes.'''
+    if not boxes:
+        print('No boxes defined')
+        return
+    
+    print(f'Syncing indexes for {len(boxes)} box(es)...')
+    success_count = 0
+    
+    for box in boxes:
+        if sync(box):
+            success_count += 1
+    
+    print(f'Completed: {success_count}/{len(boxes)} boxes synced successfully')
+
+
+class CmdIndexSync(Command):
+    '''
+    Sync the SQLite index for a specific box, directory, or all boxes.
+    '''
+
+    def declare(self, arg):
+        arg('box_name', nargs='?', help='Box name to sync')
+        arg('--dir', type=tech.fs.Path, help='Box directory to sync')
+        arg('--all', action='store_true', help='Sync all boxes')
+
+    def run(self, args, env: 'Environment'):
+        # Count how many options are specified
+        options_count = sum([
+            bool(args.box_name),
+            bool(args.dir),
+            bool(args.all)
+        ])
+        
+        if options_count == 0:
+            print('ERROR: Must specify either a box name, --dir, or --all')
+            return
+        
+        if options_count > 1:
+            print('ERROR: Cannot specify more than one of: box name, --dir, --all')
+            return
+        
+        if args.all:
+            sync_all(env.get_boxes())
+        elif args.dir:
+            # Sync specific directory
+            directory = args.dir
+            if not directory.is_dir():
+                print(f'ERROR: "{directory}" is not an existing directory!')
+                return
+            sync_directory(directory)
+        else:
+            # Sync specific box by name
+            box_name = args.box_name
+            if not env.is_known_box(box_name):
+                print(f'ERROR: Unknown box "{box_name}"')
+                return
+            
+            box = env.get_box(box_name)
+            if box is None:
+                print(f'ERROR: Box "{box_name}" not found')
+                return
+            
+            sync(box)
