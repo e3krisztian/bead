@@ -2,16 +2,30 @@
 name = "bead"
 version = "0.9.0.dev1"
 description = "Linked frozen computations"
-authors = [{name = "Krisztián Fekete"}]
+authors = [{name = "Krisztián Fekete", email = "e3krisztian+bead@gmail.com"}]
 license = {text = "The Unlicense"}
 requires-python = ">=3.10"
-packages = [
-    { include = "__main__.py" },
-    { include = "bead" },
-    { include = "bead_cli" },
-    { include = "tracelog.py" },
-    { include = "tests" },
+readme = "README.md"
+homepage = "https://github.com/e3krisztian/bead"
+repository = "https://github.com/e3krisztian/bead"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "License :: Public Domain",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: System :: Archiving",
+    "Topic :: Utilities",
 ]
+keywords = ["computation", "reproducible", "data", "pipeline", "freeze"]
 dependencies = [
     "appdirs",
     "argcomplete>=3.6.2",
@@ -34,6 +48,8 @@ dev = [
 
     # build
     "pip>=25.1.1",
+    "build",
+    "twine",
 
     # hygiene
     "mypy",
@@ -63,12 +79,13 @@ exclude = [
     ".cache/**",
 ]
 
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-sources = ["/"]
-packages = ["bead", "bead_cli", "tracelog.py"]
+only-include = ["bead", "bead_cli", "tracelog.py"]
 exclude = ["**/test_*.py"]
+
+[tool.hatch.build.targets.sdist]
+only-include = ["bead", "bead_cli", "__main__.py", "tracelog.py", "tests", "README.md", "pyproject.toml"]
