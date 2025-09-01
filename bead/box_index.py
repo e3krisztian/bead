@@ -275,7 +275,7 @@ class BoxIndex:
             self.index_path.unlink()
         
         for zip_path in self.box_directory.glob('*.zip'):
-            self.add_archive_file(zip_path)
+            self.index_archive_file(zip_path)
     
     def sync(self):
         '''Add new files to index and remove deleted files.'''
@@ -291,17 +291,17 @@ class BoxIndex:
                 
                 # Add new files to index
                 if str(relative_path) not in indexed_files:
-                    self.add_archive_file(archive_path)
+                    self.index_archive_file(archive_path)
             
             # Remove files from index that no longer exist
             orphaned_files = indexed_files - current_files
             for file_path in orphaned_files:
                 orphaned_archive_path = self.box_directory / file_path
-                self.delete_archive_file(orphaned_archive_path)
+                self.unindex_archive_file(orphaned_archive_path)
         except Exception:
             pass
     
-    def add_archive_file(self, archive_path: Path):
+    def index_archive_file(self, archive_path: Path):
         '''Add single bead to index.'''
         try:
             archive = ZipArchive(archive_path, box_name='')
@@ -320,7 +320,7 @@ class BoxIndex:
         except Exception:
             pass
     
-    def delete_archive_file(self, archive_path: Path):
+    def unindex_archive_file(self, archive_path: Path):
         '''Remove bead from index by file path.'''
         try:
             relative_path = archive_path.relative_to(self.box_directory)

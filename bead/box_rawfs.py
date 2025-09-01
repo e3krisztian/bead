@@ -130,7 +130,7 @@ class RawFilesystemResolver:
 
         raise LookupError(f"Bead not found: name='{name}', content_id='{content_id}'")
 
-    def add_archive_file(self, archive_path: Path) -> None:
+    def index_archive_file(self, archive_path: Path) -> None:
         """Add archive file to resolver cache."""
         try:
             archive = ZipArchive(archive_path, box_name='')

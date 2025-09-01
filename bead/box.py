@@ -42,7 +42,7 @@ class BoxResolver(Protocol):
         """Get file path for bead by name and content_id."""
         ...
     
-    def add_archive_file(self, archive_path: Path) -> None:
+    def index_archive_file(self, archive_path: Path) -> None:
         """Add archive file to resolver."""
         ...
 
@@ -60,7 +60,7 @@ class NullResolver:
         """Always raise LookupError - no beads exist."""
         raise LookupError(f"Bead not found: name='{name}', content_id='{content_id}'")
     
-    def add_archive_file(self, archive_path: Path) -> None:
+    def index_archive_file(self, archive_path: Path) -> None:
         """No-op - ignore archive additions."""
         pass
 
@@ -455,7 +455,7 @@ class Box:
         workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT)
         
         # Add to resolver
-        self.resolver.add_archive_file(zipfilename)
+        self.resolver.index_archive_file(zipfilename)
         
         return zipfilename
 
