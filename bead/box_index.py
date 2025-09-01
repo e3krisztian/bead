@@ -254,7 +254,6 @@ class BoxIndex:
         self.box_directory = Path(box_directory)
         self.index_path = self.box_directory / '.index.sqlite'
         ensure_index(self.box_directory)
-        self.sync()
     
     def rebuild(self):
         '''Rebuild index from scratch by scanning all files.'''
