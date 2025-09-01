@@ -124,7 +124,7 @@ def rebuild_all(boxes):
     print(f'Completed: {success_count}/{len(boxes)} boxes rebuilt successfully')
 
 
-class CmdIndexRebuild(Command):
+class CmdRebuild(Command):
     '''
     Rebuild the SQLite index for a specific box, directory, or all boxes.
     '''
@@ -230,7 +230,7 @@ def sync_all(boxes):
     print(f'Completed: {success_count}/{len(boxes)} boxes synced successfully')
 
 
-class CmdIndexSync(Command):
+class CmdSync(Command):
     '''
     Sync the SQLite index for a specific box, directory, or all boxes.
     '''
