@@ -1,4 +1,5 @@
 import os
+import platform
 
 import pytest
 
@@ -26,5 +27,7 @@ def test_invalid_workspace(robot):
 
 def test_force_invalid_workspace(robot):
     robot.cli('discard', '--force')
-    assert not os.path.exists(robot.cwd)
+    # On Windows, the current working directory cannot be removed while in use
+    if platform.system() != 'Windows':
+        assert not os.path.exists(robot.cwd)
     assert 'ERROR' not in robot.stderr
