@@ -99,6 +99,20 @@ def insert_input_record(conn, bead_name, bead_content_id, input_spec):
           input_spec.kind, input_spec.content_id, input_spec.freeze_time_str))
 
 
+def delete_bead_record(conn, file_path):
+    '''Delete bead and its inputs by file path.'''
+    # First delete inputs
+    conn.execute('''
+        DELETE FROM inputs 
+        WHERE (bead_name, bead_content_id) IN (
+            SELECT name, content_id FROM beads WHERE file_path = ?
+        )
+    ''', (file_path,))
+    
+    # Then delete the bead
+    conn.execute('DELETE FROM beads WHERE file_path = ?', (file_path,))
+
+
 def find_file_path(conn, name, content_id):
     '''Find file path for bead by name and content_id.'''
     cursor = conn.execute(
@@ -264,15 +278,26 @@ class BoxIndex:
             self.add_archive_file(zip_path)
     
     def sync(self):
-        '''Add new files to index.'''
+        '''Add new files to index and remove deleted files.'''
         try:
             with create_query_connection(self.index_path) as conn:
                 indexed_files = get_indexed_files(conn)
 
+            # Get current files in directory
+            current_files = set()
             for archive_path in self.box_directory.glob('*.zip'):
                 relative_path = archive_path.relative_to(self.box_directory)
+                current_files.add(str(relative_path))
+                
+                # Add new files to index
                 if str(relative_path) not in indexed_files:
                     self.add_archive_file(archive_path)
+            
+            # Remove files from index that no longer exist
+            orphaned_files = indexed_files - current_files
+            for file_path in orphaned_files:
+                orphaned_archive_path = self.box_directory / file_path
+                self.delete_archive_file(orphaned_archive_path)
         except Exception:
             pass
     
@@ -291,6 +316,17 @@ class BoxIndex:
                 for input_spec in archive.inputs:
                     insert_input_record(conn, archive.name, archive.content_id, input_spec)
                 
+                conn.commit()
+        except Exception:
+            pass
+    
+    def delete_archive_file(self, archive_path: Path):
+        '''Remove bead from index by file path.'''
+        try:
+            relative_path = archive_path.relative_to(self.box_directory)
+            
+            with create_update_connection(self.index_path) as conn:
+                delete_bead_record(conn, str(relative_path))
                 conn.commit()
         except Exception:
             pass
