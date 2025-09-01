@@ -17,11 +17,11 @@ def write_file(path: Path, content: bytes | str):
     if isinstance(content, bytes):
         path.write_bytes(content)
     else:
-        path.write_text(content)
+        path.write_text(content, encoding='utf-8')
 
 
 def read_file(path: Path):
-    return path.read_text()
+    return path.read_text(encoding='utf-8')
 
 
 @contextlib.contextmanager
