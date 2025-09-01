@@ -6,6 +6,8 @@ Health:
 
 # BEAD
 
+[![Tests](https://github.com/e3krisztian/bead/actions/workflows/test.yml/badge.svg)](https://github.com/e3krisztian/bead/actions/workflows/test.yml)
+
 
 BEAD is a format for freezing and storing computations while `bead` is a tool that helps
 capturing and managing computations in BEAD formats.
