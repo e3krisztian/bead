@@ -78,31 +78,100 @@ class CmdForget(Command):
             print(f'WARNING: no box defined with "{name}"')
 
 
+def rebuild(box):
+    '''Rebuild index for a single box.'''
+    from bead.box_index import BoxIndex
+
+    try:
+        print(f'Rebuilding index for box "{box.name}" at {box.location}')
+        box_index = BoxIndex(box.location)
+        box_index.rebuild()
+        print('  ✓ Success')
+        return True
+    except Exception as e:
+        print(f'  ✗ Failed: {e}')
+        return False
+
+
+def rebuild_directory(directory):
+    '''Rebuild index for a directory.'''
+    from bead.box_index import BoxIndex
+
+    try:
+        print(f'Rebuilding index for directory {directory}')
+        box_index = BoxIndex(directory)
+        box_index.rebuild()
+        print('  ✓ Success')
+        return True
+    except Exception as e:
+        print(f'  ✗ Failed: {e}')
+        return False
+
+
+def rebuild_all(boxes):
+    '''Rebuild indexes for all boxes.'''
+    if not boxes:
+        print('No boxes defined')
+        return
+
+    print(f'Rebuilding indexes for {len(boxes)} box(es)...')
+    success_count = 0
+
+    for box in boxes:
+        if rebuild(box):
+            success_count += 1
+
+    print(f'Completed: {success_count}/{len(boxes)} boxes rebuilt successfully')
+
+
 class CmdIndexRebuild(Command):
     '''
-    Rebuild the SQLite index for a box directory.
+    Rebuild the SQLite index for a specific box, directory, or all boxes.
     '''
 
     def declare(self, arg):
-        arg('directory', type=tech.fs.Path, help='Box directory to rebuild index for')
+        arg('box_name', nargs='?', help='Box name to rebuild')
+        arg('--dir', type=tech.fs.Path, help='Box directory to rebuild')
+        arg('--all', action='store_true', help='Rebuild all boxes')
 
     def run(self, args, env: 'Environment'):
-        from bead.box_index import BoxIndex
+        # Count how many options are specified
+        options_count = sum([
+            bool(args.box_name),
+            bool(args.dir),
+            bool(args.all)
+        ])
         
-        directory: tech.fs.Path = args.directory
-
-        if not directory.is_dir():
-            print(f'ERROR: "{directory}" is not an existing directory!')
+        if options_count == 0:
+            print('ERROR: Must specify either a box name, --dir, or --all')
             return
-
-        try:
-            print(f'Rebuilding index for box directory: {directory}')
-            box_index = BoxIndex(directory)
-            box_index.rebuild()
-            print('Index rebuild completed successfully')
-        except Exception as e:
-            print(f'ERROR: Failed to rebuild index: {e}')
+        
+        if options_count > 1:
+            print('ERROR: Cannot specify more than one of: box name, --dir, --all')
             return
+        
+        if args.all:
+            rebuild_all(env.get_boxes())
+        elif args.dir:
+            # Rebuild specific directory
+            directory = args.dir
+            if not directory.is_dir():
+                print(f'ERROR: "{directory}" is not an existing directory!')
+                return
+            rebuild_directory(directory)
+        else:
+            # Rebuild specific box by name
+            box_name = args.box_name
+            if not env.is_known_box(box_name):
+                print(f'ERROR: Unknown box "{box_name}"')
+                return
+            
+            box = env.get_box(box_name)
+            if box is None:
+                print(f'ERROR: Box "{box_name}" not found')
+                return
+            
+            rebuild(box)
 
 
 def sync(box):
