@@ -132,19 +132,16 @@ class CmdRebuild(Command):
     '''
 
     def declare(self, arg):
-        arg('box_name', nargs='?', help='Box name to rebuild')
-        arg('--dir', type=tech.fs.Path, help='Box directory to rebuild')
-        arg('--all', action='store_true', help='Rebuild all boxes')
+        def setup_mutually_exclusive_args(parser):
+            group = parser.argparser.add_mutually_exclusive_group()
+            group.add_argument('box_name', nargs='?', help='Box name to rebuild')
+            group.add_argument('--dir', type=tech.fs.Path, help='Box directory to rebuild')
+            group.add_argument('--all', action='store_true', help='Rebuild all boxes')
+        
+        arg(setup_mutually_exclusive_args)
 
     def run(self, args, env: 'Environment'):
-        # Count how many options are specified
-        options_count = sum([
-            bool(args.box_name),
-            bool(args.dir),
-            bool(args.all)
-        ])
-        
-        if options_count == 0:
+        if not any([args.box_name, args.dir, args.all]):
             # No arguments provided - check if we can auto-detect single box
             boxes = env.get_boxes()
             if len(boxes) == 1:
@@ -157,10 +154,6 @@ class CmdRebuild(Command):
             else:
                 print('ERROR: Multiple boxes defined. Must specify either a box name, --dir, or --all')
                 return
-        
-        if options_count > 1:
-            print('ERROR: Cannot specify more than one of: box name, --dir, --all')
-            return
         
         if args.all:
             rebuild_all(env.get_boxes())
@@ -240,19 +233,16 @@ class CmdSync(Command):
     '''
 
     def declare(self, arg):
-        arg('box_name', nargs='?', help='Box name to sync')
-        arg('--dir', type=tech.fs.Path, help='Box directory to sync')
-        arg('--all', action='store_true', help='Sync all boxes')
+        def setup_mutually_exclusive_args(parser):
+            group = parser.argparser.add_mutually_exclusive_group()
+            group.add_argument('box_name', nargs='?', help='Box name to sync')
+            group.add_argument('--dir', type=tech.fs.Path, help='Box directory to sync')
+            group.add_argument('--all', action='store_true', help='Sync all boxes')
+        
+        arg(setup_mutually_exclusive_args)
 
     def run(self, args, env: 'Environment'):
-        # Count how many options are specified
-        options_count = sum([
-            bool(args.box_name),
-            bool(args.dir),
-            bool(args.all)
-        ])
-        
-        if options_count == 0:
+        if not any([args.box_name, args.dir, args.all]):
             # No arguments provided - check if we can auto-detect single box
             boxes = env.get_boxes()
             if len(boxes) == 1:
@@ -265,10 +255,6 @@ class CmdSync(Command):
             else:
                 print('ERROR: Multiple boxes defined. Must specify either a box name, --dir, or --all')
                 return
-        
-        if options_count > 1:
-            print('ERROR: Cannot specify more than one of: box name, --dir, --all')
-            return
         
         if args.all:
             sync_all(env.get_boxes())
