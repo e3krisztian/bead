@@ -134,14 +134,14 @@ class CmdRebuild(Command):
     def declare(self, arg):
         def setup_mutually_exclusive_args(parser):
             group = parser.argparser.add_mutually_exclusive_group()
-            group.add_argument('box_name', nargs='?', help='Box name to rebuild')
+            group.add_argument('--box', help='Box name to rebuild')
             group.add_argument('--dir', type=tech.fs.Path, help='Box directory to rebuild')
             group.add_argument('--all', action='store_true', help='Rebuild all boxes')
         
         arg(setup_mutually_exclusive_args)
 
     def run(self, args, env: 'Environment'):
-        if not any([args.box_name, args.dir, args.all]):
+        if not any([args.box, args.dir, args.all]):
             # No arguments provided - check if we can auto-detect single box
             boxes = env.get_boxes()
             if len(boxes) == 1:
@@ -152,7 +152,7 @@ class CmdRebuild(Command):
                 print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
                 return
             else:
-                print('ERROR: Multiple boxes defined. Must specify either a box name, --dir, or --all')
+                print('ERROR: Multiple boxes defined. Must specify either --box, --dir, or --all')
                 return
         
         if args.all:
@@ -166,7 +166,7 @@ class CmdRebuild(Command):
             rebuild_directory(directory)
         else:
             # Rebuild specific box by name
-            box_name = args.box_name
+            box_name = args.box
             if not env.is_known_box(box_name):
                 print(f'ERROR: Unknown box "{box_name}"')
                 return
@@ -235,14 +235,14 @@ class CmdSync(Command):
     def declare(self, arg):
         def setup_mutually_exclusive_args(parser):
             group = parser.argparser.add_mutually_exclusive_group()
-            group.add_argument('box_name', nargs='?', help='Box name to sync')
+            group.add_argument('--box', help='Box name to sync')
             group.add_argument('--dir', type=tech.fs.Path, help='Box directory to sync')
             group.add_argument('--all', action='store_true', help='Sync all boxes')
         
         arg(setup_mutually_exclusive_args)
 
     def run(self, args, env: 'Environment'):
-        if not any([args.box_name, args.dir, args.all]):
+        if not any([args.box, args.dir, args.all]):
             # No arguments provided - check if we can auto-detect single box
             boxes = env.get_boxes()
             if len(boxes) == 1:
@@ -253,7 +253,7 @@ class CmdSync(Command):
                 print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
                 return
             else:
-                print('ERROR: Multiple boxes defined. Must specify either a box name, --dir, or --all')
+                print('ERROR: Multiple boxes defined. Must specify either --box, --dir, or --all')
                 return
         
         if args.all:
@@ -267,7 +267,7 @@ class CmdSync(Command):
             sync_directory(directory)
         else:
             # Sync specific box by name
-            box_name = args.box_name
+            box_name = args.box
             if not env.is_known_box(box_name):
                 print(f'ERROR: Unknown box "{box_name}"')
                 return
