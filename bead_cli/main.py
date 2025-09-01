@@ -83,8 +83,8 @@ def make_argument_parser(defaults):
         ('add', box.CmdAdd, 'Define a box.'),
         ('list', box.CmdList, 'Show known boxes.'),
         ('forget', box.CmdForget, 'Forget a known box.'),
-        ('rebuild', box.CmdRebuild, 'Rebuild SQLite index for a box directory.'),
-        ('sync', box.CmdSync, 'Sync SQLite index for a box or all boxes.'),
+        ('rebuild', box.CmdRebuild, 'Rebuild box index.'),
+        ('sync', box.CmdSync, 'Sync box index.'),
     )
 
     parser.autocomplete()
