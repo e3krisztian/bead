@@ -215,8 +215,8 @@ def can_read_index(box_directory: Path) -> bool:
     """Test if SQLite index can be read."""
     index_path = box_directory / '.index.sqlite'
     try:
-        with closing(sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)) as conn:
-            pass  # Connection automatically closed
+        with closing(sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)):
+            pass
         return True
     except Exception:
         return False
@@ -238,8 +238,8 @@ def ensure_index(box_directory: Path) -> bool:
     """Ensure SQLite index exists, creating it if necessary."""
     try:
         index_path = box_directory / '.index.sqlite'
-        with create_update_connection(index_path) as conn:
-            pass  # Connection automatically closed
+        with create_update_connection(index_path):
+            pass
         return True
     except Exception:
         return False
