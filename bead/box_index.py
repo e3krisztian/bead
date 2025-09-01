@@ -211,7 +211,7 @@ def can_read_index(box_directory: Path) -> bool:
     """Test if SQLite index can be read."""
     index_path = box_directory / '.index.sqlite'
     try:
-        with sqlite3.connect(f"file:{index_path}?mode=ro", uri=True) as conn:
+        with closing(sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)) as conn:
             pass  # Connection automatically closed
         return True
     except Exception:
