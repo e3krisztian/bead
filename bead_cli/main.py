@@ -63,7 +63,7 @@ def make_argument_parser(defaults):
             ('save', workspace.CmdSave, 'Save workspace in a box.'),
             ('status', workspace.CmdStatus, 'Show workspace information.'),
             ('web', web.CmdWeb, 'Manage/visualize the big picture - connections between beads.'),
-            ('zap', workspace.CmdDiscard, 'Delete workspace.'),
+            ('nuke', workspace.CmdDiscard, 'Delete workspace. (same as discard)'),
             ('version', CmdVersion, 'Show program version.'),
         ))
 
