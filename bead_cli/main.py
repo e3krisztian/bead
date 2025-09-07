@@ -119,6 +119,9 @@ and/or attaching the file to an email to {dev}@gmail.com.
 Please make sure you copy-paste from the file {error_report}
 and not from the console, as the shown exception text was shortened
 for your convenience, thus it is not really helpful in fixing the bug.
+
+Please provide as much context as possible about what you were doing with bead
+to get this error.
 """
 
 
