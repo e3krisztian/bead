@@ -122,7 +122,27 @@ for your convenience, thus it is not really helpful in fixing the bug.
 """
 
 
+def is_existing_cwd():
+    """Is the current working directory a valid directory?
+
+    On POSIX systems `bead discard` causes a strange situation,
+    where the calling process' working directory becomes non-existing.
+    It means, that all future file operations there will fail.
+    """
+    try:
+        return Path('.').resolve().is_dir()
+    except FileNotFoundError:
+        return False
+
+
 def main(run=run):
+    if not is_existing_cwd():
+        print(
+            'ERROR: Current working directory is non-functional.\n'
+            + 'Is it a "discard"-ed workspace? Use "cd .." to fix it.',
+            file=sys.stderr)
+        sys.exit(2)
+
     config_dir = appdirs.user_config_dir(
         'bead_cli-6a4d9d98-8e64-4a2a-b6c2-8a753ea61daf')
     try:
