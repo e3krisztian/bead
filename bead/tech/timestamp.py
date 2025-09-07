@@ -1,13 +1,14 @@
+from datetime import datetime
+from datetime import timedelta
+from datetime import tzinfo
 import re
-from datetime import tzinfo, timedelta, datetime
-
+import time as _time
 
 #########################################################
 # source: https://docs.python.org/2/library/datetime.html
 # Example tzinfo classes:
 # A class capturing the platform's idea of local time.
 
-import time as _time
 
 ZERO = timedelta(0)
 

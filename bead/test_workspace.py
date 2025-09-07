@@ -1,13 +1,14 @@
-from bead.exceptions import InvalidArchive
-from . import workspace as m
-
 import os
 import zipfile
+
 import pytest
 
-from .archive import Archive
+from bead.exceptions import InvalidArchive
+
 from . import layouts
 from . import tech
+from . import workspace as m
+from .ziparchive import ZipArchive
 
 write_file = tech.fs.write_file
 ensure_directory = tech.fs.ensure_directory
@@ -111,7 +112,7 @@ def packed_archive(pack_workspace, tmp_path_factory):
 
 def test_pack_creates_valid_archive(packed_archive):
     """Test that packing creates a valid archive."""
-    bead = Archive(packed_archive)
+    bead = ZipArchive(packed_archive)
     bead.validate()
 
 
@@ -168,7 +169,7 @@ def test_pack_stability_directory_name_data_and_timestamp_determines_content_ids
         write_file(ws.directory / 'source1', 'code to produce output')
         write_file(ws.directory / 'output/output1', TS)
         ws.pack(output, TS, comment='')
-        return Archive(output)
+        return ZipArchive(output)
 
     bead1 = make_bead()
     bead2 = make_bead()
@@ -202,11 +203,11 @@ def _load_a_bead(workspace, input_nick, tmp_path_factory):
         path_of_bead_to_load,
         {
             'output/output1':
-            f'data for {input_nick}'.encode('utf-8')
+            f'data for {input_nick}'.encode()
         },
         tmp_path_factory
     )
-    workspace.load(input_nick, Archive(path_of_bead_to_load))
+    workspace.load(input_nick, ZipArchive(path_of_bead_to_load))
 
 
 def test_load_makes_bead_files_available_under_input(load_workspace, tmp_path_factory):
@@ -270,37 +271,6 @@ def add_input(workspace, input_nick):
     workspace.add_input(input_nick, A_KIND, 'content_id', timestamp())
 
 
-def test_input_map_default_value(workspace_with_input, input_nick):
-    """Test that input map returns default value."""
-    assert input_nick == workspace_with_input.get_input_bead_name(input_nick)
-
-
-def test_input_map_define(workspace_with_input, input_nick):
-    """Test defining input bead name."""
-    bead_name = f'{input_nick}2'
-    workspace_with_input.set_input_bead_name(input_nick, bead_name)
-    assert bead_name == workspace_with_input.get_input_bead_name(input_nick)
-
-
-def test_input_map_update(workspace_with_input, input_nick):
-    """Test updating input bead name."""
-    workspace_with_input.set_input_bead_name(input_nick, f'{input_nick}2')
-    bead_name = f'{input_nick}42'
-    workspace_with_input.set_input_bead_name(input_nick, bead_name)
-    assert bead_name == workspace_with_input.get_input_bead_name(input_nick)
-
-
-def test_input_map_independent_update(workspace_with_input, input_nick):
-    """Test that input updates are independent."""
-    input_nick2 = f'{input_nick}2'
-    add_input(workspace_with_input, input_nick2)
-
-    workspace_with_input.set_input_bead_name(input_nick, f'{input_nick}1111')
-    workspace_with_input.set_input_bead_name(input_nick2, f'{input_nick2}222')
-    assert f'{input_nick}1111' == workspace_with_input.get_input_bead_name(input_nick)
-    assert f'{input_nick2}222' == workspace_with_input.get_input_bead_name(input_nick2)
-
-
 def unzip(archive_path, directory):
     """Helper function to unzip an archive."""
     ensure_directory(directory)
@@ -362,7 +332,7 @@ def unzipped_archive_path(archive_with_two_files_path, tmp_path_factory):
 
 def test_newly_created_bead_is_valid(archive_with_two_files_path):
     """Test that a newly created bead is valid."""
-    Archive(archive_with_two_files_path).validate()
+    ZipArchive(archive_with_two_files_path).validate()
 
 
 def test_adding_a_data_file_to_an_archive_makes_bead_invalid(archive_path):
@@ -371,7 +341,7 @@ def test_adding_a_data_file_to_an_archive_makes_bead_invalid(archive_path):
         z.writestr(f'{layouts.Archive.DATA}/extra_file', b'something')
 
     with pytest.raises(InvalidArchive):
-        Archive(archive_path).validate()
+        ZipArchive(archive_path).validate()
 
 
 def test_adding_a_code_file_to_an_archive_makes_bead_invalid(archive_path):
@@ -380,7 +350,7 @@ def test_adding_a_code_file_to_an_archive_makes_bead_invalid(archive_path):
         z.writestr(f'{layouts.Archive.CODE}/extra_file', b'something')
 
     with pytest.raises(InvalidArchive):
-        Archive(archive_path).validate()
+        ZipArchive(archive_path).validate()
 
 
 def test_unzipping_and_zipping_an_archive_remains_valid(unzipped_archive_path, tmp_path):
@@ -388,7 +358,7 @@ def test_unzipping_and_zipping_an_archive_remains_valid(unzipped_archive_path, t
     rezipped_archive_path = tmp_path / 'rezipped_archive.zip'
     zip_up(unzipped_archive_path, rezipped_archive_path)
 
-    Archive(rezipped_archive_path).validate()
+    ZipArchive(rezipped_archive_path).validate()
 
 
 def test_deleting_a_file_in_the_manifest_makes_the_bead_invalid(unzipped_archive_path, tmp_path):
@@ -398,7 +368,7 @@ def test_deleting_a_file_in_the_manifest_makes_the_bead_invalid(unzipped_archive
     zip_up(unzipped_archive_path, modified_archive_path)
 
     with pytest.raises(InvalidArchive):
-        Archive(modified_archive_path).validate()
+        ZipArchive(modified_archive_path).validate()
 
 
 def test_changing_a_file_makes_the_bead_invalid(unzipped_archive_path, tmp_path):
@@ -408,4 +378,4 @@ def test_changing_a_file_makes_the_bead_invalid(unzipped_archive_path, tmp_path)
     zip_up(unzipped_archive_path, modified_archive_path)
 
     with pytest.raises(InvalidArchive):
-        Archive(modified_archive_path).validate()
+        ZipArchive(modified_archive_path).validate()

@@ -25,8 +25,9 @@ with the following minimum structure:
 }
 '''
 
-from .tech.timestamp import time_from_timestamp
 import attr
+
+from .tech.timestamp import time_from_timestamp
 
 # Metadata versions determine the content_id used and potentially
 # other processing differences. Having it in the metadata potentially
@@ -60,9 +61,9 @@ class BeadName(ValidatingStr):
         return string not in ('', '.', '..') and '/' not in string and '__' not in string
 
 
-assert type(BeadName('asd')) == BeadName
-assert type(BeadName('asd') + '/') != BeadName
-assert type(BeadName('asd')[0]) != BeadName
+assert type(BeadName('asd')) is BeadName
+assert type(BeadName('asd') + '/') is not BeadName
+assert type(BeadName('asd')[0]) is not BeadName
 
 
 class InputName(BeadName):

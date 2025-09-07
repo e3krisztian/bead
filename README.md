@@ -1,13 +1,11 @@
-Health:
-Travis [![Build Status](https://travis-ci.org/e3krisztian/bead.svg?branch=master)](https://travis-ci.org/e3krisztian/bead)
-AppVeyor [![Build Status](https://ci.appveyor.com/api/projects/status/github/e3krisztian/bead?branch=master&svg=true)](https://ci.appveyor.com/project/e3krisztian/bead)
+[![Tests](https://github.com/e3krisztian/bead/actions/workflows/test.yml/badge.svg)](https://github.com/e3krisztian/bead/actions/workflows/test.yml)
+
 
     B-E-+
      \ \ \
       +-A-D
 
 # BEAD
-
 
 BEAD is a format for freezing and storing computations while `bead` is a tool that helps
 capturing and managing computations in BEAD formats.
@@ -39,7 +37,7 @@ New computations get a new, universally unique `kind` (technically an uuid).
 
 ## Status
 
-### Used in production for 2 years now, there are 100+ frozen computations
+### Used in production for almost 10 years now, there are hundreds of frozen computations
 
 Although most of the important stuff is implemented, there are still some raw edges.
 
@@ -56,10 +54,6 @@ FIXME: clean up documentation.
 Ensure you have Python 3.10+ installed.
 
 Run `make executables` to create the `bead` tool:
-
-```
-$ python build.py
-```
 
 This generates one-file executables for unix, mac, and windows in the `executables` directory:
 - `bead` unix & mac
@@ -82,13 +76,3 @@ If you test it, please give [feedback](../../issues) on
 Any other nuisance reported - however minor you think it be - is important and welcome!
 
 Thank you for your interest!
-
-
-## TODOs
-
-Updated by script ([./ci](https://github.com/e3krisztian/bead/blob/wip/ci)), text in this section and afterwards will be overwritten
-
-- [FIXME: this test helper uses private to box implementation information](https://github.com/e3krisztian/bead/blob/wip/bead_cli/test_feature_update_by_name.py#L102)
-- [TODO: log/report problem](https://github.com/e3krisztian/bead/blob/wip/bead/box.py#L160)
-- [XXX: (usability) save - support saving directly to a directory outside of workspace](https://github.com/e3krisztian/bead/blob/wip/bead_cli/workspace.py#L87)
-- [XXX: try to load smaller inputs?](https://github.com/e3krisztian/bead/blob/wip/bead_cli/workspace.py#L163)

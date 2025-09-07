@@ -2,13 +2,13 @@ import contextlib
 import io
 import os
 import tempfile
-from tracelog import TRACELOG
 
 from bead import tech
 import bead.zipopener
+from tracelog import TRACELOG
 
-from .main import run
 from .environment import Environment
+from .main import run
 
 
 @contextlib.contextmanager
@@ -126,14 +126,14 @@ class Robot(Fixture):
     base_dir: tech.fs.Path
 
     def setUp(self):
-        super(Robot, self).setUp()
+        super().setUp()
         self.base_dir = self.useFixture(TempDir()).path
         TRACELOG('makedirs', self.home)
         os.makedirs(self.home)
         self.cd(self.home)
 
     def cleanUp(self):
-        super(Robot, self).cleanUp()
+        super().cleanUp()
 
     @property
     def config_dir(self):

@@ -2,17 +2,16 @@ import os
 import sys
 from typing import NoReturn
 
-from bead.exceptions import InvalidArchive
-from bead.workspace import Workspace
-from bead import spec as bead_spec
-from bead.archive import Archive
 from bead import box as bead_box
-from bead.tech.fs import Path
-from bead.tech.timestamp import time_from_user, parse_iso8601
+from bead.bead import Archive
+from bead.exceptions import InvalidArchive
+from bead.tech.timestamp import parse_iso8601
+from bead.tech.timestamp import time_from_user
+from bead.workspace import Workspace
+from bead.ziparchive import ZipArchive
+
 from . import arg_help
 from . import arg_metavar
-from .environment import Environment
-
 
 TIME_LATEST = parse_iso8601('9999-12-31')
 
@@ -50,42 +49,6 @@ def OPTIONAL_WORKSPACE(parser):
 def assert_valid_workspace(workspace):
     if not workspace.is_valid:
         die(f'{workspace.directory} is not a valid workspace')
-
-
-class get_env:
-    '''
-    Make an Environment when called.
-
-    It will also create a missing config directory and provides a meaningful
-    text when used as default for an argparse argument.
-    '''
-
-    def __init__(self, config_dir):
-        self.config_dir = Path(config_dir)
-
-    def __call__(self):
-        config_dir = self.config_dir
-        try:
-            os.makedirs(config_dir)
-        except OSError:
-            if not os.path.isdir(config_dir):
-                raise
-        return Environment.from_dir(config_dir)
-
-    def __repr__(self):
-        return f'Environment at {self.config_dir}'
-
-
-def OPTIONAL_ENV(parser):
-    '''
-    Define `env` as option, defaulting to environment config in user's home directory
-    '''
-    config_dir = parser.defaults['config_dir']
-    parser.arg(
-        '--env', '--environment', metavar=arg_metavar.ENV,
-        dest='get_env',
-        type=get_env, default=get_env(config_dir),
-        help=arg_help.ENV)
 
 
 class DefaultArgSentinel:
@@ -131,19 +94,19 @@ def BEAD_REF_BASE_defaulting_to(name):
 BEAD_REF_BASE = arg_bead_ref_base(nargs=None, default=None)
 
 
-def resolve_bead(env, bead_ref_base, time):
+def resolve_bead(env, bead_ref_base, time) -> Archive:
     # prefer exact file name over box search
     if os.path.isfile(bead_ref_base):
-        return Archive(bead_ref_base)
+        return ZipArchive(bead_ref_base)
 
     # not a file - try box search
-    unionbox = bead_box.UnionBox(env.get_boxes())
-
-    return unionbox.get_at(bead_spec.BEAD_NAME, bead_ref_base, time)
+    boxes = env.get_boxes()
+    bead = bead_box.search(boxes).by_name(bead_ref_base).at_or_older(time).newest()
+    return bead_box.resolve(boxes, bead)
 
 
 def verify_with_feedback(archive: Archive):
-    print(f'Verifying archive {archive.archive_filename} ...', end='', flush=True)
+    print(f'Verifying archive {archive.location} ...', end='', flush=True)
     try:
         archive.validate()
         print(' OK', flush=True)

@@ -1,9 +1,13 @@
-import json
 from enum import Enum
 from functools import partial
-import attr
-from .dummy import Dummy, Ref, InputSpec, Freshness
+import json
 
+import attr
+
+from .dummy import Dummy
+from .dummy import Freshness
+from .dummy import InputSpec
+from .dummy import Ref
 
 ENCODING = '@encoding'
 ENCODING_ATTRS = 'attrs'

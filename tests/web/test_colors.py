@@ -1,7 +1,11 @@
 import pytest
 
-from tests.sketcher import Sketcher, bead
-from bead_cli.web.freshness import UP_TO_DATE, OUT_OF_DATE, SUPERSEDED, PHANTOM
+from bead_cli.web.freshness import OUT_OF_DATE
+from bead_cli.web.freshness import PHANTOM
+from bead_cli.web.freshness import SUPERSEDED
+from bead_cli.web.freshness import UP_TO_DATE
+from tests.sketcher import Sketcher
+from tests.sketcher import bead
 
 
 def test_new_version_marks_older_superseded():

@@ -1,8 +1,11 @@
+from typing import TYPE_CHECKING
+
 from bead import tech
-from bead.archive import Archive
+
 from .cmdparse import Command
-from .common import OPTIONAL_ENV, die
-from .web import rewire
+
+if TYPE_CHECKING:
+    from .environment import Environment
 
 
 class CmdAdd(Command):
@@ -13,15 +16,13 @@ class CmdAdd(Command):
     def declare(self, arg):
         arg('name')
         arg('directory', type=tech.fs.Path)
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         '''
         Define a box.
         '''
         name: str = args.name
         directory: tech.fs.Path = args.directory
-        env = args.get_env()
 
         if not directory.is_dir():
             print(f'ERROR: "{directory}" is not an existing directory!')
@@ -42,10 +43,10 @@ class CmdList(Command):
     '''
 
     def declare(self, arg):
-        arg(OPTIONAL_ENV)
+        pass
 
-    def run(self, args):
-        boxes = args.get_env().get_boxes()
+    def run(self, args, env: 'Environment'):
+        boxes = env.get_boxes()
 
         def print_box(box):
             print(f'{box.name}: {box.location}')
@@ -65,11 +66,9 @@ class CmdForget(Command):
 
     def declare(self, arg):
         arg('name')
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         name = args.name
-        env = args.get_env()
 
         if env.is_known_box(name):
             env.forget_box(name)
@@ -79,39 +78,203 @@ class CmdForget(Command):
             print(f'WARNING: no box defined with "{name}"')
 
 
-class CmdXmeta(Command):
+def rebuild(box):
+    '''Rebuild index for a single box.'''
+    from bead.box_index import BoxIndex
+
+    try:
+        print(f'Rebuilding index for box "{box.name}" at {box.location}')
+        box_index = BoxIndex(box.location)
+        box_index.rebuild()
+        print('  ✓ Success')
+        return True
+    except Exception as e:
+        print(f'  ✗ Failed: {e}')
+        return False
+
+
+def rebuild_directory(directory):
+    '''Rebuild index for a directory.'''
+    from bead.box_index import BoxIndex
+
+    try:
+        print(f'Rebuilding index for directory {directory}')
+        box_index = BoxIndex(directory)
+        box_index.rebuild()
+        print('  ✓ Success')
+        return True
+    except Exception as e:
+        print(f'  ✗ Failed: {e}')
+        return False
+
+
+def rebuild_all(boxes):
+    '''Rebuild indexes for all boxes.'''
+    if not boxes:
+        print('No boxes defined')
+        return
+
+    print(f'Rebuilding indexes for {len(boxes)} box(es)...')
+    success_count = 0
+
+    for box in boxes:
+        if rebuild(box):
+            success_count += 1
+
+    print(f'Completed: {success_count}/{len(boxes)} boxes rebuilt successfully')
+
+
+class CmdRebuild(Command):
     '''
-    eXport eXtended meta attributes to a file next to zip archive.
+    Rebuild the SQLite index for a specific box, directory, or all boxes.
+    
+    If no arguments are provided and only one box is defined, that box will be rebuilt automatically.
     '''
+
     def declare(self, arg):
-        arg('zip_archive_filename')
+        def setup_mutually_exclusive_args(parser):
+            group = parser.argparser.add_mutually_exclusive_group()
+            group.add_argument('--box', help='Box name to rebuild')
+            group.add_argument('--dir', type=tech.fs.Path, help='Box directory to rebuild')
+            group.add_argument('--all', action='store_true', help='Rebuild all boxes')
+        
+        arg(setup_mutually_exclusive_args)
 
-    def run(self, args):
-        archive = Archive(args.zip_archive_filename)
-        archive.save_cache()
-        print(f'Saved {archive.cache_path}')
-
-
-class CmdRewire(Command):
-    '''
-    Remap inputs.
-    '''
-    def declare(self, arg):
-        arg('name')
-        arg('rewire_options_json')
-        arg(OPTIONAL_ENV)
-
-    def run(self, args):
-        env = args.get_env()
-        name = args.name
-        for box in env.get_boxes():
-            if box.name == name:
-                break
+    def run(self, args, env: 'Environment'):
+        if not any([args.box, args.dir, args.all]):
+            # No arguments provided - check if we can auto-detect single box
+            boxes = env.get_boxes()
+            if len(boxes) == 1:
+                # Auto-use the single box
+                rebuild(boxes[0])
+                return
+            elif len(boxes) == 0:
+                print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
+                return
+            else:
+                print('ERROR: Multiple boxes defined. Must specify either --box, --dir, or --all')
+                return
+        
+        if args.all:
+            rebuild_all(env.get_boxes())
+        elif args.dir:
+            # Rebuild specific directory
+            directory = args.dir
+            if not directory.is_dir():
+                print(f'ERROR: "{directory}" is not an existing directory!')
+                return
+            rebuild_directory(directory)
         else:
-            die(f'Unknown box {name}')
-        rewire_options = tech.persistence.file_load(args.rewire_options_json)
-        rewire_specs = rewire_options.get(name, [])
-        # This could be painfully slow, if there are many beads and their metadata
-        # is not exported/cached with xmeta
-        for bead in box.all_beads():
-            rewire.apply(bead, rewire_specs)
+            # Rebuild specific box by name
+            box_name = args.box
+            if not env.is_known_box(box_name):
+                print(f'ERROR: Unknown box "{box_name}"')
+                return
+            
+            box = env.get_box(box_name)
+            if box is None:
+                print(f'ERROR: Box "{box_name}" not found')
+                return
+            
+            rebuild(box)
+
+
+def sync(box):
+    '''Sync index for a single box.'''
+    from bead.box_index import BoxIndex
+    
+    try:
+        print(f'Syncing box "{box.name}" at {box.location}')
+        box_index = BoxIndex(box.location)
+        box_index.sync()
+        print('  ✓ Success')
+        return True
+    except Exception as e:
+        print(f'  ✗ Failed: {e}')
+        return False
+
+
+def sync_directory(directory):
+    '''Sync index for a directory.'''
+    from bead.box_index import BoxIndex
+    
+    try:
+        print(f'Syncing directory {directory}')
+        box_index = BoxIndex(directory)
+        box_index.sync()
+        print('  ✓ Success')
+        return True
+    except Exception as e:
+        print(f'  ✗ Failed: {e}')
+        return False
+
+
+def sync_all(boxes):
+    '''Sync indexes for all boxes.'''
+    if not boxes:
+        print('No boxes defined')
+        return
+    
+    print(f'Syncing indexes for {len(boxes)} box(es)...')
+    success_count = 0
+    
+    for box in boxes:
+        if sync(box):
+            success_count += 1
+    
+    print(f'Completed: {success_count}/{len(boxes)} boxes synced successfully')
+
+
+class CmdSync(Command):
+    '''
+    Sync the SQLite index for a specific box, directory, or all boxes.
+    
+    If no arguments are provided and only one box is defined, that box will be synced automatically.
+    '''
+
+    def declare(self, arg):
+        def setup_mutually_exclusive_args(parser):
+            group = parser.argparser.add_mutually_exclusive_group()
+            group.add_argument('--box', help='Box name to sync')
+            group.add_argument('--dir', type=tech.fs.Path, help='Box directory to sync')
+            group.add_argument('--all', action='store_true', help='Sync all boxes')
+        
+        arg(setup_mutually_exclusive_args)
+
+    def run(self, args, env: 'Environment'):
+        if not any([args.box, args.dir, args.all]):
+            # No arguments provided - check if we can auto-detect single box
+            boxes = env.get_boxes()
+            if len(boxes) == 1:
+                # Auto-use the single box
+                sync(boxes[0])
+                return
+            elif len(boxes) == 0:
+                print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
+                return
+            else:
+                print('ERROR: Multiple boxes defined. Must specify either --box, --dir, or --all')
+                return
+        
+        if args.all:
+            sync_all(env.get_boxes())
+        elif args.dir:
+            # Sync specific directory
+            directory = args.dir
+            if not directory.is_dir():
+                print(f'ERROR: "{directory}" is not an existing directory!')
+                return
+            sync_directory(directory)
+        else:
+            # Sync specific box by name
+            box_name = args.box
+            if not env.is_known_box(box_name):
+                print(f'ERROR: Unknown box "{box_name}"')
+                return
+            
+            box = env.get_box(box_name)
+            if box is None:
+                print(f'ERROR: Box "{box_name}" not found')
+                return
+            
+            sync(box)

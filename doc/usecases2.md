@@ -73,4 +73,3 @@ The company repo now contains a set of packages that contain even Bob's contribu
 (the precondition of full traceability is that Bob does not have any intermediate unreleased packages, as they were private to Bob!)
 
 Upload is also a repository specific procedure, FTP, S3, Dropbox, rsync, Windows share, or any other service for storing files.
-

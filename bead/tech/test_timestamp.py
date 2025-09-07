@@ -1,10 +1,16 @@
-from datetime import timedelta, datetime
+from datetime import datetime
+from datetime import timedelta
 
 from freezegun import freeze_time
 import pytest
 
-from .timestamp import FixedOffset, Local, timestamp
-from .timestamp import parse_timedelta, parse_iso8601, time_from_timestamp, time_from_user
+from .timestamp import FixedOffset
+from .timestamp import Local
+from .timestamp import parse_iso8601
+from .timestamp import parse_timedelta
+from .timestamp import time_from_timestamp
+from .timestamp import time_from_user
+from .timestamp import timestamp
 
 
 @pytest.mark.parametrize(

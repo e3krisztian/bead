@@ -1,9 +1,10 @@
 import os
 import zipfile
+
 import pytest
 
-from . import archive as m
 from . import layouts
+from . import ziparchive as m
 
 
 @pytest.fixture
@@ -33,7 +34,7 @@ def test_extract_file(bead_archive, tmp_path):
     """Test extracting a single file from the archive."""
     # when file1 is extracted
     extracted_file = tmp_path / 'extracted_file'
-    bead = m.Archive(bead_archive)
+    bead = m.ZipArchive(bead_archive)
     bead.extract_file('path/to/file1', extracted_file)
 
     # then file1 has the expected content
@@ -45,7 +46,7 @@ def test_extract_dir(bead_archive, tmp_path):
     """Test extracting a directory from the archive."""
     # when a directory is extracted
     extracted_dir = tmp_path / 'destination dir'
-    bead = m.Archive(bead_archive)
+    bead = m.ZipArchive(bead_archive)
     bead.extract_dir('path/to', extracted_dir)
     extracted_file = extracted_dir / 'file1'
 
@@ -62,7 +63,7 @@ def test_extract_nonexistent_dir(bead_archive, tmp_path):
     """Test extracting a non-existent directory creates an empty directory."""
     # when a nonexistent directory is extracted
     extracted_dir = tmp_path / 'destination dir'
-    bead = m.Archive(bead_archive)
+    bead = m.ZipArchive(bead_archive)
     bead.extract_dir('path/to/nonexistent', extracted_dir)
 
     # then an empty directory is created
@@ -75,7 +76,7 @@ def test_extract_nonexistent_dir(bead_archive, tmp_path):
 def test_content_id(bead_archive):
     """Test that content_id returns a string."""
     # when content_id is checked
-    bead = m.Archive(bead_archive)
+    bead = m.ZipArchive(bead_archive)
     content_id = bead.content_id
 
     # then content_id is a string

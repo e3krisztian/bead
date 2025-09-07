@@ -1,11 +1,16 @@
 from collections import defaultdict
-from typing import Iterable, Dict, List, Set, Iterator, Sequence
+from typing import Dict
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import Sequence
+from typing import Set
 
 import attr
 from cached_property import cached_property
 
-from .dummy import Dummy, Ref
-
+from .dummy import Dummy
+from .dummy import Ref
 
 Node = Dummy
 
@@ -37,7 +42,7 @@ def generate_input_edges(bead_index: Dict[Ref, Dummy], bead: Dummy) -> Iterator[
     An edge is a triple of (src, dest, label), where both 'src' and 'dest' are Dummy-s.
     """
     for input in bead.inputs:
-        src_ref = Ref.from_bead_input(bead, input)
+        src_ref = Ref.from_bead(input)
         try:
             src = bead_index[src_ref]
         except LookupError:

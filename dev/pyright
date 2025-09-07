@@ -1,0 +1,2 @@
+#!/bin/sh
+exec uvx --from pyright[nodejs] pyright --pythonpath .venv/bin/python "$@"

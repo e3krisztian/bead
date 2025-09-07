@@ -2,19 +2,23 @@ import argparse
 import os
 import subprocess
 import textwrap
+from typing import TYPE_CHECKING
 from typing import Set
 import webbrowser
 
 from bead import tech
-from bead.box import UnionBox
+from bead.box import search
 
-from ..common import OPTIONAL_ENV, die
-from ..cmdparse import Command
-from .io import read_beads, write_beads
-from .sketch import Sketch
 from . import sketch as web_sketch
+from ..cmdparse import Command
+from ..common import die
 from .dummy import Dummy
-from . import rewire
+from .io import read_beads
+from .io import write_beads
+from .sketch import Sketch
+
+if TYPE_CHECKING:
+    from ..environment import Environment
 
 
 class CmdWeb(Command):
@@ -58,21 +62,6 @@ class CmdWeb(Command):
         Assign freshness to nodes, which are visualized as colors.
         Answers the question: "Are all input at the latest version?"
 
-    auto-rewire
-        A hackish way to fix connections after renaming beads, thus breaking links.
-        It is hackish, because it selects the first candidate, which might
-        not be the one with the best name (think: multiple branches sharing the same bead).
-        The proper to fix broken links is using the `rewire-option` and `rewire` commands.
-
-    rewire-options options.json
-        Write out every problems and solution alternatives.
-        The output file should be examined, and edited (input-map section),
-        then applied with the `rewire` command.
-
-    rewire options.json
-        Rewrite/patch the input maps as specified in the file.
-        In case of multiple options for an input, the first option is selected.
-
     heads
         Reduce graph to include only most recent computations per
         cluster and possibly a few older ones, that are referenced
@@ -85,7 +74,6 @@ class CmdWeb(Command):
     FORMATTER_CLASS = argparse.RawDescriptionHelpFormatter
 
     def declare(self, arg):
-        arg(OPTIONAL_ENV)
         arg(
             'words',
             metavar='...',
@@ -93,12 +81,11 @@ class CmdWeb(Command):
             help='Sub-commands and their arguments'
         )
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         if not args.words:
             print('No sub-commands given, see usage below:')
             print(textwrap.dedent(self.__doc__))
             return
-        env = args.get_env()
 
         commands, remaining_words = parse_commands(env, args.words)
         if remaining_words:
@@ -249,31 +236,6 @@ class KeepOnlyHeads(SketchProcessor):
         return web_sketch.heads_of(sketch).drop_deleted_inputs()
 
 
-class RewireWriteOptions(ProcessorWithFileName):
-    def __call__(self, sketch):
-        rewire_options = rewire.get_options(sketch.beads)
-        tech.persistence.file_dump(rewire_options, self.file_name)
-        return sketch
-
-
-class Rewire(ProcessorWithFileName):
-    def __call__(self, sketch):
-        rewire_options = tech.persistence.file_load(self.file_name)
-        beads = [bead for bead in sketch.beads if bead.is_not_phantom]
-        for bead in beads:
-            rewire.apply(bead, rewire_options.get(bead.box_name, []))
-        return web_sketch.Sketch.from_beads(beads)
-
-
-class AutoRewire(SketchProcessor):
-    def __call__(self, sketch):
-        rewire_options = rewire.get_options(sketch.beads)
-        beads = [bead for bead in sketch.beads if bead.is_not_phantom]
-        for bead in beads:
-            rewire.apply(bead, rewire_options.get(bead.box_name, []))
-        return web_sketch.Sketch.from_beads(beads)
-
-
 SUBCOMMANDS = {
     'load': Load,
     'save': Save,
@@ -284,29 +246,17 @@ SUBCOMMANDS = {
     'color': SetFreshness,
     'heads': KeepOnlyHeads,
     'view': View,
-    'auto-rewire': AutoRewire,
-    'rewire-options': RewireWriteOptions,
-    'rewire': Rewire,
 }
 
 
 def load_all_beads(boxes):
     columns = int(os.environ.get('COLUMNS', 80))
     all_beads = []
-    import time
-    load_start = time.perf_counter()
-    # This UnionBox.all_beads is the meat, the rest is just user feedback for big/slow
-    # environments
-    for n, bead in enumerate(UnionBox(boxes).all_beads()):
-        load_end = time.perf_counter()
-
-        msg = f"\rLoaded bead {n + 1} ({bead.archive_filename})"[:columns]
+    for n, bead in enumerate(search(boxes).all()):
+        msg = f"\rLoaded bead {n + 1} ({bead.box_name} : {bead.name} @ {bead.freeze_time_str})"[:columns]
         msg = msg + ' ' * (columns - len(msg))
         print(msg, end="", flush=True)
-        if load_end - load_start > 1:
-            print(f"\nLoading took {load_end - load_start} seconds")
         all_beads.append(bead)
-        load_start = time.perf_counter()
     print("\r" + " " * columns + "\r", end="")
     return all_beads
 

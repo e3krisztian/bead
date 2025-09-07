@@ -1,6 +1,6 @@
 import html
-from .freshness import Freshness
 
+from .freshness import Freshness
 
 DOT_GRAPH_TEMPLATE = """\
 digraph {{

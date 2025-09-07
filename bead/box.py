@@ -2,10 +2,6 @@
 We are responsible to store (and retrieve) beads.
 
 We are a convenience feature, as beads can be stored and used directly as files.
-It is assumed, that boxes store disjunct sets of data.
-This implies, that when beads are branched (a copy is made), the copy process should
-- rename all the beads and update their input-maps
-- copy the beads to a new box, that will never be active at the same time, as the original
 
 Boxes can be used to:
 - share computations (beads) (when the box is on a shared drive (e.g. NFS or sshfs mounted))
@@ -14,61 +10,59 @@ Boxes can be used to:
   (this is naive access control, but could work)
 '''
 
-from datetime import datetime, timedelta
-import os
-from typing import Iterator, Iterable, Sequence
+from abc import ABC
+from abc import abstractmethod
+from typing import Any
+from typing import Protocol
 
-from .archive import Archive, InvalidArchive
+from . import tech
+from .bead import Archive
+from .bead import Bead
+from .box_index import index_path_exists, can_read_index, can_create_index, BoxIndex
+from .box_query import QueryCondition
+from .box_rawfs import RawFilesystemResolver
 from .exceptions import BoxError
-from . import spec as bead_spec
+from .exceptions import InvalidArchive
 from .tech.timestamp import time_from_timestamp
-from .import tech
+from .ziparchive import ZipArchive
+
 Path = tech.fs.Path
 
 
-# private and specific to Box implementation, when Box gains more power,
-# it should change how it handles queries (e.g. using BEAD_NAME, KIND,
-# or CONTENT_ID directly through an index)
+class BoxResolver(Protocol):
+    """
+    Interface for bead storage and retrieval implementations.
+    """
+    
+    def get_beads(self, conditions: list[tuple[QueryCondition, Any]], box_name: str) -> list[Bead]:
+        """Retrieve beads matching conditions."""
+        ...
+    
+    def get_file_path(self, name: str, content_id: str) -> Path:
+        """Get file path for bead by name and content_id."""
+        ...
+    
+    def index_archive_file(self, archive_path: Path) -> None:
+        """Add archive file to resolver."""
+        ...
 
 
-def _make_checkers():
-    def has_name(name):
-        def filter(bead):
-            return bead.name == name
-        return filter
-
-    def has_kind(kind):
-        def filter(bead):
-            return bead.kind == kind
-        return filter
-
-    def has_content_prefix(prefix):
-        def filter(bead):
-            return bead.content_id.startswith(prefix)
-        return filter
-
-    return {
-        bead_spec.BEAD_NAME:  has_name,
-        bead_spec.KIND:       has_kind,
-        bead_spec.CONTENT_ID: has_content_prefix,
-    }
-
-
-_CHECKERS = _make_checkers()
-
-
-def compile_conditions(conditions):
-    '''
-    Compile list of (check-type, check-param)-s into a match function.
-    '''
-    checkers = [_CHECKERS[check_type](check_param) for check_type, check_param in conditions]
-
-    def match(bead):
-        for check in checkers:
-            if not check(bead):
-                return False
-        return True
-    return match
+class NullResolver:
+    """
+    No-op resolver that returns empty results for all operations.
+    """
+    
+    def get_beads(self, conditions: list[tuple[QueryCondition, Any]], box_name: str) -> list[Bead]:
+        """Return empty list - no beads found."""
+        return []
+    
+    def get_file_path(self, name: str, content_id: str) -> Path:
+        """Always raise LookupError - no beads exist."""
+        raise LookupError(f"Bead not found: name='{name}', content_id='{content_id}'")
+    
+    def index_archive_file(self, archive_path: Path) -> None:
+        """No-op - ignore archive additions."""
+        pass
 
 
 ARCHIVE_COMMENT = '''
@@ -99,14 +93,286 @@ There {is,will be,was} more info about BEADs at
 '''
 
 
+class BeadSearch(ABC):
+    """
+    Abstract base class for searching beads with a fluent builder pattern.
+    """
+
+    @abstractmethod
+    def by_name(self, name):
+        """Filter by bead name."""
+        return self
+
+    @abstractmethod
+    def by_kind(self, kind):
+        """Filter by bead kind."""
+        return self
+
+    @abstractmethod
+    def by_content_id(self, content_id):
+        """Filter by content ID."""
+        return self
+
+    @abstractmethod
+    def at_time(self, timestamp):
+        """Exact timestamp match."""
+        return self
+
+    @abstractmethod
+    def newer_than(self, timestamp):
+        """Timestamp > given value."""
+        return self
+
+    @abstractmethod
+    def older_than(self, timestamp):
+        """Timestamp < given value."""
+        return self
+
+    @abstractmethod
+    def at_or_newer(self, timestamp):
+        """Timestamp >= given value."""
+        return self
+
+    @abstractmethod
+    def at_or_older(self, timestamp):
+        """Timestamp <= given value."""
+        return self
+
+    @abstractmethod
+    def unique(self):
+        """Keep one instance by content_id."""
+        return self
+
+    @abstractmethod
+    def first(self) -> Bead:
+        """Return first bead found or raise LookupError if none found."""
+        pass
+
+    @abstractmethod
+    def oldest(self) -> Bead:
+        """Return oldest (by timestamp) matching bead or raise LookupError if none found."""
+        pass
+
+    @abstractmethod
+    def newest(self) -> Bead:
+        """Return newest (by timestamp) matching bead or raise LookupError if none found."""
+        pass
+
+    @abstractmethod
+    def newer(self, n: int = 1) -> Bead:
+        """Return nth newest bead (0=oldest, 1=2nd oldest, etc.) or raise LookupError if less items found."""
+        pass
+
+    @abstractmethod
+    def older(self, n: int = 1) -> Bead:
+        """Return nth oldest bead (0=newest, 1=2nd newest, etc.) or raise LookupError if less items found."""
+        pass
+
+    @abstractmethod
+    def all(self) -> list[Bead]:
+        """Return list of all matching beads."""
+        pass
+
+
+class BaseSearch(BeadSearch):
+    """
+    Base implementation of BeadSearch with common functionality.
+    """
+
+    def __init__(self):
+        self.conditions = []
+        self._unique_filter = False
+
+    def by_name(self, name: str):
+        if not name:
+            raise ValueError("Name cannot be empty")
+        self.conditions.append((QueryCondition.BEAD_NAME, name))
+        return self
+
+    def by_kind(self, kind: str):
+        if not kind:
+            raise ValueError("Kind cannot be empty")
+        self.conditions.append((QueryCondition.KIND, kind))
+        return self
+
+    def by_content_id(self, content_id: str):
+        if not content_id:
+            raise ValueError("Content ID cannot be empty")
+        self.conditions.append((QueryCondition.CONTENT_ID, content_id))
+        return self
+
+    def at_time(self, timestamp):
+        if isinstance(timestamp, str):
+            timestamp = time_from_timestamp(timestamp)
+        self.conditions.append((QueryCondition.AT_TIME, timestamp))
+        return self
+
+    def newer_than(self, timestamp):
+        if isinstance(timestamp, str):
+            timestamp = time_from_timestamp(timestamp)
+        self.conditions.append((QueryCondition.NEWER_THAN, timestamp))
+        return self
+
+    def older_than(self, timestamp):
+        if isinstance(timestamp, str):
+            timestamp = time_from_timestamp(timestamp)
+        self.conditions.append((QueryCondition.OLDER_THAN, timestamp))
+        return self
+
+    def at_or_newer(self, timestamp):
+        if isinstance(timestamp, str):
+            timestamp = time_from_timestamp(timestamp)
+        self.conditions.append((QueryCondition.AT_OR_NEWER, timestamp))
+        return self
+
+    def at_or_older(self, timestamp):
+        if isinstance(timestamp, str):
+            timestamp = time_from_timestamp(timestamp)
+        self.conditions.append((QueryCondition.AT_OR_OLDER, timestamp))
+        return self
+
+    def unique(self):
+        self._unique_filter = True
+        return self
+
+    def _apply_unique_filter(self, beads: list[Bead]) -> list[Bead]:
+        if not self._unique_filter:
+            return beads
+        seen_content_ids = set()
+        unique_beads = []
+        for bead in beads:
+            if bead.content_id not in seen_content_ids:
+                seen_content_ids.add(bead.content_id)
+                unique_beads.append(bead)
+        return unique_beads
+
+    def first(self) -> Bead:
+        beads = self._get_beads()
+        if not beads:
+            raise LookupError("No beads found")
+        return beads[0]
+
+    def oldest(self) -> Bead:
+        beads = self._get_beads()
+        if not beads:
+            raise LookupError("No beads found")
+        return min(beads, key=lambda b: b.freeze_time)
+
+    def newest(self) -> Bead:
+        beads = self._get_beads()
+        if not beads:
+            raise LookupError("No beads found")
+        return max(beads, key=lambda b: b.freeze_time)
+
+    def newer(self, n: int = 1) -> Bead:
+        beads = self._get_beads()
+        if not beads:
+            raise LookupError("No beads found")
+        sorted_beads = sorted(beads, key=lambda b: b.freeze_time)
+        if n >= len(sorted_beads):
+            raise LookupError(f"Not enough beads found (requested index {n}, found {len(sorted_beads)})")
+        return sorted_beads[n]
+
+    def older(self, n: int = 1) -> Bead:
+        beads = self._get_beads()
+        if not beads:
+            raise LookupError("No beads found")
+        sorted_beads = sorted(beads, key=lambda b: b.freeze_time, reverse=True)
+        if n >= len(sorted_beads):
+            raise LookupError(f"Not enough beads found (requested index {n}, found {len(sorted_beads)})")
+        return sorted_beads[n]
+
+    def all(self) -> list[Bead]:
+        return self._get_beads()
+
+    @abstractmethod
+    def _get_beads(self) -> list[Bead]:
+        """Subclasses must implement this method to retrieve beads."""
+        pass
+
+
+class BoxSearch(BaseSearch):
+    """
+    Concrete implementation of BeadSearch for boxes.
+    """
+
+    def __init__(self, box):
+        super().__init__()
+        self.box = box
+
+    def _get_beads(self) -> list[Bead]:
+        beads = self.box.get_beads(self.conditions)
+        return self._apply_unique_filter(beads)
+
+
+class MultiBoxSearch(BaseSearch):
+    """
+    Search across multiple boxes.
+    """
+
+    def __init__(self, boxes):
+        super().__init__()
+        self.boxes = boxes
+
+    def _get_beads(self) -> list[Bead]:
+        all_beads = []
+        for box in self.boxes:
+            beads = box.get_beads(self.conditions)
+            all_beads.extend(beads)
+
+        return self._apply_unique_filter(all_beads)
+
+    def first(self) -> Bead:
+        for box in self.boxes:
+            try:
+                beads = box.get_beads(self.conditions)
+                if beads:
+                    return beads[0]
+            except (InvalidArchive, IOError, OSError):
+                continue
+        raise LookupError("No beads found")
+
+
+def search(boxes) -> BeadSearch:
+    """
+    Search across multiple boxes.
+    """
+    return MultiBoxSearch(boxes)
+
+
+def resolve(boxes, bead: Bead) -> Archive:
+    """
+    Locate an extractable Archive for bead.
+
+    Finds the appropriate box by matching bead.box_name and resolves the bead in that box.
+
+    Args:
+        boxes: List of Box instances to search
+        bead: Bead instance to resolve
+
+    Returns:
+        Archive instance corresponding to the bead
+
+    Raises:
+        LookupError: If no box with matching name is found
+        ValueError: If the bead cannot be resolved in the found box
+    """
+    for box in boxes:
+        if box.name == bead.box_name:
+            return box.resolve(bead)
+
+    raise LookupError(f"Could not find box '{bead.box_name}' to resolve bead '{bead.name}'")
+
+
 class Box:
     """
     Store Beads.
     """
-
+    
     def __init__(self, name: str, location: Path):
-        self.location = location
         self.name = name
+        self.location = location
+        self.resolver = self._create_resolver()
 
     @property
     def directory(self):
@@ -117,198 +383,84 @@ class Box:
         '''
         return Path(self.location)
 
-    def find_bead(self, name, content_id):
-        query = ((bead_spec.BEAD_NAME, name), (bead_spec.CONTENT_ID, content_id))
-        for bead in self._beads(query):
-            return bead
+    def _create_resolver(self) -> BoxResolver:
+        """
+        Create appropriate resolver based on directory access and index availability.
+        
+        Strategy selection:
+        1. No SQLite index, no write access -> RawFilesystemResolver
+        2. No SQLite index, have write access -> BoxIndex
+        3. SQLite index exists, no read access -> NullResolver  
+        4. SQLite index exists, read-only access -> BoxIndex
+        5. SQLite index exists, read-write access -> BoxIndex
+        """
+        if index_path_exists(self.directory):
+            if can_read_index(self.directory):
+                return BoxIndex(self.directory)
+            else:
+                return NullResolver()
+        else:
+            if can_create_index(self.directory):
+                return BoxIndex(self.directory)
+            else:
+                return RawFilesystemResolver(self.directory)
 
-    def all_beads(self) -> Iterator[Archive]:
+    def all_beads(self) -> list[Bead]:
         '''
-        Iterator for all beads in this Box
-        '''
-        return iter(self._beads([]))
+        List of all beads in this Box.
 
-    def _beads(self, conditions) -> Iterable[Archive]:
+        This is a list of Bead-s, not extractable Archives - intended for fast analytics.
+        '''
+        return self.get_beads([])
+
+    def get_beads(self, conditions) -> list[Bead]:
         '''
         Retrieve matching beads.
         '''
-        match = compile_conditions(conditions)
+        return self.resolver.get_beads(conditions, self.name)
 
-        bead_names = set(
-            value
-            for tag, value in conditions
-            if tag == bead_spec.BEAD_NAME)
-        if bead_names:
-            if len(bead_names) > 1:
-                # easy path: names disagree
-                return []
-            # beadname_20170615T075813302092+0200.zip
-            glob = bead_names.pop() + '_????????T????????????[-+]????.zip'
-        else:
-            glob = '*'
+    def resolve(self, bead: Bead) -> Archive:
+        '''
+        Resolve a Bead instance to its corresponding Archive.
+        '''
+        if bead.box_name != self.name:
+            raise ValueError(f"Bead box_name '{bead.box_name}' does not match this box '{self.name}'")
 
-        paths = self.directory.glob(glob)
-        beads = self._archives_from(paths)
-        candidates = (bead for bead in beads if match(bead))
-        return candidates
+        file_path = self.resolver.get_file_path(bead.name, bead.content_id)
+        if not file_path.exists():
+            raise LookupError(f"Archive file not found: {file_path}")
+            
+        archive = ZipArchive(file_path, self.name)
+        self._validate_archive_matches_bead(archive, bead)
+        return archive
+    
+    def _validate_archive_matches_bead(self, archive: Archive, bead: Bead):
+        '''Validate that resolved Archive matches input Bead.'''
+        if (archive.name != bead.name or
+            archive.content_id != bead.content_id or
+            archive.box_name != bead.box_name):
+            raise ValueError(
+                "Resolved Archive does not match Bead: "
+                + f"Archive({archive.name}, {archive.content_id}, {archive.box_name}) != "
+                + f"Bead({bead.name}, {bead.content_id}, {bead.box_name})")
 
-    def _archives_from(self, paths: Iterable[Path]):
-        for path in paths:
-            try:
-                archive = Archive(path, self.name)
-            except InvalidArchive:
-                # TODO: log/report problem
-                pass
-            else:
-                yield archive
-
-    def store(self, workspace, freeze_time):
-        # -> Bead
+    def store(self, workspace, freeze_time) -> Path:
+        '''Store workspace as bead archive.'''
         if not self.directory.exists():
             raise BoxError(f'Box "{self.name}": directory {self.directory} does not exist')
         if not self.directory.is_dir():
             raise BoxError(f'Box "{self.name}": {self.directory} is not a directory')
-        zipfilename = (
-            self.directory / f'{workspace.name}_{freeze_time}.zip')
+        
+        zipfilename = self.directory / f'{workspace.name}_{freeze_time}.zip'
         workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT)
+        
+        # Add to resolver
+        self.resolver.index_archive_file(zipfilename)
+        
         return zipfilename
 
-    def find_names(self, kind, content_id, timestamp):
-        '''
-        -> (exact_match, best_guess, best_guess_freeze_time, names)
-        where
-            exact_match            = name (kind & content_id matched)
-            best_guess             = name (kind matched, timestamp is closest to input's)
-            best_guess_freeze_time = timestamp ()
-            names                  = sequence of names (kind matched)
-        '''
-        assert isinstance(timestamp, datetime)
-        try:
-            filenames = os.listdir(self.directory)
-        except FileNotFoundError:
-            filenames = []
-        paths = (self.directory / fname for fname in filenames)
-        beads = self._archives_from(paths)
-        candidates = (bead for bead in beads if bead.kind == kind)
-
-        exact_match            = None
-        best_guess             = None
-        best_guess_freeze_time = None
-        best_guess_timedelta   = None
-        names                  = set()
-        for bead in candidates:
-            if bead.content_id == content_id:
-                exact_match = bead.name
-            #
-            bead_freeze_time = time_from_timestamp(bead.freeze_time_str)
-            bead_timedelta = bead_freeze_time - timestamp
-            if bead_timedelta < timedelta():
-                bead_timedelta = -bead_timedelta
-            if (
-                (best_guess_timedelta is None) or
-                (bead_timedelta < best_guess_timedelta) or
-                (
-                    (bead_timedelta == best_guess_timedelta) and
-                    (bead_freeze_time > best_guess_freeze_time)
-                )
-            ):
-                best_guess = bead.name
-                best_guess_freeze_time = bead_freeze_time
-                best_guess_timedelta = bead_timedelta
-            #
-            names.add(bead.name)
-
-        return exact_match, best_guess, best_guess_freeze_time, names
-
-    def get_context(self, check_type, check_param, time):
-        # in theory timestamps can be [intentionally] duplicated, but let's
-        # treat that as an error condition to be fixed ASAP
-        conditions = [(check_type, check_param)]
-        return make_context(time, self._beads(conditions))
-
-
-class UnionBox:
-    def __init__(self, boxes: Sequence[Box]):
-        self.boxes = tuple(boxes)
-
-    def get_context(self, check_type, check_param, time):
-        context = None
-        for box in self.boxes:
-            try:
-                box_context = box.get_context(check_type, check_param, time)
-            except LookupError:
-                continue
-            else:
-                context = merge_contexts(box_context, context)
-
-        if context:
-            return context
-        raise LookupError
-
-    def get_at(self, check_type, check_param, time):
-        context = self.get_context(check_type, check_param, time)
-        return context.best
-
-    def all_beads(self) -> Iterator[Archive]:
-        '''
-        Iterator for all beads in this Box
-        '''
-        for box in self.boxes:
-            yield from box.all_beads()
-
-
-class BeadContext:
-    def __init__(self, time, bead, prev, next):
-        assert bead is None or bead.freeze_time == time
-        assert prev is None or prev.freeze_time < time
-        assert next is None or next.freeze_time > time
-        assert bead or prev or next
-        self.time = time
-        self.bead = bead
-        self.prev = prev
-        self.next = next
-
-    @property
-    def best(self):
-        if self.bead:
-            return self.bead
-        if not self.prev:
-            return self.next
-        if not self.next:
-            return self.prev
-        if self.time - self.prev.freeze_time < self.next.freeze_time - self.time:
-            return self.prev
-        return self.next
-
-
-def make_context(time, beads):
-    match, prev, next = None, None, None
-    for bead in beads:
-        if bead.freeze_time < time:
-            if prev is None or prev.freeze_time < bead.freeze_time:
-                prev = bead
-        elif bead.freeze_time > time:
-            if next is None or bead.freeze_time < next.freeze_time:
-                next = bead
-        else:
-            assert bead.freeze_time == time
-            assert match is None or match.content_id == bead.content_id, (
-                'multiple beads with same freeze time')
-            match = bead
-    if match or prev or next:
-        return BeadContext(time, match, prev, next)
-    raise LookupError
-
-
-def merge_contexts(context1, context2):
-    if context1 is None:
-        return context2
-    if context2 is None:
-        return context1
-    assert context1.time == context2.time
-    time = context1.time
-    beads = (
-        context1.bead, context1.prev, context1.next,
-        context2.bead, context2.prev, context2.next)
-    beads = (bead for bead in beads if bead)
-    return make_context(time, beads)
+    def search(self) -> BeadSearch:
+        """
+        Return a BoxSearch instance for fluent search operations.
+        """
+        return BoxSearch(self)

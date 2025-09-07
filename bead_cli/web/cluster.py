@@ -1,10 +1,11 @@
-from typing import Dict, Iterable
+from typing import Dict
+from typing import Iterable
 
 from bead.tech.timestamp import EPOCH_STR
 
+from . import graphviz
 from .dummy import Dummy
 from .freshness import Freshness
-from . import graphviz
 
 
 class Cluster:

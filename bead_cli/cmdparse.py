@@ -12,13 +12,15 @@ For single command scripts, be more minimalist and just use argparse directly.
 
 
 import argparse
-import shlex
 from collections.abc import Sequence
+import shlex
+from typing import TYPE_CHECKING
 from typing import Any
 
 import argcomplete
 
-__all__ = ['Command', 'Parser']
+if TYPE_CHECKING:
+    from .environment import Environment
 
 
 class Command:
@@ -52,9 +54,9 @@ class Command:
         assert self.__doc__ is not None, self.__class__
         return self.__doc__
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         '''
-        This is the function that gets called with the parsed arguments.
+        This is the function that gets called with the parsed arguments and environment.
 
         You will want to override it!
         '''
@@ -100,7 +102,7 @@ class Parser:
             self.__subparsers = self.argparser.add_subparsers()
         return self.__subparsers
 
-    def _make_command(self, commandish: Command | type) -> Command | None:
+    def _make_command(self, commandish: Command | type[Command]) -> Command:
         '''
         Make a proper Command instance.
 
@@ -114,7 +116,7 @@ class Parser:
             instance = commandish()
             return instance
 
-        return None
+        raise TypeError
 
     def arg(self, *args: Any, **kwargs: Any) -> None:
         '''
@@ -134,10 +136,10 @@ class Parser:
             if 'default' in kwargs:
                 # extend help with default
                 arg_kwargs['help'] = (
-                    f"{kwargs.get('help', '')} (default: {kwargs['default']!r})")
+                    f"{kwargs.get('help', '')} (default: {kwargs['default']!s})")
             self.argparser.add_argument(*args, **arg_kwargs)
 
-    def command(self, name: str, commandish: Command | type, title: str) -> None:
+    def command(self, name: str, commandish: Command | type[Command], title: str) -> None:
         '''
         Declare a command.
 
@@ -155,7 +157,7 @@ class Parser:
         command.declare(self.__class__(parser, self.defaults).arg)
         parser.set_defaults(_cmdparse__run=command.run)
 
-    def commands(self, *commands_sequence: tuple[str, Command | type, str]) -> None:
+    def commands(self, *commands_sequence: tuple[str, Command | type[Command], str]) -> None:
         '''
         Declare any number of commands in one step.
 
@@ -174,11 +176,11 @@ class Parser:
             name, help=title + '...', description=help)
         return self.__class__(parser, self.defaults)
 
-    def dispatch(self, argv: Sequence[str]) -> int:
+    def dispatch(self, argv: Sequence[str], env: 'Environment') -> int:
         '''
         Parse `argv` and dispatch to the appropriate command.
         '''
-        def print_help(args):
+        def print_help(args, env: 'Environment'):
             print(
                 'ERROR: not a full command <%s>\n'
                 % ' '.join(shlex.quote(arg) for arg in argv))
@@ -198,7 +200,7 @@ class Parser:
             # this is worked around here
             return -1
         run = getattr(args, '_cmdparse__run', print_help)
-        return run(args) or 0
+        return run(args, env) or 0
 
     def autocomplete(self):
         """Enable shell autocomplete"""

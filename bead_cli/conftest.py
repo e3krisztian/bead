@@ -1,15 +1,16 @@
 import os
 import warnings
 import zipfile
-import pytest
-from tracelog import TRACELOG
 
-from bead.workspace import Workspace
+import pytest
+
 from bead import layouts
 from bead import tech
-from bead.archive import Archive
-from .test_robot import Robot
+from bead.workspace import Workspace
+from bead.ziparchive import ZipArchive
+from tracelog import TRACELOG
 
+from .test_robot import Robot
 
 # timestamps
 TS1 = '20150901T151015000001+0200'
@@ -97,9 +98,9 @@ def _new_bead(robot, beads, box, bead_name, inputs=None, tmp_path_factory=None):
     _add_inputs(robot, inputs)
     with robot.environment:
         TRACELOG('store', robot.cwd, TS1, 'to', box.location)
-        beads[bead_name] = Archive(box.store(Workspace('.'), TS1))
+        beads[bead_name] = ZipArchive(box.store(Workspace('.'), TS1))
     robot.cd('..')
-    robot.cli('zap', bead_name)
+    robot.cli('discard', bead_name)
     return bead_name
 
 

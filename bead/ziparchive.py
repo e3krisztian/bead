@@ -1,13 +1,14 @@
 from copy import deepcopy
 import os
+import re
 import shutil
 
-from .bead import UnpackableBead
-from .exceptions import InvalidArchive
-from . import tech
 from . import layouts
 from . import meta
+from . import tech
 from . import zipopener
+from .bead import Archive
+from .exceptions import InvalidArchive
 
 # technology modules
 timestamp = tech.timestamp
@@ -24,11 +25,12 @@ META_KEYS = (
 )
 
 
-class ZipArchive(UnpackableBead):
+class ZipArchive(Archive):
 
     def __init__(self, filename, box_name=''):
         self.archive_filename = filename
         self.box_name = box_name
+        self.name = bead_name_from_file_path(filename)
         self._meta = self._load_meta()
         self._content_id = None
 
@@ -36,8 +38,12 @@ class ZipArchive(UnpackableBead):
     def zipfile(self):
         try:
             return zipopener.open(self.archive_filename)
-        except (zipopener.BadZipFile, OSError, IOError):
+        except (zipopener.BadZipFile, OSError):
             raise InvalidArchive(self.archive_filename)
+
+    @property
+    def location(self) -> str:
+        return str(self.archive_filename)
 
     def validate(self):
         '''
@@ -139,13 +145,6 @@ class ZipArchive(UnpackableBead):
         return persistence.zip_load(self.zipfile, filename)
 
     @property
-    def input_map(self):
-        try:
-            return self.zip_load(layouts.Archive.INPUT_MAP)
-        except:
-            return {}
-
-    @property
     def inputs(self):
         return tuple(meta.parse_inputs(self.meta))
 
@@ -153,8 +152,8 @@ class ZipArchive(UnpackableBead):
     def _load_meta(self):
         try:
             return self.zip_load(layouts.Archive.BEAD_META)
-        except:
-            raise InvalidArchive(self.archive_filename)
+        except Exception as e:
+            raise InvalidArchive(self.archive_filename) from e
 
     def extract_file(self, zip_path: str, fs_path: tech.fs.Path):
         '''
@@ -194,4 +193,22 @@ class ZipArchive(UnpackableBead):
 
     def unpack_meta_to(self, workspace):
         workspace.meta = self.meta
-        workspace.input_map = self.input_map
+
+
+def bead_name_from_file_path(path):
+    '''
+    Parse bead name from a file path.
+
+    Might return a simpler name than intended
+    '''
+    name_with_timestamp, ext = os.path.splitext(os.path.basename(path))
+    # assert ext == '.zip'  # not enforced to allow having beads with different extensions
+    name = re.sub('_[0-9]{8}(?:[tT][-+0-9]*)?$', '', name_with_timestamp)
+    return meta.BeadName(name)
+
+
+assert 'bead-2015v3' == bead_name_from_file_path('bead-2015v3.zip')
+assert 'bead-2015v3' == bead_name_from_file_path('bead-2015v3_20150923.zip')
+assert 'bead-2015v3' == bead_name_from_file_path('bead-2015v3_20150923T010203012345+0200.zip')
+assert 'bead-2015v3' == bead_name_from_file_path('bead-2015v3_20150923T010203012345-0200.zip')
+assert 'bead-2015v3' == bead_name_from_file_path('path/to/bead-2015v3_20150923.zip')

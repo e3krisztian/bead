@@ -1,8 +1,11 @@
 import os
+
+from bead.tech.fs import rmtree
 import pytest
 
-from bead.workspace import Workspace
 from bead.box import Box
+from bead.workspace import Workspace
+
 from .test_robot import Robot
 
 
@@ -30,9 +33,9 @@ def test_symlink_is_resolved_on_save(robot, box):
     # save to box & clean up
     robot.cli('save')
     robot.cd('..')
-    robot.cli('zap', 'bead')
+    robot.cli('discard', 'bead')
 
-    robot.cli('develop', 'bead')
+    robot.cli('edit', 'bead')
     assert 'content' in robot.read_file(robot.cwd / 'bead/symlink')
 
 
@@ -116,7 +119,7 @@ def test_invalid_box_specified(robot_multi_box, box1, box2):
 def test_save_to_box_without_backing_directory(robot_multi_box, box1, box2):
     robot = robot_multi_box
     robot.cli('new', 'bead')
-    os.rmdir(box2.directory)
+    rmtree(box2.directory)
     with pytest.raises(SystemExit):
         robot.cli('save', box2.name, '-w', 'bead')
     assert 'ERROR' in robot.stderr

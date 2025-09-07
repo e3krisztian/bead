@@ -1,6 +1,7 @@
-# coding: utf-8
 import os
+
 import pytest
+
 from . import fs as m
 
 
@@ -83,8 +84,8 @@ def test_all_subpaths(tmp_path):
     paths = set(m.all_subpaths(root))
 
     # then all paths are found
-    dir_paths = set(root / d for d in DIRS)
-    file_paths = set(root / f for f in FILES)
+    dir_paths = {root / d for d in DIRS}
+    file_paths = {root / f for f in FILES}
     all_paths = {root} | dir_paths | file_paths
     assert all_paths == paths
 
@@ -92,7 +93,7 @@ def test_all_subpaths(tmp_path):
 def test_read_write_file(tmp_path):
     """Test reading and writing files."""
     testfile = tmp_path / 'testfile'
-    content = u'Test_read_write_file testfile content / áíőóüú@!#@!#$$@'
+    content = 'Test_read_write_file testfile content / áíőóüú@!#@!#$$@'
     m.write_file(testfile, content)
     read_content = m.read_file(testfile)
     assert content == read_content

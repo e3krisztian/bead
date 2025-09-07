@@ -1,9 +1,9 @@
 import pytest
+
 from .box import Box
-from .tech.fs import write_file, rmtree
+from .tech.fs import write_file
 from .tech.timestamp import time_from_user
 from .workspace import Workspace
-from . import spec as bead_spec
 
 
 @pytest.fixture
@@ -26,44 +26,19 @@ def box(tmp_path_factory):
 @pytest.fixture
 def timestamp():
     """Provide a test timestamp."""
-    return time_from_user('20160704T162800000000+0200')
+    return time_from_user('20160704T162800000001+0200')
 
 
 def test_all_beads(box):
     """Test that all beads are returned."""
-    bead_names = set(b.name for b in box.all_beads())
-    assert set(['bead1', 'bead2', 'BEAD3']) == bead_names
-
-
-def test_find_names(box, timestamp):
-    """Test finding beads by name."""
-    result = box.find_names(kind='test-bead1', content_id='', timestamp=timestamp)
-    exact_match, best_guess, best_guess_timestamp, names = result
-
-    assert exact_match is None
-    assert 'bead1' == best_guess
-    assert best_guess_timestamp is not None
-    names_set = set(names)
-    assert set(['bead1']) == names_set
-
-
-def test_find_names_works_even_with_removed_box_directory(box, timestamp):
-    """Test that find_names handles missing box directory gracefully."""
-    rmtree(box.directory)
-    result = box.find_names(kind='test-bead1', content_id='', timestamp=timestamp)
-    exact_match, best_guess, best_guess_timestamp, names = result
-    assert exact_match is None
-    assert best_guess is None
-    assert best_guess_timestamp is None
-    names_list = list(names)
-    assert [] == names_list
+    bead_names = {b.name for b in box.all_beads()}
+    assert {'bead1', 'bead2', 'BEAD3'} == bead_names
 
 
 def test_find_with_uppercase_name(box, timestamp):
     """Test finding beads with uppercase names."""
-    matches = box.get_context(bead_spec.BEAD_NAME, 'BEAD3', timestamp)
-    best_name = matches.best.name
-    assert 'BEAD3' == best_name
+    bead = box.search().by_name('BEAD3').at_or_older(timestamp).newest()
+    assert 'BEAD3' == bead.name
 
 
 def test_box_methods_tolerate_junk_in_box(tmp_path_factory):
@@ -84,5 +59,5 @@ def test_box_methods_tolerate_junk_in_box(tmp_path_factory):
     junk_file = box.directory / 'some-non-bead-file'
     write_file(junk_file, 'random bits')
 
-    bead_names = set(b.name for b in box.all_beads())
-    assert set(['bead1', 'bead2', 'BEAD3']) == bead_names
+    bead_names = {b.name for b in box.all_beads()}
+    assert {'bead1', 'bead2', 'BEAD3'} == bead_names

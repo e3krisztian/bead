@@ -1,7 +1,5 @@
-
-
 def test_status(robot, beads, bead_with_inputs, bead_a):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.cli('input', 'load', 'input_a')
     robot.cli('status')
@@ -18,7 +16,7 @@ def test_status(robot, beads, bead_with_inputs, bead_a):
 
 
 def test_verbose(robot, beads, bead_with_inputs, bead_a):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.cli('status', '-v')
 
@@ -34,7 +32,7 @@ def test_verbose(robot, beads, bead_with_inputs, bead_a):
 
 
 def test_inputs_not_in_known_boxes(robot, beads, bead_with_inputs, bead_a):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
 
     robot.reset()
@@ -49,7 +47,7 @@ def test_inputs_not_in_known_boxes(robot, beads, bead_with_inputs, bead_a):
 
 
 def test_verbose_inputs_not_in_known_boxes(robot, beads, bead_with_inputs, bead_a):
-    robot.cli('develop', bead_with_inputs)
+    robot.cli('edit', bead_with_inputs)
     robot.cd(bead_with_inputs)
     robot.reset()
     robot.cli('status', '--verbose')

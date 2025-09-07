@@ -1,10 +1,9 @@
-import io
-import os
-import stat
 import contextlib
-import shutil
-import tempfile
+import os
 from pathlib import Path
+import shutil
+import stat
+import tempfile
 
 
 def ensure_directory(path: Path):
@@ -16,20 +15,13 @@ def ensure_directory(path: Path):
 
 def write_file(path: Path, content: bytes | str):
     if isinstance(content, bytes):
-        f = open(path, 'wb')
-
-        with f:
-            f.write(content)
+        path.write_bytes(content)
     else:
-        f = io.open(path, 'wt', encoding='utf-8')
-
-        with f:
-            f.write(content)
+        path.write_text(content, encoding='utf-8')
 
 
 def read_file(path: Path):
-    with io.open(path, 'rt', encoding='utf-8') as f:
-        return f.read()
+    return path.read_text(encoding='utf-8')
 
 
 @contextlib.contextmanager

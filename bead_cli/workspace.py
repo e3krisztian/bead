@@ -1,20 +1,28 @@
-from bead.exceptions import InvalidArchive
 import os
+from typing import TYPE_CHECKING
 
-from bead import tech
-from bead.workspace import Workspace
 from bead import layouts
+from bead import tech
 from bead.exceptions import BoxError
-import bead.spec as bead_spec
+from bead.exceptions import InvalidArchive
+from bead.workspace import Workspace
 
-from .cmdparse import Command
-from .common import assert_valid_workspace, die, warning, info
-from .common import DefaultArgSentinel
-from .common import OPTIONAL_WORKSPACE, OPTIONAL_ENV
-from .common import BEAD_REF_BASE, BEAD_TIME, resolve_bead
-from .common import verify_with_feedback
-from . import arg_metavar
 from . import arg_help
+from . import arg_metavar
+from .cmdparse import Command
+from .common import BEAD_REF_BASE
+from .common import BEAD_TIME
+from .common import OPTIONAL_WORKSPACE
+from .common import DefaultArgSentinel
+from .common import assert_valid_workspace
+from .common import die
+from .common import info
+from .common import resolve_bead
+from .common import verify_with_feedback
+from .common import warning
+
+if TYPE_CHECKING:
+    from .environment import Environment
 
 timestamp = tech.timestamp.timestamp
 
@@ -43,7 +51,7 @@ class CmdNew(Command):
         arg('workspace', type=Workspace, metavar=arg_metavar.WORKSPACE,
             help='bead and directory to create')
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         workspace: Workspace = args.workspace
         assert_may_be_valid_name(workspace.name)
         if os.path.exists(workspace.directory):
@@ -51,7 +59,7 @@ class CmdNew(Command):
 
         kind = tech.identifier.uuid()
         workspace.create(kind)
-        print(f'Created "{workspace.name}"')
+        print(f'Created workspace "{workspace.name}"')
 
 
 def WORKSPACE_defaulting_to(default_workspace):
@@ -77,12 +85,10 @@ class CmdSave(Command):
         arg('box_name', nargs='?', default=USE_THE_ONLY_BOX, type=str,
             metavar=arg_metavar.BOX, help=arg_help.BOX)
         arg(OPTIONAL_WORKSPACE)
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         box_name = args.box_name
         workspace = args.workspace
-        env = args.get_env()
         assert_valid_workspace(workspace)
         # XXX: (usability) save - support saving directly to a directory outside of workspace
         if box_name is USE_THE_ONLY_BOX:
@@ -116,7 +122,7 @@ class CmdSave(Command):
 DERIVE_FROM_BEAD_NAME = DefaultArgSentinel('derive one from bead name')
 
 
-class CmdDevelop(Command):
+class CmdEdit(Command):
     '''
     Unpack a bead as a source tree.
 
@@ -128,14 +134,12 @@ class CmdDevelop(Command):
         arg(BEAD_REF_BASE)
         arg(BEAD_TIME)
         arg(WORKSPACE_defaulting_to(DERIVE_FROM_BEAD_NAME))
-        arg('-x', '--extract-output', dest='extract_output',
+        arg('--review', dest='review',
             default=False, action='store_true',
-            help='Extract output data as well (normally it is not needed!).')
-        arg(OPTIONAL_ENV)
+            help='Include output data for review (normally not needed for editing).')
 
-    def run(self, args):
-        extract_output = args.extract_output
-        env = args.get_env()
+    def run(self, args, env: 'Environment'):
+        review = args.review
         try:
             bead = resolve_bead(env, args.bead_ref_base, args.bead_time)
         except LookupError:
@@ -155,7 +159,7 @@ class CmdDevelop(Command):
         bead.unpack_to(workspace)
         assert workspace.is_valid
 
-        if extract_output:
+        if review:
             output_directory = workspace.directory / layouts.Workspace.OUTPUT
             bead.unpack_data_to(output_directory)
 
@@ -182,24 +186,40 @@ def print_inputs(env, workspace, verbose):
             has_not_loaded = has_not_loaded or is_not_loaded
             print(f'input/{input.name}')
             print(f'\tStatus:      {"**NOT LOADED**" if is_not_loaded else "loaded"}')
-            input_bead_name = workspace.get_input_bead_name(input.name)
-            print(f'\tBead:        {input_bead_name} # {input.freeze_time_str}')
+
+            # Find bead name by content_id
+            bead_name = None
+            for box in boxes:
+                try:
+                    bead = box.search().by_content_id(input.content_id).first()
+                    bead_name = bead.name
+                    break
+                except LookupError:
+                    continue
+
+            if bead_name:
+                print(f'\tBead:        {bead_name} # {input.freeze_time_str}')
+            else:
+                print(f'\tBead:        **MISSING** # {input.freeze_time_str}')
+
             if verbose:
                 print(f'\tKind:        {input.kind}')
                 print(f'\tContent id:  {input.content_id}')
             print('\tBox[es]:')
             has_box = False
+            # find by kind, then check for exact match
             for box in boxes:
                 try:
-                    context = box.get_context(
-                        bead_spec.BEAD_NAME, input_bead_name, input.freeze_time)
+                    # First search by kind and freeze time to find best match
+                    best_bead = box.search().by_kind(input.kind).at_or_older(input.freeze_time).newest()
+                    has_box = True
+                    # Check if the best match is also an exact content_id match
+                    if best_bead.content_id == input.content_id:
+                        print(f'\t * -r {box.name} # {best_bead.freeze_time_str}')
+                    else:
+                        print(f'\t ~ -r {box.name} # {best_bead.freeze_time_str} (kind match)')
                 except LookupError:
-                    # not in this box
-                    continue
-                bead = context.best
-                has_box = True
-                exact_match = bead.content_id == input.content_id
-                print(f'\t {"*" if exact_match else "?"} -r {box.name} # {bead.freeze_time_str}')
+                    pass
             if not has_box:
                 print('\t - no candidates :(')
                 print('\t   Maybe it has been renamed? or is it in an unreachable box?')
@@ -222,12 +242,10 @@ class CmdStatus(Command):
         arg(OPTIONAL_WORKSPACE)
         arg('-v', '--verbose', default=False, action='store_true',
             help='show more detailed information')
-        arg(OPTIONAL_ENV)
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         workspace = args.workspace
         verbose = args.verbose
-        env = args.get_env()
         kind_needed = verbose
         if workspace.is_valid:
             print(f'Bead Name: {workspace.name}')
@@ -239,7 +257,7 @@ class CmdStatus(Command):
             warning(f'Invalid workspace ({workspace.directory})')
 
 
-class CmdZap(Command):
+class CmdDiscard(Command):
     '''
     Delete the current workspace directory - like rm -rf "$PWD", only more aggressive.
     '''
@@ -251,7 +269,7 @@ class CmdZap(Command):
                   ' Removes partially removed (damaged/invalid) workspaces,'
                   ' and (DANGER ZONE!) non-workspace directories as well!'))
 
-    def run(self, args):
+    def run(self, args, env: 'Environment'):
         workspace = args.workspace
         if not args.force:
             assert_valid_workspace(workspace)

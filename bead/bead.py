@@ -1,8 +1,11 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
+from abc import abstractmethod
 from typing import Sequence
 
+from .exceptions import InvalidArchive
+from .meta import BeadName
+from .meta import InputSpec
 from .tech.timestamp import time_from_timestamp
-from .meta import BeadName, InputSpec
 
 
 class Bead:
@@ -14,7 +17,7 @@ class Bead:
 
     content_id guarantees same data content, but beads with same content can have
     different metadata, including where it is to be found (box_name) and under which name,
-    or how to find the referenced input beads (see input_map).
+    or how to find the referenced input beads.
     '''
 
     # high level view of computation
@@ -40,7 +43,7 @@ class Bead:
                 return input
 
 
-class UnpackableBead(Bead, metaclass=ABCMeta):
+class Archive(Bead, metaclass=ABCMeta):
     '''
     Provide high-level access to content of a bead.
     '''
@@ -61,3 +64,12 @@ class UnpackableBead(Bead, metaclass=ABCMeta):
     @abstractmethod
     def unpack_meta_to(self, workspace):
         pass
+
+    @abstractmethod
+    def validate(self):
+        raise InvalidArchive
+
+    @property
+    @abstractmethod
+    def location(self) -> str:
+        ...
