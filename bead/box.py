@@ -18,7 +18,7 @@ from typing import Protocol
 from . import tech
 from .bead import Archive
 from .bead import Bead
-from .box_index import index_path_exists, can_read_index, can_create_index, BoxIndex
+from .box_index import index_path_exists, can_read_index, BoxIndex
 from .box_query import QueryCondition
 from .box_rawfs import RawFilesystemResolver
 from .exceptions import BoxError
@@ -388,11 +388,10 @@ class Box:
         Create appropriate resolver based on directory access and index availability.
         
         Strategy selection:
-        1. No SQLite index, no write access -> RawFilesystemResolver
-        2. No SQLite index, have write access -> BoxIndex
-        3. SQLite index exists, no read access -> NullResolver  
-        4. SQLite index exists, read-only access -> BoxIndex
-        5. SQLite index exists, read-write access -> BoxIndex
+        1. No SQLite index -> RawFilesystemResolver
+        2. SQLite index exists, no read access -> NullResolver
+        3. SQLite index exists, read-only access -> BoxIndex
+        4. SQLite index exists, read-write access -> BoxIndex
         """
         if index_path_exists(self.directory):
             if can_read_index(self.directory):
@@ -400,10 +399,7 @@ class Box:
             else:
                 return NullResolver()
         else:
-            if can_create_index(self.directory):
-                return BoxIndex(self.directory)
-            else:
-                return RawFilesystemResolver(self.directory)
+            return RawFilesystemResolver(self.directory)
 
     def all_beads(self) -> list[Bead]:
         '''
