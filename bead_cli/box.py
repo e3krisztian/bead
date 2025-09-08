@@ -86,7 +86,7 @@ def rebuild(box):
         print(f'Rebuilding index for box "{box.name}" at {box.location}')
         box_index = BoxIndex(box.location)
         box_index.rebuild()
-        print('  ✓ Success')
+        print('  ✓ Done')
         return True
     except Exception as e:
         print(f'  ✗ Failed: {e}')
@@ -101,7 +101,7 @@ def rebuild_directory(directory):
         print(f'Rebuilding index for directory {directory}')
         box_index = BoxIndex(directory)
         box_index.rebuild()
-        print('  ✓ Success')
+        print('  ✓ Done')
         return True
     except Exception as e:
         print(f'  ✗ Failed: {e}')
@@ -187,7 +187,7 @@ def sync(box):
         print(f'Syncing box "{box.name}" at {box.location}')
         box_index = BoxIndex(box.location)
         box_index.sync()
-        print('  ✓ Success')
+        print('  ✓ Done')
         return True
     except Exception as e:
         print(f'  ✗ Failed: {e}')
@@ -202,7 +202,7 @@ def sync_directory(directory):
         print(f'Syncing directory {directory}')
         box_index = BoxIndex(directory)
         box_index.sync()
-        print('  ✓ Success')
+        print('  ✓ Done')
         return True
     except Exception as e:
         print(f'  ✗ Failed: {e}')
