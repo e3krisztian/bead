@@ -78,7 +78,7 @@ class CmdForget(Command):
             print(f'WARNING: no box defined with "{name}"')
 
 
-def rebuild(box):
+def reindex(box):
     '''Rebuild index for a single box.'''
     from bead.box_index import BoxIndex
 
@@ -93,7 +93,7 @@ def rebuild(box):
         return False
 
 
-def rebuild_directory(directory):
+def reindex_directory(directory):
     '''Rebuild index for a directory.'''
     from bead.box_index import BoxIndex
 
@@ -108,7 +108,7 @@ def rebuild_directory(directory):
         return False
 
 
-def rebuild_all(boxes):
+def reindex_all(boxes):
     '''Rebuild indexes for all boxes.'''
     if not boxes:
         print('No boxes defined')
@@ -118,13 +118,13 @@ def rebuild_all(boxes):
     success_count = 0
 
     for box in boxes:
-        if rebuild(box):
+        if reindex(box):
             success_count += 1
 
     print(f'Completed: {success_count}/{len(boxes)} boxes rebuilt successfully')
 
 
-class CmdRebuild(Command):
+class CmdReindex(Command):
     '''
     Rebuild the SQLite index for a specific box, directory, or all boxes.
     
@@ -146,7 +146,7 @@ class CmdRebuild(Command):
             boxes = env.get_boxes()
             if len(boxes) == 1:
                 # Auto-use the single box
-                rebuild(boxes[0])
+                reindex(boxes[0])
                 return
             elif len(boxes) == 0:
                 print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
@@ -156,14 +156,14 @@ class CmdRebuild(Command):
                 return
         
         if args.all:
-            rebuild_all(env.get_boxes())
+            reindex_all(env.get_boxes())
         elif args.dir:
             # Rebuild specific directory
             directory = args.dir
             if not directory.is_dir():
                 print(f'ERROR: "{directory}" is not an existing directory!')
                 return
-            rebuild_directory(directory)
+            reindex_directory(directory)
         else:
             # Rebuild specific box by name
             box_name = args.box
@@ -176,15 +176,15 @@ class CmdRebuild(Command):
                 print(f'ERROR: Box "{box_name}" not found')
                 return
             
-            rebuild(box)
+            reindex(box)
 
 
-def sync(box):
-    '''Sync index for a single box.'''
+def index(box):
+    '''Create or update index for a single box.'''
     from bead.box_index import BoxIndex
     
     try:
-        print(f'Syncing box "{box.name}" at {box.location}')
+        print(f'Indexing box "{box.name}" at {box.location}')
         box_index = BoxIndex(box.location)
         box_index.sync()
         print('  ✓ Done')
@@ -194,12 +194,12 @@ def sync(box):
         return False
 
 
-def sync_directory(directory):
-    '''Sync index for a directory.'''
+def index_directory(directory):
+    '''Create or update index for a directory.'''
     from bead.box_index import BoxIndex
     
     try:
-        print(f'Syncing directory {directory}')
+        print(f'Indexing directory {directory}')
         box_index = BoxIndex(directory)
         box_index.sync()
         print('  ✓ Done')
@@ -209,35 +209,35 @@ def sync_directory(directory):
         return False
 
 
-def sync_all(boxes):
-    '''Sync indexes for all boxes.'''
+def index_all(boxes):
+    '''Create or update indexes for all boxes.'''
     if not boxes:
         print('No boxes defined')
         return
     
-    print(f'Syncing indexes for {len(boxes)} box(es)...')
+    print(f'Indexing {len(boxes)} box(es)...')
     success_count = 0
     
     for box in boxes:
-        if sync(box):
+        if index(box):
             success_count += 1
     
-    print(f'Completed: {success_count}/{len(boxes)} boxes synced successfully')
+    print(f'Completed: {success_count}/{len(boxes)} boxes indexed successfully')
 
 
-class CmdSync(Command):
+class CmdIndex(Command):
     '''
-    Sync the SQLite index for a specific box, directory, or all boxes.
+    Create or update the SQLite index for a specific box, directory, or all boxes.
     
-    If no arguments are provided and only one box is defined, that box will be synced automatically.
+    If no arguments are provided and only one box is defined, that box will be indexed automatically.
     '''
 
     def declare(self, arg):
         def setup_mutually_exclusive_args(parser):
             group = parser.argparser.add_mutually_exclusive_group()
-            group.add_argument('--box', help='Box name to sync')
-            group.add_argument('--dir', type=tech.fs.Path, help='Box directory to sync')
-            group.add_argument('--all', action='store_true', help='Sync all boxes')
+            group.add_argument('--box', help='Box name to index')
+            group.add_argument('--dir', type=tech.fs.Path, help='Box directory to index')
+            group.add_argument('--all', action='store_true', help='Index all boxes')
         
         arg(setup_mutually_exclusive_args)
 
@@ -247,7 +247,7 @@ class CmdSync(Command):
             boxes = env.get_boxes()
             if len(boxes) == 1:
                 # Auto-use the single box
-                sync(boxes[0])
+                index(boxes[0])
                 return
             elif len(boxes) == 0:
                 print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
@@ -257,16 +257,16 @@ class CmdSync(Command):
                 return
         
         if args.all:
-            sync_all(env.get_boxes())
+            index_all(env.get_boxes())
         elif args.dir:
-            # Sync specific directory
+            # Index specific directory
             directory = args.dir
             if not directory.is_dir():
                 print(f'ERROR: "{directory}" is not an existing directory!')
                 return
-            sync_directory(directory)
+            index_directory(directory)
         else:
-            # Sync specific box by name
+            # Index specific box by name
             box_name = args.box
             if not env.is_known_box(box_name):
                 print(f'ERROR: Unknown box "{box_name}"')
@@ -277,4 +277,4 @@ class CmdSync(Command):
                 print(f'ERROR: Box "{box_name}" not found')
                 return
             
-            sync(box)
+            index(box)
