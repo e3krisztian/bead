@@ -1,6 +1,6 @@
 [project]
 name = "bead"
-version = "0.9"
+version = "0.9.1.dev1"
 description = "Linked frozen computations"
 authors = [{name = "Krisztián Fekete", email = "e3krisztian+bead@gmail.com"}]
 license = {text = "The Unlicense"}
