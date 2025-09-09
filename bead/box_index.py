@@ -236,18 +236,6 @@ def can_read_index(box_directory: Path) -> bool:
         return False
 
 
-def can_create_index(box_directory: Path) -> bool:
-    """Test if SQLite index can be created without actually creating it."""
-    try:
-        # Test basic file creation permissions
-        test_file = box_directory / '.test_write_access'
-        test_file.touch()
-        test_file.unlink()
-        return True
-    except Exception:
-        return False
-
-
 def ensure_index(box_directory: Path) -> bool:
     """Ensure SQLite index exists, creating it if necessary."""
     try:

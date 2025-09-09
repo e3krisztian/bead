@@ -67,6 +67,21 @@ E.g.
 $ cp executables/bead ~/.local/bin
 ```
 
+----
+
+Alternatively it can be installed with pipx:
+
+```
+pipx install git+https://github.com/e3krisztian/bead
+```
+For development version, or
+```
+pipx install git+https://github.com/e3krisztian/bead@VERSION
+```
+for any tagged versions.
+
+----
+
 If you test it, please give [feedback](../../issues) on
 - general usability
 - misleading/unclear help (currently: command line help)

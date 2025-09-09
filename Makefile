@@ -10,4 +10,4 @@ shiv:
 	shiv -o executables/bead.shiv -c bead -p '/usr/bin/python -sE' .
 
 container-image:
-	podman build -t bead-dev - < dev/Containerfile
+	podman build --no-cache -t bead-dev - < dev/Containerfile
