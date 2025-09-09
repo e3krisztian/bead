@@ -142,14 +142,7 @@ def test_load_finds_renamed_bead_by_content_id(
     # unload input
     cli('input', 'unload', 'b')
 
-    # Try to load input again - should succeed because content_id matching is used
-    # however we need to rebuild the box index for it to be picked up.
-    # As the index is the authorative content of the box, we try to load the bead
-    # under its original name, which is no longer there.
-    # So while we do have it by the new name in the index, the old one comes first,
-    # and will cause a failure.
-    cli('box', 'index', 'rebuild', box.directory)
-
+    # try to load input again - should succeed because content_id matching is used
     cli('input', 'load', 'b')
     check.loaded('b', bead_b)
 
