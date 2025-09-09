@@ -13,8 +13,8 @@ def test_status_displays_input_information_correctly(robot, bead_a, bead_with_hi
     cli = robot.cli
 
     # Create copies of the original bead with different names
-    _copy(cli, box, bead_with_history, times.TS1, 'copied_bead1')
-    _copy(cli, box, bead_with_history, times.TS2, 'copied_bead2')
+    _copy(box, bead_with_history, times.TS1, 'copied_bead1')
+    _copy(box, bead_with_history, times.TS2, 'copied_bead2')
 
     # Add inputs using the copied bead names
     cli('edit', bead_a)
@@ -43,8 +43,8 @@ def test_update_finds_newest_by_kind_not_name(robot, bead_a, bead_with_history, 
     cli = robot.cli
 
     # Create older copies with different names
-    _copy(cli, box, bead_with_history, times.TS1, 'old_copy1')
-    _copy(cli, box, bead_with_history, times.TS2, 'old_copy2')
+    _copy(box, bead_with_history, times.TS1, 'old_copy1')
+    _copy(box, bead_with_history, times.TS2, 'old_copy2')
 
     # Set up workspace with inputs pointing to older copies
     cli('edit', bead_a)
@@ -69,14 +69,14 @@ def test_explicit_bead_update_with_new_reference(robot, bead_a, bead_with_histor
     cli = robot.cli
 
     # Set up workspace with one input
-    _copy(cli, box, bead_with_history, times.TS1, 'initial_bead')
+    _copy(box, bead_with_history, times.TS1, 'initial_bead')
     cli('edit', bead_a)
     cd(bead_a)
     cli('input', 'add', 'test_input', 'initial_bead')
     check.loaded('test_input', times.TS1)
 
     # Create a new copy to update to
-    _copy(cli, box, bead_with_history, times.TS3, 'newer_bead')
+    _copy(box, bead_with_history, times.TS3, 'newer_bead')
 
     # Update specific input with explicit bead reference
     cli('input', 'update', 'test_input', 'newer_bead')
@@ -95,8 +95,8 @@ def test_save_and_edit_preserves_content_id_references(robot, bead_a, bead_with_
     cli = robot.cli
 
     # Set up workspace with inputs
-    _copy(cli, box, bead_with_history, times.TS1, 'test_bead1')
-    _copy(cli, box, bead_with_history, times.TS2, 'test_bead2')
+    _copy(box, bead_with_history, times.TS1, 'test_bead1')
+    _copy(box, bead_with_history, times.TS2, 'test_bead2')
 
     cli('edit', bead_a)
     cd(bead_a)
@@ -138,21 +138,16 @@ def test_load_finds_renamed_bead_by_content_id(
 
     # rename B to C
     os.rename(beads[bead_b].archive_filename, box.directory / f'c_{times.TS1}.zip')
-    # since the box index is authoritative we need to sync any manual changes
-    # to be picked up
-    cli('box', 'sync')
 
     # unload input
     cli('input', 'unload', 'b')
 
-    # Try to load input again - should succeed because content_id matching is used
-    # and we have sync-ed the bead box index, so the copies should be picked up.
-
+    # try to load input again - should succeed because content_id matching is used
     cli('input', 'load', 'b')
     check.loaded('b', bead_b)
 
 
-def _copy(cli, box, bead_name, bead_freeze_time, new_name):
+def _copy(box, bead_name, bead_freeze_time, new_name):
     """
     Copy a bead to a new name within box.
     """
@@ -161,7 +156,3 @@ def _copy(cli, box, bead_name, bead_freeze_time, new_name):
     source = box.directory / f'{bead_name}_{bead_freeze_time}.zip'
     destination = box.directory / f'{new_name}_{bead_freeze_time}.zip'
     shutil.copy(source, destination)
-
-    # since the box index is authoritative we need to sync any manual additions
-    # to be picked up
-    cli('box', 'sync')
