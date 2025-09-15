@@ -1,19 +1,10 @@
 #!/bin/bash
 
 directories_to_map=(
-    $PWD
-    ~/.aider
-    ~/.aider.tags.cache.v4
-    ~/.cache/uv
-    ~/.cache/pre-commit
-    ~/.local/share/direnv
-    ~/.local/share/uv
 )
 
 files_to_map=(
     ~/.gitconfig
-    ~/.aider.chat.history.md
-    ~/.aider.input.history
 )
 
 args=(
@@ -21,7 +12,9 @@ args=(
     --env "HOME=$HOME"
     --workdir "$PWD"
     --env-file ~/.env
-    --tmpfs ~
+#    --tmpfs ~
+    -v $HOME/podman:$HOME
+    -v $PWD:$PWD
 )
 
 for f in "${files_to_map[@]}"
@@ -38,5 +31,7 @@ do
     mkdir -p "$d"
     args+=(-v "$d:$d")
 done
+
+set -x
 
 exec podman run --rm -it "${args[@]}" bead-dev

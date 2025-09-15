@@ -55,12 +55,25 @@ dev = [
     "mypy",
     "pre-commit",
     "ruff",
-    "flake8",
     "pytype>=2024.10.11",
 ]
 
-[tool.flake8]
-line_length= 120
+[tool.ruff]
+line-length = 120
+lint.ignore = [
+    "E251", # unexpected spaces around keyword / parameter equals
+    "E241", # multiple spaces after ','
+    "E221", # multiple spaces before operator
+    "E722", # do not use bare except
+]
+exclude = [
+    "appdirs.py",
+    "test-env",
+    ".eggs",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.isort]
 force_single_line=true

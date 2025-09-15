@@ -1,4 +1,4 @@
-[![Tests](https://github.com/e3krisztian/bead/actions/workflows/test.yml/badge.svg)](https://github.com/e3krisztian/bead/actions/workflows/test.yml)
+[![Tests](../../actions/workflows/test.yml/badge.svg)](../../actions/workflows/test.yml)
 
 
     B-E-+
@@ -37,7 +37,7 @@ New computations get a new, universally unique `kind` (technically an uuid).
 
 ## Status
 
-### Used in production for almost 10 years now, there are hundreds of frozen computations
+### Used in production since 2015, there are hundreds of frozen computations
 
 Although most of the important stuff is implemented, there are still some raw edges.
 
@@ -46,7 +46,10 @@ Documentation for the tool is mostly the command line help.
 The `doc` directory has concept descriptions, maybe some use cases,
 but there are also design fragments - you might be mislead by them as they
 are nor describing the current situations nor are they showing the future.
+
 FIXME: clean up documentation.
+
+NOTE: https://bead.zip has new user documentation (as of September, 2025).
 
 
 ## Install instructions
@@ -71,14 +74,16 @@ $ cp executables/bead ~/.local/bin
 
 Alternatively it can be installed with pipx:
 
+For production use choose the latest released, non-pre-release version:
 ```
-pipx install git+https://github.com/e3krisztian/bead
+pipx install git+https://github.com/bead-project/bead@VERSION
 ```
-For development version, or
+
+or for latest development version:
+
 ```
-pipx install git+https://github.com/e3krisztian/bead@VERSION
+pipx install git+https://github.com/bead-project/bead
 ```
-for any tagged versions.
 
 ----
 
@@ -89,5 +94,13 @@ If you test it, please give [feedback](../../issues) on
 - what is not working as you would expect
 
 Any other nuisance reported - however minor you think it be - is important and welcome!
+
+## Contributing
+
+We welcome contributions! If you feel like working on code, please open an issue first to discuss your ideas.
+
+This project is dedicated to the public domain via the [LICENSE](LICENSE) file. By submitting a pull request, you agree to irrevocably release your work under the same license.
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on our development process.
 
 Thank you for your interest!
