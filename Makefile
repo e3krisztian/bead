@@ -1,13 +1,11 @@
-.PHONY: test clean executables shiv
+.PHONY: test clean executables
 
 test:
-	tox
+	uv run python -m pytest --cov=. --cov-report=term-missing
+	uv run ruff check .
 
 executables:
 	dev/build.py
-
-shiv:
-	shiv -o executables/bead.shiv -c bead -p '/usr/bin/python -sE' .
 
 vm:
 	podman build --no-cache -t bead-dev - < dev/Containerfile

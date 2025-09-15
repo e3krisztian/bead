@@ -6,7 +6,7 @@ cd $(dirname "$0")
 packages_to_test=(bead bead_cli tests)
 
 pwd
-flake8 "${packages_to_test[@]}"
+ruff check .
 mypy --ignore-missing-imports "${packages_to_test[@]}"
 
 # coverage

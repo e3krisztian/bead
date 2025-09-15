@@ -19,12 +19,12 @@ We use Git for version control. Please follow these conventions for your commits
 Before submitting your contribution, please ensure it passes all checks.
 
 #### Testing
-- **Run all tests**: `make test` or `tox`
+- **Run all tests**: `make test`
 - **Run a single test**: `pytest path/to/test_file.py::TestClass::test_method` or `pytest path/to/test_file.py -k "test_name"`
 - **Check test coverage**: `pytest --cov=. --cov-report=term-missing`
 
 #### Linting & Formatting
-- **Run the linter**: `flake8 bead bead_cli tests`
+- **Run the linter**: `ruff check .`
 - **Format imports automatically**: `isort .`
 - **Run the static type checker**: `pytype -k -j auto bead bead_cli __main__.py tests tracelog.py dev/build.py` or `uvx ty check`
 - **Run all pre-commit hooks**: `pre-commit run --all-files`
