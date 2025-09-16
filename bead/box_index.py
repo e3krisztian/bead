@@ -2,6 +2,7 @@
 SQLite-based index for bead storage and retrieval.
 '''
 
+import json
 import sqlite3
 from contextlib import closing
 from pathlib import Path
@@ -40,28 +41,17 @@ def create_schema(conn):
             freeze_time_str TEXT NOT NULL,
             freeze_time_unix INTEGER NOT NULL,
             file_path TEXT NOT NULL,
+            inputs TEXT, -- JSON encoded list of inputs
             PRIMARY KEY (name, content_id)
         )
     ''')
-    
+
     # Create index on unix timestamp for fast time-based queries
     conn.execute('''
-        CREATE INDEX IF NOT EXISTS idx_beads_freeze_time_unix 
+        CREATE INDEX IF NOT EXISTS idx_beads_freeze_time_unix
         ON beads(freeze_time_unix)
     ''')
-    
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS inputs (
-            bead_name TEXT NOT NULL,
-            bead_content_id TEXT NOT NULL,
-            input_name TEXT NOT NULL,
-            input_kind TEXT NOT NULL,
-            input_content_id TEXT NOT NULL,
-            input_freeze_time_str TEXT NOT NULL,
-            FOREIGN KEY (bead_name, bead_content_id) REFERENCES beads(name, content_id)
-        )
-    ''')
-    
+
     conn.commit()
 
 
@@ -74,42 +64,18 @@ def get_indexed_files(conn):
 def insert_bead_record(conn, archive, relative_path):
     '''Insert bead record into database.'''
     freeze_time_unix = timestamp_to_unix_utc_microseconds(archive.freeze_time_str)
+    inputs_json = json.dumps([i.as_dict() for i in archive.inputs])
     conn.execute('''
-        INSERT OR REPLACE INTO beads 
-        (name, content_id, kind, freeze_time_str, freeze_time_unix, file_path)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (archive.name, archive.content_id, archive.kind, 
-          archive.freeze_time_str, freeze_time_unix, str(relative_path)))
-
-
-def delete_bead_inputs(conn, name, content_id):
-    '''Delete existing inputs for a bead.'''
-    conn.execute('DELETE FROM inputs WHERE bead_name = ? AND bead_content_id = ?',
-                (name, content_id))
-
-
-def insert_input_record(conn, bead_name, bead_content_id, input_spec):
-    '''Insert single input record into database.'''
-    conn.execute('''
-        INSERT INTO inputs 
-        (bead_name, bead_content_id, input_name, input_kind, 
-         input_content_id, input_freeze_time_str)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (bead_name, bead_content_id, input_spec.name, 
-          input_spec.kind, input_spec.content_id, input_spec.freeze_time_str))
+        INSERT OR REPLACE INTO beads
+        (name, content_id, kind, freeze_time_str, freeze_time_unix, file_path, inputs)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (archive.name, archive.content_id, archive.kind,
+          archive.freeze_time_str, freeze_time_unix, str(relative_path),
+          inputs_json))
 
 
 def delete_bead_record(conn, file_path):
-    '''Delete bead and its inputs by file path.'''
-    # First delete inputs
-    conn.execute('''
-        DELETE FROM inputs 
-        WHERE (bead_name, bead_content_id) IN (
-            SELECT name, content_id FROM beads WHERE file_path = ?
-        )
-    ''', (file_path,))
-    
-    # Then delete the bead
+    '''Delete bead by file path.'''
     conn.execute('DELETE FROM beads WHERE file_path = ?', (file_path,))
 
 
@@ -174,49 +140,29 @@ def build_where_clause(conditions):
 def query_beads(conn, conditions, box_name):
     '''Execute query and return list of Bead instances.'''
     where_parts, parameters = build_where_clause(conditions)
-    
-    sql = 'SELECT name, content_id, kind, freeze_time_str, file_path FROM beads'
+
+    sql = 'SELECT name, content_id, kind, freeze_time_str, file_path, inputs FROM beads'
     if where_parts:
         sql += ' WHERE ' + ' AND '.join(where_parts)
     sql += ' ORDER BY freeze_time_unix'
-    
+
     cursor = conn.execute(sql, parameters)
-    
+
     beads = []
     for row in cursor.fetchall():
-        name, content_id, kind, freeze_time_str, file_path = row
-        
+        name, content_id, kind, freeze_time_str, file_path, inputs_json = row
+
         bead = Bead()
         bead.name = name
         bead.content_id = content_id
         bead.kind = kind
         bead.freeze_time_str = freeze_time_str
         bead.box_name = box_name
-        
-        bead.inputs = load_bead_inputs(conn, name, content_id)
+
+        bead.inputs = [InputSpec.from_dict(d) for d in json.loads(inputs_json)]
         beads.append(bead)
-    
+
     return beads
-
-
-def load_bead_inputs(conn, name, content_id):
-    '''Load input specifications for a bead.'''
-    cursor = conn.execute('''
-        SELECT input_name, input_kind, input_content_id, input_freeze_time_str
-        FROM inputs WHERE bead_name = ? AND bead_content_id = ?
-    ''', (name, content_id))
-    
-    inputs = []
-    for row in cursor.fetchall():
-        input_name, input_kind, input_content_id, input_freeze_time_str = row
-        inputs.append(InputSpec(
-            name=input_name,
-            kind=input_kind,
-            content_id=input_content_id,
-            freeze_time_str=input_freeze_time_str
-        ))
-    
-    return inputs
 
 
 def index_path_exists(box_directory: Path) -> bool:
@@ -294,16 +240,11 @@ class BoxIndex:
         try:
             archive = ZipArchive(archive_path, box_name='')
             archive.validate()
-            
+
             relative_path = archive_path.relative_to(self.box_directory)
-            
+
             with create_update_connection(self.index_path) as conn:
                 insert_bead_record(conn, archive, relative_path)
-                delete_bead_inputs(conn, archive.name, archive.content_id)
-                
-                for input_spec in archive.inputs:
-                    insert_input_record(conn, archive.name, archive.content_id, input_spec)
-                
                 conn.commit()
         except Exception:
             pass

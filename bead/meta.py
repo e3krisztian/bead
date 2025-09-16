@@ -80,6 +80,23 @@ class InputSpec:
     content_id: str
     freeze_time_str: str
 
+    def as_dict(self):
+        return {
+            'name': self.name,
+            'kind': self.kind,
+            'content_id': self.content_id,
+            'freeze_time_str': self.freeze_time_str,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            name=data['name'],
+            kind=data['kind'],
+            content_id=data['content_id'],
+            freeze_time_str=data['freeze_time_str'],
+        )
+
     @property
     def freeze_time(self):
         return time_from_timestamp(self.freeze_time_str)
