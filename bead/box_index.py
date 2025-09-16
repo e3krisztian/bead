@@ -5,13 +5,32 @@ SQLite-based index for bead storage and retrieval.
 import json
 import sqlite3
 from contextlib import closing
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, Generator, Optional
 
 from .bead import Bead
 from .box_query import QueryCondition
 from .exceptions import BoxIndexError
 from .meta import InputSpec
 from .ziparchive import ZipArchive
+
+
+@dataclass(frozen=True)
+class IndexingProgress:
+    """Represents a single step in the indexing process."""
+    total: int                              # Total number of archives to process
+    processed: int                          # Number of archives processed so far
+    path: Path                              # The path of the archive just processed
+    error_count: int                        # Total number of errors encountered so far
+    latest_error: Optional['IndexingError'] # The error for the current `path`, if any
+
+
+@dataclass(frozen=True)
+class IndexingError:
+    """Represents a non-fatal error for a single archive."""
+    path: Path          # The path of the problematic archive
+    reason: str         # A string explaining the error
 
 
 def create_update_connection(index_path: Path):
@@ -197,68 +216,119 @@ class BoxIndex:
     '''
     SQLite-based index for a bead box implementing BoxResolver protocol.
     '''
-    
+
     def __init__(self, box_directory: Path):
         self.box_directory = Path(box_directory)
         self.index_path = self.box_directory / '.index.sqlite'
         ensure_index(self.box_directory)
-    
-    def rebuild(self):
-        '''Rebuild index from scratch by scanning all files.'''
+
+    def _process_files(
+        self,
+        paths: list[Path],
+        action: Callable[[Path], None],
+        total: int,
+        processed: int,
+        error_count: int,
+    ) -> Generator[IndexingProgress, None, tuple[int, int]]:
+        '''
+        A helper generator to process a list of files with a given action.
+        It yields progress and returns the final processed and error counts.
+        '''
+        for path in paths:
+            processed += 1
+            latest_error = None
+            try:
+                action(self.box_directory / path)
+            except Exception as e:
+                latest_error = IndexingError(path=path, reason=str(e))
+                error_count += 1
+
+            yield IndexingProgress(
+                total=total,
+                processed=processed,
+                path=path,
+                error_count=error_count,
+                latest_error=latest_error,
+            )
+        return processed, error_count
+
+    def rebuild(self) -> Generator[IndexingProgress, None, None]:
+        '''
+        Rebuild index, yielding progress for each file.
+        The caller is responsible for collecting and interpreting errors.
+        '''
         if self.index_path.exists():
             self.index_path.unlink()
-        
-        for zip_path in self.box_directory.glob('*.zip'):
-            self.index_archive_file(zip_path)
-    
-    def sync(self):
-        '''Add new files to index and remove deleted files.'''
+
+        archive_paths = [
+            p.relative_to(self.box_directory) for p in self.box_directory.glob('*.zip')
+        ]
+        yield from self._process_files(
+            paths=archive_paths,
+            action=self.index_archive_file,
+            total=len(archive_paths),
+            processed=0,
+            error_count=0,
+        )
+
+    def sync(self) -> Generator[IndexingProgress, None, None]:
+        '''
+        Add new files to index and remove deleted files.
+        The caller is responsible for collecting and interpreting errors.
+        '''
         try:
             with create_query_connection(self.index_path) as conn:
                 indexed_files = get_indexed_files(conn)
+        except sqlite3.Error as e:
+            raise BoxIndexError(f"Database error during sync: {e}") from e
 
-            # Get current files in directory
-            current_files = set()
-            for archive_path in self.box_directory.glob('*.zip'):
-                relative_path = archive_path.relative_to(self.box_directory)
-                current_files.add(str(relative_path))
-                
-                # Add new files to index
-                if str(relative_path) not in indexed_files:
-                    self.index_archive_file(archive_path)
-            
-            # Remove files from index that no longer exist
-            orphaned_files = indexed_files - current_files
-            for file_path in orphaned_files:
-                orphaned_archive_path = self.box_directory / file_path
-                self.unindex_archive_file(orphaned_archive_path)
-        except Exception:
-            pass
-    
+        current_files = {
+            p.relative_to(self.box_directory) for p in self.box_directory.glob('*.zip')
+        }
+        indexed_files = {Path(p) for p in indexed_files}
+
+        new_files = list(current_files - indexed_files)
+        orphaned_files = list(indexed_files - current_files)
+        total = len(new_files) + len(orphaned_files)
+
+        processed, error_count = yield from self._process_files(
+            paths=new_files,
+            action=self.index_archive_file,
+            total=total,
+            processed=0,
+            error_count=0,
+        )
+
+        yield from self._process_files(
+            paths=orphaned_files,
+            action=self._unindex_single_archive,
+            total=total,
+            processed=processed,
+            error_count=error_count,
+        )
+
     def index_archive_file(self, archive_path: Path):
         '''Add single bead to index.'''
         try:
             archive = ZipArchive(archive_path, box_name='')
             archive.validate()
-
             relative_path = archive_path.relative_to(self.box_directory)
-
             with create_update_connection(self.index_path) as conn:
                 insert_bead_record(conn, archive, relative_path)
                 conn.commit()
-        except Exception:
-            pass
-    
-    def unindex_archive_file(self, archive_path: Path):
-        '''Remove bead from index by file path.'''
+        except sqlite3.Error as e:
+            raise BoxIndexError(f"Database error processing {archive_path}: {e}") from e
+
+    def _unindex_single_archive(self, archive_path: Path):
+        '''Helper to encapsulate un-indexing a single file.'''
         try:
             relative_path = archive_path.relative_to(self.box_directory)
-            
             with create_update_connection(self.index_path) as conn:
                 delete_bead_record(conn, str(relative_path))
                 conn.commit()
-        except Exception:
-            pass
+        except sqlite3.Error as e:
+            raise BoxIndexError(f"Database error processing {archive_path}: {e}") from e
+
     
     def get_beads(self, conditions, box_name: str) -> list[Bead]:
         '''Query beads from index.'''
