@@ -59,7 +59,7 @@ class ZipArchive(Archive):
             - has inputs (even if empty)
         '''
         if not all(self._checks()):
-            raise InvalidArchive
+            raise InvalidArchive(self.archive_filename)
 
     def _checks(self):
         yield self._has_well_formed_meta()

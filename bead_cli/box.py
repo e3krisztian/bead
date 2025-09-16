@@ -1,6 +1,8 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generator
+import sys
 
 from bead import tech
+from bead.box_index import IndexingError, IndexingProgress
 
 from .cmdparse import Command
 
@@ -78,16 +80,50 @@ class CmdForget(Command):
             print(f'WARNING: no box defined with "{name}"')
 
 
+def _report_progress(
+    description: str,
+    progress_generator: Generator[IndexingProgress, None, None]
+) -> bool:
+    '''
+    Consume a progress generator, report status, and return success.
+    '''
+    errors: list[IndexingError] = []
+    try:
+        for progress in progress_generator:
+            # Use stderr for progress to not pollute stdout
+            sys.stderr.write(f'\r  {description}: {progress.processed}/{progress.total}')
+            sys.stderr.flush()
+            if progress.latest_error:
+                errors.append(progress.latest_error)
+                # Clear the line and print the error
+                sys.stderr.write('\r' + ' ' * 80 + '\r')
+                sys.stderr.write(
+                    f"  ✗ Error indexing {progress.path.name}: {progress.latest_error.reason}\n"
+                )
+    finally:
+        # Clear the progress line
+        sys.stderr.write('\r' + ' ' * 80 + '\r')
+        sys.stderr.flush()
+
+    if errors:
+        print(f'  ✗ Completed with {len(errors)} error(s).')
+        # Optionally print details of errors, could be verbose
+        # for error in errors:
+        #     print(f"    - {error.path.name}: {error.reason}")
+        return False
+    else:
+        print('  ✓ Done')
+        return True
+
+
+
 def reindex(box):
     '''Rebuild index for a single box.'''
     from bead.box_index import BoxIndex
-
     try:
         print(f'Rebuilding index for box "{box.name}" at {box.location}')
         box_index = BoxIndex(box.location)
-        box_index.rebuild()
-        print('  ✓ Done')
-        return True
+        return _report_progress('Rebuilding', box_index.rebuild())
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
@@ -96,13 +132,10 @@ def reindex(box):
 def reindex_directory(directory):
     '''Rebuild index for a directory.'''
     from bead.box_index import BoxIndex
-
     try:
         print(f'Rebuilding index for directory {directory}')
         box_index = BoxIndex(directory)
-        box_index.rebuild()
-        print('  ✓ Done')
-        return True
+        return _report_progress('Rebuilding', box_index.rebuild())
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
@@ -127,7 +160,7 @@ def reindex_all(boxes):
 class CmdReindex(Command):
     '''
     Rebuild the SQLite index for a specific box, directory, or all boxes.
-    
+
     If no arguments are provided and only one box is defined, that box will be rebuilt automatically.
     '''
 
@@ -137,7 +170,7 @@ class CmdReindex(Command):
             group.add_argument('--box', help='Box name to rebuild')
             group.add_argument('--dir', type=tech.fs.Path, help='Box directory to rebuild')
             group.add_argument('--all', action='store_true', help='Rebuild all boxes')
-        
+
         arg(setup_mutually_exclusive_args)
 
     def run(self, args, env: 'Environment'):
@@ -154,7 +187,7 @@ class CmdReindex(Command):
             else:
                 print('ERROR: Multiple boxes defined. Must specify either --box, --dir, or --all')
                 return
-        
+
         if args.all:
             reindex_all(env.get_boxes())
         elif args.dir:
@@ -170,25 +203,22 @@ class CmdReindex(Command):
             if not env.is_known_box(box_name):
                 print(f'ERROR: Unknown box "{box_name}"')
                 return
-            
+
             box = env.get_box(box_name)
             if box is None:
                 print(f'ERROR: Box "{box_name}" not found')
                 return
-            
+
             reindex(box)
 
 
 def index(box):
     '''Create or update index for a single box.'''
     from bead.box_index import BoxIndex
-    
     try:
         print(f'Indexing box "{box.name}" at {box.location}')
         box_index = BoxIndex(box.location)
-        box_index.sync()
-        print('  ✓ Done')
-        return True
+        return _report_progress('Indexing', box_index.sync())
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
@@ -197,13 +227,10 @@ def index(box):
 def index_directory(directory):
     '''Create or update index for a directory.'''
     from bead.box_index import BoxIndex
-    
     try:
         print(f'Indexing directory {directory}')
         box_index = BoxIndex(directory)
-        box_index.sync()
-        print('  ✓ Done')
-        return True
+        return _report_progress('Indexing', box_index.sync())
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
@@ -214,21 +241,21 @@ def index_all(boxes):
     if not boxes:
         print('No boxes defined')
         return
-    
+
     print(f'Indexing {len(boxes)} box(es)...')
     success_count = 0
-    
+
     for box in boxes:
         if index(box):
             success_count += 1
-    
+
     print(f'Completed: {success_count}/{len(boxes)} boxes indexed successfully')
 
 
 class CmdIndex(Command):
     '''
     Create or update the SQLite index for a specific box, directory, or all boxes.
-    
+
     If no arguments are provided and only one box is defined, that box will be indexed automatically.
     '''
 
@@ -238,7 +265,7 @@ class CmdIndex(Command):
             group.add_argument('--box', help='Box name to index')
             group.add_argument('--dir', type=tech.fs.Path, help='Box directory to index')
             group.add_argument('--all', action='store_true', help='Index all boxes')
-        
+
         arg(setup_mutually_exclusive_args)
 
     def run(self, args, env: 'Environment'):
@@ -255,7 +282,7 @@ class CmdIndex(Command):
             else:
                 print('ERROR: Multiple boxes defined. Must specify either --box, --dir, or --all')
                 return
-        
+
         if args.all:
             index_all(env.get_boxes())
         elif args.dir:
@@ -271,10 +298,10 @@ class CmdIndex(Command):
             if not env.is_known_box(box_name):
                 print(f'ERROR: Unknown box "{box_name}"')
                 return
-            
+
             box = env.get_box(box_name)
             if box is None:
                 print(f'ERROR: Box "{box_name}" not found')
                 return
-            
+
             index(box)
