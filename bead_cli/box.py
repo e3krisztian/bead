@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Generator
 from tqdm import tqdm
 
 from bead import tech
-from bead.box_index import IndexingError, IndexingProgress
+from bead.box_index import BoxIndexError, IndexingError, IndexingProgress
 
 from .cmdparse import Command
 
@@ -104,9 +104,9 @@ def _report_progress(
                     tqdm.write(
                         f"  ✗ Error indexing {progress.path.name}: {progress.latest_error.reason}"
                     )
-        except Exception as e:
+        except BoxIndexError as e:
             # Catch fatal errors from the generator itself (e.g., DB connection)
-            tqdm.write(f"  ✗ A fatal error occurred: {e}")
+            tqdm.write(f"  ✗ FATAL: {e}")
             # Ensure the progress bar is cleared on fatal error
             pbar.close()
             return False

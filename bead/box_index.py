@@ -11,7 +11,7 @@ from typing import Callable, Generator, Optional
 
 from .bead import Bead
 from .box_query import QueryCondition
-from .exceptions import BoxIndexError
+from .exceptions import BoxIndexError, InvalidArchive
 from .meta import InputSpec
 from .ziparchive import ZipArchive
 
@@ -239,9 +239,11 @@ class BoxIndex:
             latest_error = None
             try:
                 action(self.box_directory / path)
-            except Exception as e:
+            except InvalidArchive as e:
                 latest_error = IndexingError(path=path, reason=str(e))
                 error_count += 1
+            # Note: sqlite3.Error (raised as BoxIndexError) is not caught here
+            # and will terminate the generator.
 
             yield IndexingProgress(
                 total=total,
@@ -308,7 +310,11 @@ class BoxIndex:
         )
 
     def index_archive_file(self, archive_path: Path):
-        '''Add single bead to index.'''
+        '''
+        Add single bead to index.
+        Raises InvalidArchive for non-fatal errors.
+        Raises BoxIndexError for fatal database errors.
+        '''
         try:
             archive = ZipArchive(archive_path, box_name='')
             archive.validate()
@@ -320,7 +326,10 @@ class BoxIndex:
             raise BoxIndexError(f"Database error processing {archive_path}: {e}") from e
 
     def _unindex_single_archive(self, archive_path: Path):
-        '''Helper to encapsulate un-indexing a single file.'''
+        '''
+        Helper to encapsulate un-indexing a single file.
+        Raises BoxIndexError for fatal database errors.
+        '''
         try:
             relative_path = archive_path.relative_to(self.box_directory)
             with create_update_connection(self.index_path) as conn:
@@ -350,3 +359,4 @@ class BoxIndex:
             raise
         except Exception as e:
             raise BoxIndexError(f"Failed to get file path from index: {e}")
+    
