@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, Generator
-import sys
+from tqdm import tqdm
 
 from bead import tech
 from bead.box_index import IndexingError, IndexingProgress
@@ -85,31 +85,34 @@ def _report_progress(
     progress_generator: Generator[IndexingProgress, None, None]
 ) -> bool:
     '''
-    Consume a progress generator, report status, and return success.
+    Consume a progress generator, report status using tqdm, and return success.
     '''
     errors: list[IndexingError] = []
-    try:
-        for progress in progress_generator:
-            # Use stderr for progress to not pollute stdout
-            sys.stderr.write(f'\r  {description}: {progress.processed}/{progress.total}')
-            sys.stderr.flush()
-            if progress.latest_error:
-                errors.append(progress.latest_error)
-                # Clear the line and print the error
-                sys.stderr.write('\r' + ' ' * 80 + '\r')
-                sys.stderr.write(
-                    f"  ✗ Error indexing {progress.path.name}: {progress.latest_error.reason}\n"
-                )
-    finally:
-        # Clear the progress line
-        sys.stderr.write('\r' + ' ' * 80 + '\r')
-        sys.stderr.flush()
+    # Initialize with a total of 0; it will be updated on the first iteration.
+    with tqdm(total=0, desc=f'  {description}', unit=' files', leave=False) as pbar:
+        try:
+            for progress in progress_generator:
+                if pbar.total != progress.total:
+                    pbar.total = progress.total
+                    # Refresh to show the total immediately
+                    pbar.refresh()
+
+                pbar.update(1)
+                if progress.latest_error:
+                    errors.append(progress.latest_error)
+                    # tqdm.write is the safe way to print messages without breaking the bar
+                    tqdm.write(
+                        f"  ✗ Error indexing {progress.path.name}: {progress.latest_error.reason}"
+                    )
+        except Exception as e:
+            # Catch fatal errors from the generator itself (e.g., DB connection)
+            tqdm.write(f"  ✗ A fatal error occurred: {e}")
+            # Ensure the progress bar is cleared on fatal error
+            pbar.close()
+            return False
 
     if errors:
         print(f'  ✗ Completed with {len(errors)} error(s).')
-        # Optionally print details of errors, could be verbose
-        # for error in errors:
-        #     print(f"    - {error.path.name}: {error.reason}")
         return False
     else:
         print('  ✓ Done')

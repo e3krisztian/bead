@@ -31,6 +31,7 @@ dependencies = [
     "argcomplete>=3.6.2",
     "attrs",
     "cached-property",
+    "tqdm",
 ]
 
 [project.scripts]
