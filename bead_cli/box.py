@@ -1,3 +1,4 @@
+import shutil
 from typing import TYPE_CHECKING
 
 from bead import tech
@@ -7,6 +8,18 @@ from .common import die, report_progress
 
 if TYPE_CHECKING:
     from .environment import Environment
+
+
+def seed_box_index(box_directory: tech.fs.Path, new_index_path: tech.fs.Path):
+    """Seed new index with existing box index data to speed up first sync."""
+    old_index_path = box_directory / '.index.sqlite'
+    if old_index_path.exists():
+        try:
+            new_index_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(old_index_path, new_index_path)
+            print(f'Seeded index from existing data at {old_index_path}')
+        except Exception as e:
+            print(f'Warning: Failed to seed index: {e}')
 
 
 class CmdAdd(Command):
@@ -28,6 +41,13 @@ class CmdAdd(Command):
         if not directory.is_dir():
             die(f'"{directory}" is not an existing directory!')
         location = directory.resolve()
+        
+        # Get the index path before adding the box
+        index_path = env.get_box_index_path(name)
+        
+        # Seed indexing with existing data if available
+        seed_box_index(location, index_path)
+        
         try:
             env.add_box(name, location)
             env.save()
