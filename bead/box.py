@@ -369,9 +369,10 @@ class Box:
     Store Beads.
     """
     
-    def __init__(self, name: str, location: Path):
+    def __init__(self, name: str, location: Path, enabled: bool = True):
         self.name = name
         self.location = location
+        self.enabled = enabled
         self.resolver = self._create_resolver()
 
     @property

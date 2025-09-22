@@ -48,10 +48,11 @@ class CmdList(Command):
         pass
 
     def run(self, args, env: 'Environment'):
-        boxes = env.get_boxes()
+        boxes = env.get_all_boxes()
 
         def print_box(box):
-            print(f'{box.name}: {box.location}')
+            status = '(enabled)' if box.enabled else '(disabled)'
+            print(f'{box.name}: {box.location} {status}')
         if boxes:
             print('Boxes:')
             print('-------------')
@@ -78,6 +79,44 @@ class CmdForget(Command):
             print(f'Box "{name}" is forgotten')
         else:
             print(f'WARNING: no box defined with "{name}"')
+
+
+class CmdEnable(Command):
+    '''
+    Enable a box.
+    '''
+
+    def declare(self, arg):
+        arg('name')
+
+    def run(self, args, env: 'Environment'):
+        name = args.name
+
+        try:
+            env.enable_box(name)
+            env.save()
+            print(f'Box "{name}" is enabled')
+        except ValueError as e:
+            print('ERROR:', *e.args)
+
+
+class CmdDisable(Command):
+    '''
+    Disable a box.
+    '''
+
+    def declare(self, arg):
+        arg('name')
+
+    def run(self, args, env: 'Environment'):
+        name = args.name
+
+        try:
+            env.disable_box(name)
+            env.save()
+            print(f'Box "{name}" is disabled')
+        except ValueError as e:
+            print('ERROR:', *e.args)
 
 
 def _report_progress(

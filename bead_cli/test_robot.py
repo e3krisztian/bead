@@ -73,7 +73,7 @@ def environment(robot):
             try:
                 yield Environment.from_dir(robot.config_dir)
             except BaseException as e:
-                robot.retval = e
+                robot.exit_code = -1
                 raise
 
 
@@ -167,9 +167,12 @@ class Robot(Fixture):
         '''
         return environment(self)
 
-    def cli(self, *args: str | tech.fs.Path):
+    def cli(self, *args: str | tech.fs.Path, expect_failure=False):
         '''
-        Imitate calling the command line tool with the given args
+        Imitate calling the command line tool with the given args.
+        - By default, asserts that the command succeeds (exit code 0).
+        - If expect_failure=True, asserts that the command fails (exit code != 0).
+        - Returns the command's exit code.
         '''
         TRACELOG(*args)
         if len(args) == 1:
@@ -178,15 +181,14 @@ class Robot(Fixture):
             assert isinstance(arg, str)
             str_args = arg.split()
             if len(str_args) > 1:
-                return self.cli(*str_args)
+                return self.cli(*str_args, expect_failure=expect_failure)
         else:
             str_args = [(arg if isinstance(arg, str) else arg.as_posix()) for arg in args]
 
         with self.environment:
             with CaptureStdout() as stdout, CaptureStderr() as stderr:
                 try:
-                    self.retval = run(''.__class__(self.config_dir), str_args)
-                    assert self.retval == 0
+                    self.exit_code = run(''.__class__(self.config_dir), str_args)
                 except BaseException as e:
                     TRACELOG(EXCEPTION=e)
                     raise
@@ -203,6 +205,13 @@ class Robot(Fixture):
                         TRACELOG(STDOUT=self.stdout)
                     if self.stderr:
                         TRACELOG(STDERR=self.stderr)
+
+        if expect_failure:
+            assert self.exit_code != 0, "Command was expected to fail, but it succeeded."
+        else:
+            assert self.exit_code == 0, f"Command failed unexpectedly with exit code {self.exit_code}:\n{self.stderr}"
+
+        return self.exit_code
 
     def ls(self, directory=None):
         directory = self._path(directory or self.cwd)

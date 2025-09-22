@@ -72,12 +72,6 @@ def test_shared_box_update(alice, bob, bead):
 
 
 @pytest.fixture
-def robot():
-    with Robot() as robot_instance:
-        yield robot_instance
-
-
-@pytest.fixture
 def dir1(robot):
     os.makedirs(robot.cwd / 'dir1')
     return 'dir1'
@@ -89,9 +83,10 @@ def dir2(robot):
     return 'dir2'
 
 
-def test_list_when_there_are_no_boxes(robot):
-    robot.cli('box', 'list')
-    assert 'There are no defined boxes' in robot.stdout
+def test_list_when_there_are_no_boxes():
+    with Robot() as robot:
+        robot.cli('box', 'list')
+        assert 'There are no defined boxes' in robot.stdout
 
 
 def test_add_non_existing_directory_fails(robot):
@@ -143,3 +138,48 @@ def test_forget_box(robot, dir1, dir2):
 def test_forget_nonexisting_box(robot):
     robot.cli('box', 'forget', 'non-existing')
     assert 'WARNING' in robot.stdout
+
+
+def test_box_list_shows_disabled_status(robot):
+    # GIVEN a box (provided by the robot fixture)
+    # WHEN it is disabled
+    robot.cli('box', 'disable', 'box')
+    robot.cli('box', 'list')
+    # THEN the status is shown
+    assert '(disabled)' in robot.stdout
+    assert '(enabled)' not in robot.stdout
+
+    # WHEN it is enabled
+    robot.cli('box', 'enable', 'box')
+    robot.cli('box', 'list')
+    # THEN the status is shown
+    assert '(disabled)' not in robot.stdout
+    assert '(enabled)' in robot.stdout
+
+
+def test_input_add_respects_disabled_box(robot):
+    # GIVEN a bead in a box (the robot fixture provides the box)
+    robot.cli('new', 'source_bead')
+    robot.cd('source_bead')
+    robot.write_file('output/data.txt', 'hello world')
+    robot.cli('save')
+    robot.cd('..')
+    robot.cli('new', 'consumer_workspace')
+    robot.cd('consumer_workspace')
+
+    # WHEN the box is disabled
+    robot.cli('box', 'disable', 'box')
+
+    # THEN adding an input from that box fails
+    robot.cli('input', 'add', 'the_input', 'source_bead', expect_failure=True)
+    assert 'ERROR: Not a known bead name: source_bead' in robot.stderr
+    assert not (robot.cwd / 'input' / 'the_input').is_dir()
+
+    # WHEN the box is re-enabled
+    robot.cli('box', 'enable', 'box')
+
+    # THEN adding the input succeeds
+    robot.cli('input', 'add', 'the_input', 'source_bead')
+    input_file = robot.cwd / 'input' / 'the_input' / 'data.txt'
+    assert input_file.is_file()
+    assert 'hello world' in input_file.read_text()

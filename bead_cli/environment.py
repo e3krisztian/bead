@@ -11,6 +11,7 @@ from bead.tech.fs import Path
 ENV_BOXES = 'boxes'
 BOX_NAME = 'name'
 BOX_LOCATION = 'directory'
+BOX_ENABLED = 'enabled'
 
 
 class Environment:
@@ -38,23 +39,29 @@ class Environment:
         with open(self.filename, 'w') as f:
             persistence.dump(self._content, f)
 
-    def get_boxes(self):
+    def get_all_boxes(self):
         def box(box_spec):
             return Box(
                 box_spec.get(BOX_NAME),
-                Path(box_spec.get(BOX_LOCATION)))
+                Path(box_spec.get(BOX_LOCATION)),
+                # For backwards compatibility, missing 'enabled' flag means True
+                box_spec.get(BOX_ENABLED, True))
         return [box(spec) for spec in self._content.get(ENV_BOXES, ())]
+
+    def get_boxes(self):
+        return [box for box in self.get_all_boxes() if box.enabled]
 
     def set_boxes(self, boxes):
         self._content[ENV_BOXES] = [
             {
                 BOX_NAME: box.name,
-                BOX_LOCATION: box.location.as_posix()
+                BOX_LOCATION: box.location.as_posix(),
+                BOX_ENABLED: box.enabled
             }
             for box in boxes]
 
     def add_box(self, name, directory: Path):
-        boxes = self.get_boxes()
+        boxes = self.get_all_boxes()
         # check unique box
         for box in boxes:
             if box.name == name:
@@ -63,21 +70,36 @@ class Environment:
                 raise ValueError(
                     f'Box with location {box.location} already exists')
 
-        self.set_boxes(boxes + [Box(name, directory)])
+        self.set_boxes(boxes + [Box(name, directory, enabled=True)])
 
     def forget_box(self, name):
         self.set_boxes(
             box
-            for box in self.get_boxes()
+            for box in self.get_all_boxes()
             if box.name != name)
 
     def get_box(self, name):
         '''
         Return box having :name or None.
         '''
-        for box in self.get_boxes():
+        for box in self.get_all_boxes():
             if box.name == name:
                 return box
 
     def is_known_box(self, name):
         return self.get_box(name) is not None
+
+    def _set_box_enabled(self, name, is_enabled):
+        boxes = self.get_all_boxes()
+        for box in boxes:
+            if box.name == name:
+                box.enabled = is_enabled
+                self.set_boxes(boxes)
+                return
+        raise ValueError(f'Box {name} not found')
+
+    def enable_box(self, name):
+        self._set_box_enabled(name, True)
+
+    def disable_box(self, name):
+        self._set_box_enabled(name, False)

@@ -83,6 +83,8 @@ def make_argument_parser(defaults):
         ('add', box.CmdAdd, 'Define a box.'),
         ('list', box.CmdList, 'Show known boxes.'),
         ('forget', box.CmdForget, 'Forget a known box.'),
+        ('enable', box.CmdEnable, 'Enable a box.'),
+        ('disable', box.CmdDisable, 'Disable a box.'),
         ('index', box.CmdIndex, 'Create or update box index for faster searches.'),
         ('reindex', box.CmdReindex, 'Rebuild box index from scratch.'),
     )
