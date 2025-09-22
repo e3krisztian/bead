@@ -18,51 +18,14 @@ from typing import Protocol
 from . import tech
 from .bead import Archive
 from .bead import Bead
-from .box_index import index_path_exists, can_read_index, BoxIndex
+from .box_index import BoxIndex
 from .box_query import QueryCondition
-from .box_rawfs import RawFilesystemResolver
 from .exceptions import BoxError
 from .exceptions import InvalidArchive
 from .tech.timestamp import time_from_timestamp
 from .ziparchive import ZipArchive
 
 Path = tech.fs.Path
-
-
-class BoxResolver(Protocol):
-    """
-    Interface for bead storage and retrieval implementations.
-    """
-    
-    def get_beads(self, conditions: list[tuple[QueryCondition, Any]], box_name: str) -> list[Bead]:
-        """Retrieve beads matching conditions."""
-        ...
-    
-    def get_file_path(self, name: str, content_id: str) -> Path:
-        """Get file path for bead by name and content_id."""
-        ...
-    
-    def index_archive_file(self, archive_path: Path) -> None:
-        """Add archive file to resolver."""
-        ...
-
-
-class NullResolver:
-    """
-    No-op resolver that returns empty results for all operations.
-    """
-    
-    def get_beads(self, conditions: list[tuple[QueryCondition, Any]], box_name: str) -> list[Bead]:
-        """Return empty list - no beads found."""
-        return []
-    
-    def get_file_path(self, name: str, content_id: str) -> Path:
-        """Always raise LookupError - no beads exist."""
-        raise LookupError(f"Bead not found: name='{name}', content_id='{content_id}'")
-    
-    def index_archive_file(self, archive_path: Path) -> None:
-        """No-op - ignore archive additions."""
-        pass
 
 
 ARCHIVE_COMMENT = '''
@@ -369,11 +332,11 @@ class Box:
     Store Beads.
     """
     
-    def __init__(self, name: str, location: Path, enabled: bool = True):
+    def __init__(self, name: str, location: Path, index_file_path: Path, enabled: bool = True):
         self.name = name
         self.location = location
         self.enabled = enabled
-        self.resolver = self._create_resolver()
+        self.index = BoxIndex(self.directory, Path(index_file_path))
 
     @property
     def directory(self):
@@ -383,24 +346,6 @@ class Box:
         Valid only for local boxes.
         '''
         return Path(self.location)
-
-    def _create_resolver(self) -> BoxResolver:
-        """
-        Create appropriate resolver based on directory access and index availability.
-        
-        Strategy selection:
-        1. No SQLite index -> RawFilesystemResolver
-        2. SQLite index exists, no read access -> NullResolver
-        3. SQLite index exists, read-only access -> BoxIndex
-        4. SQLite index exists, read-write access -> BoxIndex
-        """
-        if index_path_exists(self.directory):
-            if can_read_index(self.directory):
-                return BoxIndex(self.directory)
-            else:
-                return NullResolver()
-        else:
-            return RawFilesystemResolver(self.directory)
 
     def all_beads(self) -> list[Bead]:
         '''
@@ -414,7 +359,7 @@ class Box:
         '''
         Retrieve matching beads.
         '''
-        return self.resolver.get_beads(conditions, self.name)
+        return self.index.get_beads(conditions, self.name)
 
     def resolve(self, bead: Bead) -> Archive:
         '''
@@ -423,7 +368,7 @@ class Box:
         if bead.box_name != self.name:
             raise ValueError(f"Bead box_name '{bead.box_name}' does not match this box '{self.name}'")
 
-        file_path = self.resolver.get_file_path(bead.name, bead.content_id)
+        file_path = self.index.get_file_path(bead.name, bead.content_id)
         if not file_path.exists():
             raise LookupError(f"Archive file not found: {file_path}")
             
@@ -451,8 +396,8 @@ class Box:
         zipfilename = self.directory / f'{workspace.name}_{freeze_time}.zip'
         workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT)
         
-        # Add to resolver
-        self.resolver.index_archive_file(zipfilename)
+        # Add to index
+        self.index.index_archive_file(zipfilename)
         
         return zipfilename
 

@@ -10,7 +10,8 @@ from .workspace import Workspace
 def box(tmp_path_factory):
     """Create a test box with sample beads."""
     tmp_path = tmp_path_factory.mktemp('box')
-    box = Box('test', tmp_path)
+    index_file_path = tmp_path / 'index.db'
+    box = Box('test', tmp_path, index_file_path)
 
     def add_bead(name, kind, freeze_time):
         ws = Workspace(tmp_path / name)
@@ -44,7 +45,8 @@ def test_find_with_uppercase_name(box, timestamp):
 def test_box_methods_tolerate_junk_in_box(tmp_path_factory):
     """Test that box methods work even with junk files present."""
     temp_dir = tmp_path_factory.mktemp("box_junk")
-    box = Box('test', temp_dir)
+    index_file_path = temp_dir / 'index.db'
+    box = Box('test', temp_dir, index_file_path)
 
     def add_bead(name, kind, freeze_time):
         ws = Workspace(temp_dir / name)

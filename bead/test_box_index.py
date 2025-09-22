@@ -34,7 +34,8 @@ def box_directory(tmp_path: Path) -> Path:
 def box_index(box_directory: Path) -> BoxIndex:
     """Create a BoxIndex instance."""
     box_directory.mkdir()
-    return BoxIndex(box_directory)
+    index_file_path = box_directory / 'index.db'
+    return BoxIndex(box_directory, index_file_path)
 
 
 def create_unindexed_bead(box_directory: Path, name: str, kind: str = "test-kind"):
@@ -60,7 +61,8 @@ def create_indexed_bead(box_directory: Path, name: str, kind: str = "test-kind")
     # but for testing the indexer, creating a dummy zip is sufficient
     # if we mock the validation. For now, let's create a real one.
     from .box import Box
-    box = Box("test", box_directory)
+    index_file_path = box_directory / 'index.db'
+    box = Box("test", box_directory, index_file_path)
     box.store(ws, "20230101T000000000000+0000")
 
 

@@ -184,43 +184,21 @@ def query_beads(conn, conditions, box_name):
     return beads
 
 
-def index_path_exists(box_directory: Path) -> bool:
-    """Check if SQLite index file exists in box directory."""
-    index_path = box_directory / '.index.sqlite'
-    return index_path.exists()
-
-
-def can_read_index(box_directory: Path) -> bool:
-    """Test if SQLite index can be read."""
-    index_path = box_directory / '.index.sqlite'
-    try:
-        with closing(sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)):
-            pass
-        return True
-    except Exception:
-        return False
-
-
-def ensure_index(box_directory: Path) -> bool:
-    """Ensure SQLite index exists, creating it if necessary."""
-    try:
-        index_path = box_directory / '.index.sqlite'
-        with create_update_connection(index_path):
-            pass
-        return True
-    except Exception:
-        return False
-
-
 class BoxIndex:
     '''
-    SQLite-based index for a bead box implementing BoxResolver protocol.
+    SQLite-based index for a bead box.
     '''
 
-    def __init__(self, box_directory: Path):
+    def __init__(self, box_directory: Path, index_file_path: Path):
         self.box_directory = Path(box_directory)
-        self.index_path = self.box_directory / '.index.sqlite'
-        ensure_index(self.box_directory)
+        self.index_path = Path(index_file_path)
+        
+        # Ensure the index file exists and is properly initialized
+        try:
+            with create_update_connection(self.index_path):
+                pass
+        except Exception as e:
+            raise BoxIndexError(f"Failed to initialize index at {self.index_path}: {e}")
 
     def _process_files(
         self,
