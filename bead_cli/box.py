@@ -5,6 +5,7 @@ from bead import tech
 from bead.box_index import BoxIndexError, IndexingError, IndexingProgress
 
 from .cmdparse import Command
+from .common import die
 
 if TYPE_CHECKING:
     from .environment import Environment
@@ -27,16 +28,14 @@ class CmdAdd(Command):
         directory: tech.fs.Path = args.directory
 
         if not directory.is_dir():
-            print(f'ERROR: "{directory}" is not an existing directory!')
-            return
+            die(f'"{directory}" is not an existing directory!')
         location = directory.resolve()
         try:
             env.add_box(name, location)
             env.save()
             print(f'Will remember box {name}')
         except ValueError as e:
-            print('ERROR:', *e.args)
-            print('Check the parameters: both name and directory must be unique!')
+            die(f'{e.args[0]}\nCheck the parameters: both name and directory must be unique!')
 
 
 class CmdList(Command):

@@ -90,8 +90,8 @@ def test_list_when_there_are_no_boxes():
 
 
 def test_add_non_existing_directory_fails(robot):
-    robot.cli('box', 'add', 'notadded', 'non-existing')
-    assert 'ERROR' in robot.stdout
+    robot.cli('box', 'add', 'notadded', 'non-existing', expect_failure=True)
+    assert 'ERROR' in robot.stderr
     assert 'notadded' not in robot.stdout
 
 
@@ -111,16 +111,16 @@ def test_add_with_same_name_fails(robot, dir1, dir2):
     robot.cli('box', 'add', 'name', 'dir1')
     assert 'ERROR' not in robot.stdout
 
-    robot.cli('box', 'add', 'name', 'dir2')
-    assert 'ERROR' in robot.stdout
+    robot.cli('box', 'add', 'name', 'dir2', expect_failure=True)
+    assert 'ERROR' in robot.stderr
 
 
 def test_add_same_directory_twice_fails(robot, dir1):
     robot.cli('box', 'add', 'name1', dir1)
     assert 'ERROR' not in robot.stdout
 
-    robot.cli('box', 'add', 'name2', dir1)
-    assert 'ERROR' in robot.stdout
+    robot.cli('box', 'add', 'name2', dir1, expect_failure=True)
+    assert 'ERROR' in robot.stderr
 
 
 def test_forget_box(robot, dir1, dir2):
