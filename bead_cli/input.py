@@ -17,6 +17,7 @@ from .common import BEAD_REF_BASE_defaulting_to
 from .common import DefaultArgSentinel
 from .common import assert_valid_workspace
 from .common import die
+from .common import refresh_all_box_indexes
 from .common import resolve_bead
 from .common import verify_with_feedback
 from .common import warning
@@ -73,6 +74,9 @@ class CmdAdd(Command):
         if bead_ref_base is USE_INPUT_NICK:
             bead_ref_base = input_nick
 
+        # Refresh indexes to ensure we have the latest beads
+        refresh_all_box_indexes(env)
+
         try:
             bead = resolve_bead(env, bead_ref_base, args.bead_time)
         except LookupError:
@@ -123,6 +127,10 @@ class CmdUpdate(Command):
             die('Too many arguments')
         if args.bead_offset:
             die("--next, --prev can not be specified when updating all inputs")
+        
+        # Refresh indexes to ensure we have the latest beads
+        refresh_all_box_indexes(env)
+        
         workspace = get_workspace(args)
         for input in workspace.inputs:
             try:
@@ -148,6 +156,10 @@ class CmdUpdate(Command):
         if input is None:
             die(f'Workspace does not have input "{input_nick}"'
                 ' - did you want to add it as a new one?')
+        
+        # Refresh indexes to ensure we have the latest beads
+        refresh_all_box_indexes(env)
+        
         if bead_ref_base is SAME_BEAD_NEWEST_VERSION:
             if args.bead_offset and args.bead_time is not TIME_LATEST:
                 die('You can give either --prev/--next or --time, not both')
@@ -204,6 +216,10 @@ class CmdLoad(Command):
     def run(self, args, env: 'Environment'):
         input_nick = args.input_nick
         workspace = get_workspace(args)
+        
+        # Refresh indexes to ensure we have the latest beads
+        refresh_all_box_indexes(env)
+        
         if input_nick is ALL_INPUTS:
             inputs = workspace.inputs
             if inputs:
@@ -278,6 +294,7 @@ def _unload(workspace, input_nick):
         print(' Done', flush=True)
     else:
         print(input_nick, 'was not loaded - skipping')
+
 
 
 def get_workspace(args) -> Workspace:

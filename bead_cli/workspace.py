@@ -17,6 +17,7 @@ from .common import DefaultArgSentinel
 from .common import assert_valid_workspace
 from .common import die
 from .common import info
+from .common import refresh_all_box_indexes
 from .common import resolve_bead
 from .common import verify_with_feedback
 from .common import warning
@@ -140,6 +141,10 @@ class CmdEdit(Command):
 
     def run(self, args, env: 'Environment'):
         review = args.review
+        
+        # Refresh indexes to ensure we have the latest beads
+        refresh_all_box_indexes(env)
+        
         try:
             bead = resolve_bead(env, args.bead_ref_base, args.bead_time)
         except LookupError:

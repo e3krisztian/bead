@@ -1,9 +1,12 @@
 import os
 import sys
-from typing import NoReturn
+from typing import Iterable, NoReturn
+
+from tqdm import tqdm
 
 from bead import box as bead_box
 from bead.bead import Archive
+from bead.box_index import BoxIndexError, IndexingProgress
 from bead.exceptions import InvalidArchive
 from bead.tech.timestamp import parse_iso8601
 from bead.tech.timestamp import time_from_user
@@ -113,3 +116,56 @@ def verify_with_feedback(archive: Archive):
     except InvalidArchive:
         print(' DAMAGED!', flush=True)
         raise
+
+
+def report_progress(description: str, progress_generator: Iterable[IndexingProgress], silent_success=False) -> bool:
+    '''
+    Consume a progress generator, report status using tqdm, and return success.
+    '''
+    errors = []
+    # Initialize with a total of 0; it will be updated on the first iteration.
+    with tqdm(total=0, desc=f'  {description}', unit=' files', leave=False) as pbar:
+        try:
+            for progress in progress_generator:
+                if pbar.total != progress.total:
+                    pbar.total = progress.total
+                    # Refresh to show the total immediately
+                    pbar.refresh()
+
+                pbar.update(1)
+                if progress.latest_error:
+                    errors.append(progress.latest_error)
+                    # tqdm.write is the safe way to print messages without breaking the bar
+                    tqdm.write(f"  ✗ Error indexing {progress.path}")
+        except BoxIndexError as e:
+            # Catch fatal errors from the generator itself (e.g., DB connection)
+            tqdm.write(f"  ✗ FATAL: {e}")
+            # Ensure the progress bar is cleared on fatal error
+            pbar.close()
+            return False
+
+    if errors:
+        print(f'  ✗ Completed indexing with {len(errors)} error(s).')
+        return False
+
+    if not silent_success:
+        print('  ✓ Done')
+    return True
+
+
+def refresh_box_index(box):
+    '''Create or update index for a single box (refresh = create if needed + sync).'''
+    try:
+        return report_progress(f'Refreshing box "{box.name}"', box.index.sync(), silent_success=True)
+    except Exception as e:
+        die(f'  ✗ Failed: {e}')
+
+
+def refresh_all_box_indexes(env):
+    '''Refresh indexes for all enabled boxes to ensure they're up-to-date.'''
+    boxes = env.get_boxes()
+    if not boxes:
+        return
+        
+    for box in boxes:
+        refresh_box_index(box)

@@ -1,11 +1,9 @@
-from typing import TYPE_CHECKING, Generator
-from tqdm import tqdm
+from typing import TYPE_CHECKING
 
 from bead import tech
-from bead.box_index import BoxIndexError, IndexingError, IndexingProgress
 
 from .cmdparse import Command
-from .common import die
+from .common import die, report_progress
 
 if TYPE_CHECKING:
     from .environment import Environment
@@ -118,51 +116,11 @@ class CmdDisable(Command):
             print('ERROR:', *e.args)
 
 
-def _report_progress(
-    description: str,
-    progress_generator: Generator[IndexingProgress, None, None]
-) -> bool:
-    '''
-    Consume a progress generator, report status using tqdm, and return success.
-    '''
-    errors: list[IndexingError] = []
-    # Initialize with a total of 0; it will be updated on the first iteration.
-    with tqdm(total=0, desc=f'  {description}', unit=' files', leave=False) as pbar:
-        try:
-            for progress in progress_generator:
-                if pbar.total != progress.total:
-                    pbar.total = progress.total
-                    # Refresh to show the total immediately
-                    pbar.refresh()
-
-                pbar.update(1)
-                if progress.latest_error:
-                    errors.append(progress.latest_error)
-                    # tqdm.write is the safe way to print messages without breaking the bar
-                    tqdm.write(
-                        f"  ✗ Error indexing {progress.path.name}: {progress.latest_error.reason}"
-                    )
-        except BoxIndexError as e:
-            # Catch fatal errors from the generator itself (e.g., DB connection)
-            tqdm.write(f"  ✗ FATAL: {e}")
-            # Ensure the progress bar is cleared on fatal error
-            pbar.close()
-            return False
-
-    if errors:
-        print(f'  ✗ Completed with {len(errors)} error(s).')
-        return False
-    else:
-        print('  ✓ Done')
-        return True
-
-
-
 def reindex(box):
     '''Rebuild index for a single box.'''
     try:
         print(f'Rebuilding index for box "{box.name}" at {box.location}')
-        return _report_progress('Rebuilding', box.index.rebuild())
+        return report_progress('Rebuilding', box.index.rebuild())
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
@@ -237,7 +195,7 @@ def index(box):
     '''Create or update index for a single box.'''
     try:
         print(f'Indexing box "{box.name}" at {box.location}')
-        return _report_progress('Indexing', box.index.sync())
+        return report_progress('Indexing', box.index.sync())
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
