@@ -23,7 +23,6 @@ def cwd(robot):
 
 def test_new_fails_if_directory_exists(cli, cwd, robot):
     os.makedirs(cwd / 'workspace')
-    with pytest.raises(SystemExit):
-        cli('new', 'workspace')
+    cli('new', 'workspace', expect_failure=True)
     assert 'ERROR' in robot.stderr
     assert 'workspace' not in robot.stdout

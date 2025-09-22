@@ -58,8 +58,7 @@ def test_heads_only(robot, bead_with_history):
 
 
 def test_invalid_command_reported(robot):
-    with pytest.raises(SystemExit):
-        robot.cli('web load x this-command-does-not-exist c')
+    robot.cli('web load x this-command-does-not-exist c', expect_failure=True)
     assert 'ERROR' in robot.stderr
     assert re.search('.ould not .*parse', robot.stderr)
     assert str(['this-command-does-not-exist', 'c']) in robot.stderr

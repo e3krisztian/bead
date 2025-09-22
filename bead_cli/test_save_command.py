@@ -10,8 +10,7 @@ from .test_robot import Robot
 
 
 def test_invalid_workspace_causes_error(robot):
-    with pytest.raises(SystemExit):
-        robot.cli('save')
+    robot.cli('save', expect_failure=True)
     assert 'ERROR' in robot.stderr
 
 
@@ -90,8 +89,7 @@ def box2(make_box):
 def test_save_dies_without_explicit_box(robot_multi_box, box1, box2):
     robot = robot_multi_box
     robot.cli('new', 'bead')
-    with pytest.raises(SystemExit):
-        robot.cli('save', 'bead')
+    robot.cli('save', 'bead', expect_failure=True)
     assert 'ERROR' in robot.stderr
 
 
@@ -111,8 +109,7 @@ def test_save_stores_bead_in_specified_box(robot_multi_box, box1, box2):
 def test_invalid_box_specified(robot_multi_box, box1, box2):
     robot = robot_multi_box
     robot.cli('new', 'bead')
-    with pytest.raises(SystemExit):
-        robot.cli('save', 'unknown-box', '--workspace', 'bead')
+    robot.cli('save', 'unknown-box', '--workspace', 'bead', expect_failure=True)
     assert 'ERROR' in robot.stderr
 
 
@@ -120,7 +117,6 @@ def test_save_to_box_without_backing_directory(robot_multi_box, box1, box2):
     robot = robot_multi_box
     robot.cli('new', 'bead')
     rmtree(box2.directory)
-    with pytest.raises(SystemExit):
-        robot.cli('save', box2.name, '-w', 'bead')
+    robot.cli('save', box2.name, '-w', 'bead', expect_failure=True)
     assert 'ERROR' in robot.stderr
     assert 'does not exist' in robot.stderr

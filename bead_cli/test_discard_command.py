@@ -20,8 +20,7 @@ def test_with_explicit_workspace(robot, bead_with_inputs):
 
 
 def test_invalid_workspace(robot):
-    with pytest.raises(SystemExit):
-        robot.cli('discard')
+    robot.cli('discard', expect_failure=True)
     assert 'ERROR' in robot.stderr
 
 

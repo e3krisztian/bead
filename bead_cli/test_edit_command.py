@@ -15,8 +15,7 @@ def test_by_name(robot, bead_a):
 
 def test_missing_bead(robot, bead_a):
     robot.cli('box', 'forget', 'box')
-    with pytest.raises(SystemExit):
-        robot.cli('edit', bead_a)
+    robot.cli('edit', bead_a, expect_failure=True)
     assert 'Bead' in robot.stderr
     assert 'not found' in robot.stderr
 
@@ -36,8 +35,7 @@ def test_at_time(robot, bead_with_history, times):
 
 
 def test_hacked_bead_is_detected(robot, hacked_bead):
-    with pytest.raises(SystemExit):
-        robot.cli('edit', hacked_bead)
+    robot.cli('edit', hacked_bead, expect_failure=True)
     assert 'ERROR' in robot.stderr
 
 
@@ -53,6 +51,5 @@ def test_review_flag(robot, bead_a):
 
 def test_dies_if_directory_exists(robot, bead_a):
     os.makedirs(robot.cwd / bead_a)
-    with pytest.raises(SystemExit):
-        robot.cli('edit', bead_a)
+    robot.cli('edit', bead_a, expect_failure=True)
     assert 'ERROR' in robot.stderr

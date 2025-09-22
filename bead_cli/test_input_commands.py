@@ -92,8 +92,7 @@ def test_deleted_box_does_not_stop_load(robot, bead_with_inputs, tmp_path_factor
 def test_add_with_unrecognized_bead_name_exits_with_error(robot, bead_a):
     robot.cli('edit', bead_a)
     robot.cd(bead_a)
-    with pytest.raises(SystemExit):
-        robot.cli('input', 'add', 'x', 'non-existing-bead')
+    robot.cli('input', 'add', 'x', 'non-existing-bead', expect_failure=True)
     assert 'ERROR' in robot.stderr
     assert 'non-existing-bead' in robot.stderr
 
@@ -101,8 +100,7 @@ def test_add_with_unrecognized_bead_name_exits_with_error(robot, bead_a):
 def test_add_with_path_separator_in_name_is_error(robot, bead_a, bead_b):
     robot.cli('edit', bead_a)
     robot.cd(bead_a)
-    with pytest.raises(SystemExit):
-        robot.cli('input', 'add', 'name/with/path/separator', bead_b)
+    robot.cli('input', 'add', 'name/with/path/separator', bead_b, expect_failure=True)
     assert 'ERROR' in robot.stderr
     assert 'name/with/path/separator' in robot.stderr
 
@@ -233,7 +231,6 @@ def test_unload(robot, bead_with_inputs):
 def test_delete_nonexisting_input(robot, bead_a):
     robot.cli('edit', bead_a)
     robot.cd(bead_a)
-    with pytest.raises(SystemExit):
-        robot.cli('input', 'delete', 'nonexisting')
+    robot.cli('input', 'delete', 'nonexisting', expect_failure=True)
     assert 'ERROR' in robot.stderr
     assert 'does not exist' in robot.stderr

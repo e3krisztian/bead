@@ -189,6 +189,8 @@ class Robot(Fixture):
             with CaptureStdout() as stdout, CaptureStderr() as stderr:
                 try:
                     self.exit_code = run(''.__class__(self.config_dir), str_args)
+                except SystemExit as e:
+                    self.exit_code = 0 if e.code is None else e.code
                 except BaseException as e:
                     TRACELOG(EXCEPTION=e)
                     raise
