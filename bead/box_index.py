@@ -16,6 +16,9 @@ from .meta import InputSpec
 from .ziparchive import ZipArchive
 
 
+SCHEMA_VERSION = 2
+
+
 @dataclass(frozen=True)
 class IndexingProgress:
     """Represents a single step in the indexing process."""
@@ -33,19 +36,44 @@ class IndexingError:
     reason: str         # A string explaining the error
 
 
+def _check_schema_version(conn):
+    """Check database schema version and raise error if incompatible."""
+    [[db_version]] = conn.execute('PRAGMA user_version')
+    if db_version == SCHEMA_VERSION:
+        return
+
+    if db_version == 0:
+        raise BoxIndexError(
+            f"Index database is unversioned. "
+            f"Please run 'bead box rebuild' to upgrade to version {SCHEMA_VERSION}."
+        )
+    elif db_version < SCHEMA_VERSION:
+        raise BoxIndexError(
+            f"Index schema is out of date (version {db_version}, expected {SCHEMA_VERSION}). "
+            f"Please run 'bead box rebuild' to upgrade."
+        )
+    else:  # db_version > SCHEMA_VERSION
+        raise BoxIndexError(
+            f"Index schema is from a newer version of bead (version {db_version}, expected {SCHEMA_VERSION}). "
+            f"Please upgrade your 'bead' tool."
+        )
+
+
+def is_new_db(conn):
+    """Check if the database is uninitialized."""
+    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='beads'")
+    return cursor.fetchone() is None
+
+
 def create_update_connection(index_path: Path):
-    '''Create database connection for updates and ensure schema exists.'''
+    '''Create database connection for updates.'''
     conn = sqlite3.connect(str(index_path))
-    try:
-        create_schema(conn)
-    except Exception:
-        conn.close()
-        raise
     return closing(conn)
 
 
 def create_query_connection(index_path: Path):
     '''Create read-only database connection for queries.'''
+    # NOTE: read-only connections can not create/update the schema
     conn = sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)
     return closing(conn)
 
@@ -70,6 +98,8 @@ def create_schema(conn):
         CREATE INDEX IF NOT EXISTS idx_beads_freeze_time_unix
         ON beads(freeze_time_unix)
     ''')
+
+    conn.execute(f'PRAGMA user_version = {SCHEMA_VERSION}')
 
     conn.commit()
 
@@ -192,13 +222,16 @@ class BoxIndex:
     def __init__(self, box_directory: Path, index_file_path: Path):
         self.box_directory = Path(box_directory)
         self.index_path = Path(index_file_path)
-        
-        # Ensure the index file exists and is properly initialized
+
         try:
-            with create_update_connection(self.index_path):
-                pass
-        except Exception as e:
-            raise BoxIndexError(f"Failed to initialize index at {self.index_path}: {e}")
+            with create_update_connection(self.index_path) as conn:
+                if is_new_db(conn):
+                    create_schema(conn)
+                else:
+                    _check_schema_version(conn)
+
+        except (sqlite3.Error, BoxIndexError) as e:
+            raise BoxIndexError(f"Failed to initialize or verify index at {self.index_path}: {e}") from e
 
     def _process_files(
         self,
@@ -239,6 +272,13 @@ class BoxIndex:
         '''
         if self.index_path.exists():
             self.index_path.unlink()
+
+        # Initialize the new, empty database with the correct schema
+        try:
+            with create_update_connection(self.index_path) as conn:
+                create_schema(conn)
+        except sqlite3.Error as e:
+            raise BoxIndexError(f"Failed to create new index during rebuild: {e}") from e
 
         archive_paths = [
             p.relative_to(self.box_directory) for p in self.box_directory.glob('*.zip')
