@@ -160,26 +160,14 @@ def _report_progress(
 
 def reindex(box):
     '''Rebuild index for a single box.'''
-    from bead.box_index import BoxIndex
     try:
         print(f'Rebuilding index for box "{box.name}" at {box.location}')
-        box_index = BoxIndex(box.location)
-        return _report_progress('Rebuilding', box_index.rebuild())
+        return _report_progress('Rebuilding', box.index.rebuild())
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
 
 
-def reindex_directory(directory):
-    '''Rebuild index for a directory.'''
-    from bead.box_index import BoxIndex
-    try:
-        print(f'Rebuilding index for directory {directory}')
-        box_index = BoxIndex(directory)
-        return _report_progress('Rebuilding', box_index.rebuild())
-    except Exception as e:
-        print(f'  ✗ Failed: {e}')
-        return False
 
 
 def reindex_all(boxes):
@@ -200,7 +188,7 @@ def reindex_all(boxes):
 
 class CmdReindex(Command):
     '''
-    Rebuild the SQLite index for a specific box, directory, or all boxes.
+    Rebuild the SQLite index for a specific box or all boxes.
 
     If no arguments are provided and only one box is defined, that box will be rebuilt automatically.
     '''
@@ -209,13 +197,12 @@ class CmdReindex(Command):
         def setup_mutually_exclusive_args(parser):
             group = parser.argparser.add_mutually_exclusive_group()
             group.add_argument('--box', help='Box name to rebuild')
-            group.add_argument('--dir', type=tech.fs.Path, help='Box directory to rebuild')
             group.add_argument('--all', action='store_true', help='Rebuild all boxes')
 
         arg(setup_mutually_exclusive_args)
 
     def run(self, args, env: 'Environment'):
-        if not any([args.box, args.dir, args.all]):
+        if not any([args.box, args.all]):
             # No arguments provided - check if we can auto-detect single box
             boxes = env.get_boxes()
             if len(boxes) == 1:
@@ -226,18 +213,11 @@ class CmdReindex(Command):
                 print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
                 return
             else:
-                print('ERROR: Multiple boxes defined. Must specify either --box, --dir, or --all')
+                print('ERROR: Multiple boxes defined. Must specify either --box or --all')
                 return
 
         if args.all:
             reindex_all(env.get_boxes())
-        elif args.dir:
-            # Rebuild specific directory
-            directory = args.dir
-            if not directory.is_dir():
-                print(f'ERROR: "{directory}" is not an existing directory!')
-                return
-            reindex_directory(directory)
         else:
             # Rebuild specific box by name
             box_name = args.box
@@ -255,26 +235,14 @@ class CmdReindex(Command):
 
 def index(box):
     '''Create or update index for a single box.'''
-    from bead.box_index import BoxIndex
     try:
         print(f'Indexing box "{box.name}" at {box.location}')
-        box_index = BoxIndex(box.location)
-        return _report_progress('Indexing', box_index.sync())
+        return _report_progress('Indexing', box.index.sync())
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
 
 
-def index_directory(directory):
-    '''Create or update index for a directory.'''
-    from bead.box_index import BoxIndex
-    try:
-        print(f'Indexing directory {directory}')
-        box_index = BoxIndex(directory)
-        return _report_progress('Indexing', box_index.sync())
-    except Exception as e:
-        print(f'  ✗ Failed: {e}')
-        return False
 
 
 def index_all(boxes):
@@ -295,7 +263,7 @@ def index_all(boxes):
 
 class CmdIndex(Command):
     '''
-    Create or update the SQLite index for a specific box, directory, or all boxes.
+    Create or update the SQLite index for a specific box or all boxes.
 
     If no arguments are provided and only one box is defined, that box will be indexed automatically.
     '''
@@ -304,13 +272,12 @@ class CmdIndex(Command):
         def setup_mutually_exclusive_args(parser):
             group = parser.argparser.add_mutually_exclusive_group()
             group.add_argument('--box', help='Box name to index')
-            group.add_argument('--dir', type=tech.fs.Path, help='Box directory to index')
             group.add_argument('--all', action='store_true', help='Index all boxes')
 
         arg(setup_mutually_exclusive_args)
 
     def run(self, args, env: 'Environment'):
-        if not any([args.box, args.dir, args.all]):
+        if not any([args.box, args.all]):
             # No arguments provided - check if we can auto-detect single box
             boxes = env.get_boxes()
             if len(boxes) == 1:
@@ -321,18 +288,11 @@ class CmdIndex(Command):
                 print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
                 return
             else:
-                print('ERROR: Multiple boxes defined. Must specify either --box, --dir, or --all')
+                print('ERROR: Multiple boxes defined. Must specify either --box or --all')
                 return
 
         if args.all:
             index_all(env.get_boxes())
-        elif args.dir:
-            # Index specific directory
-            directory = args.dir
-            if not directory.is_dir():
-                print(f'ERROR: "{directory}" is not an existing directory!')
-                return
-            index_directory(directory)
         else:
             # Index specific box by name
             box_name = args.box
