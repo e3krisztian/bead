@@ -1,7 +1,6 @@
 import os
 
 from bead.tech.fs import rmtree
-import pytest
 
 from bead.workspace import Workspace
 

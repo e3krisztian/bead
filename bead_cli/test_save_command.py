@@ -3,7 +3,6 @@ import os
 from bead.tech.fs import rmtree
 import pytest
 
-from bead.box import Box
 from bead.workspace import Workspace
 
 from .test_robot import Robot

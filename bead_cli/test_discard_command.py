@@ -1,7 +1,6 @@
 import os
 import platform
 
-import pytest
 
 
 def test_with_default_workspace(robot, bead_with_inputs):

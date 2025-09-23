@@ -12,8 +12,6 @@ Boxes can be used to:
 
 from abc import ABC
 from abc import abstractmethod
-from typing import Any
-from typing import Protocol
 
 from . import tech
 from .bead import Archive

@@ -1,6 +1,5 @@
 import os
 
-import pytest
 
 from bead import layouts
 from bead.workspace import Workspace
