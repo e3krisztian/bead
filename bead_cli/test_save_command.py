@@ -72,7 +72,10 @@ def make_box(robot_multi_box, tmp_path_factory):
     def _make_box(name):
         directory = tmp_path_factory.mktemp(f"box_{name}")
         robot_multi_box.cli('box', 'add', name, directory)
-        return Box(name, directory)
+        # Use the environment to get the proper index file path
+        with robot_multi_box.environment as env:
+            box = env.get_box(name)
+            return box
     return _make_box
 
 

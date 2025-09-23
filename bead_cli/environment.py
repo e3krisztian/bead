@@ -39,13 +39,18 @@ class Environment:
         with open(self.filename, 'w') as f:
             persistence.dump(self._content, f)
 
+    def get_box_index_path(self, box_name: str) -> Path:
+        """Calculate index file path for a box in config directory."""
+        index_filename = f"box_index_{box_name}.sqlite"
+        return self.filename.parent / index_filename
+
     def get_all_boxes(self):
         def box(box_spec):
-            return Box(
-                box_spec.get(BOX_NAME),
-                Path(box_spec.get(BOX_LOCATION)),
-                # For backwards compatibility, missing 'enabled' flag means True
-                box_spec.get(BOX_ENABLED, True))
+            name = box_spec.get(BOX_NAME)
+            location = Path(box_spec.get(BOX_LOCATION))
+            enabled = box_spec.get(BOX_ENABLED, True)
+            index_path = self.get_box_index_path(name)
+            return Box(name, location, index_path, enabled)
         return [box(spec) for spec in self._content.get(ENV_BOXES, ())]
 
     def get_boxes(self):
@@ -70,9 +75,17 @@ class Environment:
                 raise ValueError(
                     f'Box with location {box.location} already exists')
 
-        self.set_boxes(boxes + [Box(name, directory, enabled=True)])
+        index_path = self.get_box_index_path(name)
+        self.set_boxes(boxes + [Box(name, directory, index_path, enabled=True)])
 
     def forget_box(self, name):
+        # Remove the index file for this box
+        index_path = self.get_box_index_path(name)
+        try:
+            index_path.unlink()
+        except OSError:
+            pass  # Ignore errors during cleanup
+        
         self.set_boxes(
             box
             for box in self.get_all_boxes()
@@ -103,3 +116,4 @@ class Environment:
 
     def disable_box(self, name):
         self._set_box_enabled(name, False)
+
