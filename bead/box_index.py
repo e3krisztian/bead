@@ -4,7 +4,7 @@ SQLite-based index for bead storage and retrieval.
 
 import json
 import sqlite3
-from contextlib import closing
+from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Generator, Optional
@@ -45,12 +45,12 @@ def _check_schema_version(conn):
     if db_version == 0:
         raise BoxIndexError(
             f"Index database is unversioned. "
-            f"Please run 'bead box rebuild' to upgrade to version {SCHEMA_VERSION}."
+            f"Please run 'bead box reindex' to upgrade to version {SCHEMA_VERSION}."
         )
     elif db_version < SCHEMA_VERSION:
         raise BoxIndexError(
             f"Index schema is out of date (version {db_version}, expected {SCHEMA_VERSION}). "
-            f"Please run 'bead box rebuild' to upgrade."
+            f"Please run 'bead box reindex' to upgrade."
         )
     else:  # db_version > SCHEMA_VERSION
         raise BoxIndexError(
@@ -233,6 +233,21 @@ class BoxIndex:
         except (sqlite3.Error, BoxIndexError) as e:
             raise BoxIndexError(f"Failed to initialize or verify index at {self.index_path}: {e}") from e
 
+    @contextmanager
+    def _safe_db_access(self, read_only: bool = False):
+        '''A context manager to safely access the database, handling corruption errors.'''
+        try:
+            conn_factory = create_query_connection if read_only else create_update_connection
+            with conn_factory(self.index_path) as conn:
+                yield conn
+        except sqlite3.DatabaseError as e:
+            raise BoxIndexError(
+                "Index database is corrupt. Please run 'bead box reindex' to fix it."
+            ) from e
+        except sqlite3.Error as e:
+            # Catch other potential sqlite errors
+            raise BoxIndexError(f"A database error occurred: {e}") from e
+
     def _process_files(
         self,
         paths: list[Path],
@@ -296,11 +311,8 @@ class BoxIndex:
         Add new files to index and remove deleted files.
         The caller is responsible for collecting and interpreting errors.
         '''
-        try:
-            with create_query_connection(self.index_path) as conn:
-                indexed_files = get_indexed_files(conn)
-        except sqlite3.Error as e:
-            raise BoxIndexError(f"Database error during sync: {e}") from e
+        with self._safe_db_access(read_only=True) as conn:
+            indexed_files = get_indexed_files(conn)
 
         current_files = {
             p.relative_to(self.box_directory) for p in self.box_directory.glob('*.zip')
@@ -333,48 +345,34 @@ class BoxIndex:
         Raises InvalidArchive for non-fatal errors.
         Raises BoxIndexError for fatal database errors.
         '''
-        try:
-            archive = ZipArchive(archive_path, box_name='')
-            archive.validate()
-            relative_path = archive_path.relative_to(self.box_directory)
-            with create_update_connection(self.index_path) as conn:
-                insert_bead_record(conn, archive, relative_path)
-                conn.commit()
-        except sqlite3.Error as e:
-            raise BoxIndexError(f"Database error processing {archive_path}: {e}") from e
+        archive = ZipArchive(archive_path, box_name='')
+        archive.validate()
+        relative_path = archive_path.relative_to(self.box_directory)
+        with self._safe_db_access() as conn:
+            insert_bead_record(conn, archive, relative_path)
+            conn.commit()
 
     def _unindex_single_archive(self, archive_path: Path):
         '''
         Helper to encapsulate un-indexing a single file.
         Raises BoxIndexError for fatal database errors.
         '''
-        try:
-            relative_path = archive_path.relative_to(self.box_directory)
-            with create_update_connection(self.index_path) as conn:
-                delete_bead_record(conn, str(relative_path))
-                conn.commit()
-        except sqlite3.Error as e:
-            raise BoxIndexError(f"Database error processing {archive_path}: {e}") from e
+        relative_path = archive_path.relative_to(self.box_directory)
+        with self._safe_db_access() as conn:
+            delete_bead_record(conn, str(relative_path))
+            conn.commit()
 
     
     def get_beads(self, conditions, box_name: str) -> list[Bead]:
         '''Query beads from index.'''
-        try:
-            with create_query_connection(self.index_path) as conn:
-                return query_beads(conn, conditions, box_name)
-        except Exception as e:
-            raise BoxIndexError(f"Failed to query index: {e}")
-    
+        with self._safe_db_access(read_only=True) as conn:
+            return query_beads(conn, conditions, box_name)
+
     def get_file_path(self, name: str, content_id: str) -> Path:
         '''Get file path for bead.'''
-        try:
-            with create_query_connection(self.index_path) as conn:
-                file_path = find_file_path(conn, name, content_id)
-                if file_path is None:
-                    raise LookupError(f"Bead not found in index: name='{name}', content_id='{content_id}'")
-                return self.box_directory / file_path
-        except LookupError:
-            raise
-        except Exception as e:
-            raise BoxIndexError(f"Failed to get file path from index: {e}")
+        with self._safe_db_access(read_only=True) as conn:
+            file_path = find_file_path(conn, name, content_id)
+            if file_path is None:
+                raise LookupError(f"Bead not found in index: name='{name}', content_id='{content_id}'")
+            return self.box_directory / file_path
     
