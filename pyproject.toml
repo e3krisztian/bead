@@ -61,17 +61,26 @@ dev = [
 
 [tool.ruff]
 line-length = 120
-lint.ignore = [
-    "E251", # unexpected spaces around keyword / parameter equals
-    "E241", # multiple spaces after ','
-    "E221", # multiple spaces before operator
-    "E722", # do not use bare except
-]
 exclude = [
     "appdirs.py",
     "test-env",
     ".eggs",
 ]
+
+[tool.ruff.lint]
+ignore = [
+    "E251", # unexpected spaces around keyword / parameter equals
+    "E241", # multiple spaces after ','
+    "E221", # multiple spaces before operator
+    "E722", # do not use bare except
+]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+multiline-quotes = "single"
+
+[tool.ruff.format]
+quote-style = "single"
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
