@@ -106,7 +106,7 @@ def run(config_dir: str, argv: Sequence[str]):
         if not os.path.isdir(config_path):
             raise
 
-    env = Environment.from_dir(config_path)
+    env = Environment(config_path)
     return parser.dispatch(argv, env)
 
 

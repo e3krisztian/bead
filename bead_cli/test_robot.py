@@ -71,7 +71,7 @@ def environment(robot):
     with setenv('HOME', robot.home.as_posix()):
         with chdir(robot.cwd):
             try:
-                yield Environment.from_dir(robot.config_dir)
+                yield Environment(robot.config_dir)
             except BaseException as e:
                 robot.exit_code = -1
                 raise

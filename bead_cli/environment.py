@@ -16,20 +16,21 @@ BOX_ENABLED = 'enabled'
 
 class Environment:
     """
-    I am responsible for storing/retrieving user specific data.
+    This class is responsible for storing/retrieving user specific data.
 
-    Currently includes just the list of boxes and their definitions.
+    It has the list of boxes and their definitions.
+    It can also store box specific information (e.g. an index).
     """
 
-    def __init__(self, filename: Path):
-        self.filename = filename
+    def __init__(self, directory: Path):
+        self.directory = directory
         self._content = {}
         if os.path.exists(self.filename):
             self.load()
 
-    @classmethod
-    def from_dir(cls, directory):
-        return cls(Path(os.path.join(directory, 'env.json')))
+    @property
+    def filename(self):
+        return self.directory / 'env.json'
 
     def load(self):
         with open(self.filename) as f:
@@ -42,7 +43,7 @@ class Environment:
     def get_box_index_path(self, box_name: str) -> Path:
         """Calculate index file path for a box in config directory."""
         index_filename = f"box_index_{box_name}.sqlite"
-        return self.filename.parent / index_filename
+        return self.directory / index_filename
 
     def get_all_boxes(self):
         def box(box_spec):

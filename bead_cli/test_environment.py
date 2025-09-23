@@ -18,7 +18,7 @@ def test_load_legacy_environment_defaults_to_enabled(robot):
             ]
         }
     ''')
-    env = Environment.from_dir(robot.config_dir)
+    env = Environment(robot.config_dir)
     boxes = env.get_all_boxes()
     assert len(boxes) == 2
     assert boxes[0].enabled
@@ -28,7 +28,7 @@ def test_load_legacy_environment_defaults_to_enabled(robot):
 
 
 def test_disable_and_enable_box(robot):
-    env = Environment.from_dir(robot.config_dir)
+    env = Environment(robot.config_dir)
     # robot fixture creates a 'box'
     assert env.get_box('box').enabled
     assert len(env.get_boxes()) == 1
@@ -46,11 +46,11 @@ def test_disable_and_enable_box(robot):
 
 
 def test_persistence_of_disabled_state(robot):
-    env = Environment.from_dir(robot.config_dir)
+    env = Environment(robot.config_dir)
     env.disable_box('box')
     env.save()
 
     # create a new environment to see if it loads the saved state
-    new_env = Environment.from_dir(robot.config_dir)
+    new_env = Environment(robot.config_dir)
     assert not new_env.get_box('box').enabled
     assert len(new_env.get_boxes()) == 0
