@@ -16,7 +16,7 @@ from .meta import InputSpec
 from .ziparchive import ZipArchive
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -97,6 +97,18 @@ def create_schema(conn):
     conn.execute('''
         CREATE INDEX IF NOT EXISTS idx_beads_freeze_time_unix
         ON beads(freeze_time_unix)
+    ''')
+
+    # Index for queries by kind, and (kind, name)
+    conn.execute('''
+        CREATE INDEX IF NOT EXISTS idx_beads_kind_name
+        ON beads(kind, name)
+    ''')
+
+    # Index for queries by content_id
+    conn.execute('''
+        CREATE INDEX IF NOT EXISTS idx_beads_content_id
+        ON beads(content_id)
     ''')
 
     conn.execute(f'PRAGMA user_version = {SCHEMA_VERSION}')
