@@ -27,7 +27,7 @@ classifiers = [
 ]
 keywords = ["computation", "reproducible", "data", "pipeline", "freeze"]
 dependencies = [
-    "appdirs",
+    "platformdirs>=4.4.0",
     "argcomplete>=3.6.2",
     "attrs",
     "cached-property",
@@ -62,7 +62,7 @@ dev = [
 [tool.ruff]
 line-length = 120
 exclude = [
-    "appdirs.py",
+    "platformdirs.py",
     "test-env",
     ".eggs",
 ]
