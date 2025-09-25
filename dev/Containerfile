@@ -23,6 +23,10 @@ ENV PATH="$PATH:/opt/opencode"
 RUN mkdir -p /opt/gemini && npm install -g --prefix /opt/gemini @google/gemini-cli
 ENV PATH="$PATH:/opt/gemini/bin"
 
+# claude-code
+RUN mkdir -p /opt/cc && npm install -g --prefix /opt/cc @anthropic-ai/claude-code
+ENV PATH="$PATH:/opt/cc/bin"
+
 RUN cat > /opt/bashrc <<EOS
 eval "\$(direnv hook bash)"
 EOS
