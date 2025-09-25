@@ -101,6 +101,8 @@ We welcome contributions! If you feel like working on code, please open an issue
 
 This project is dedicated to the public domain via the [LICENSE](LICENSE) file. By submitting a pull request, you agree to irrevocably release your work under the same license.
 
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on our development process.
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on our development process, including commit message format and coding standards.
+
+**For AI Assistants:** Always follow the commit message guidelines in [CONTRIBUTING.md](CONTRIBUTING.md) - focus on "why" not "what" using conventional commit format.
 
 Thank you for your interest!

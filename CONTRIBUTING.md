@@ -10,9 +10,55 @@ This document provides instructions for both human developers and AI agents to e
 
 We use Git for version control. Please follow these conventions for your commits:
 
-- **Use the [Conventional Commits](https://www.conventionalcommits.org/) format.** This helps us automate releases and makes the project history easy to read.
-- Your commit message should clearly explain the **reason** for the change.
-- Focus on the **"why"** of the change in the commit body, not just the "what."
+#### Commit Message Format
+
+Use the [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+```
+<type>(<scope>): <description>
+
+<body explaining the why>
+```
+
+#### Commit Types
+- `feat`: New features
+- `fix`: Bug fixes
+- `enhance`: Improvements to existing features
+- `refactor`: Code restructuring without functional changes
+- `chore`: Maintenance tasks, dependency updates
+- `docs`: Documentation changes
+- `test`: Test additions or modifications
+
+#### Scope Examples
+- `(box_index)`: Changes to box indexing functionality
+- `(cli)`: Command-line interface changes
+- `(tests)`: Test-related changes
+
+#### Message Guidelines
+
+**Focus on the "why":**
+- ✅ `enhance(box_index): Add structured error context to improve user experience`
+- ❌ `update: Add box_name parameter to BoxIndexError class`
+
+**Keep the description concise but meaningful:**
+- Explain the benefit or problem solved
+- Use present tense ("Add" not "Added")
+- Don't exceed 50 characters for the first line when possible
+
+**Body should explain motivation:**
+```
+enhance(box_index): Add structured error context to improve user experience
+
+BoxIndexError now includes box_name and index_path attributes, enabling
+clearer error messages that show which box failed and suggest the correct
+'bead box reindex <box_name>' command. This eliminates confusion when
+users have multiple boxes and need to know which one to reindex.
+```
+
+**Avoid:**
+- Listing implementation details ("Add method X, change function Y")
+- Generic messages ("Update code", "Fix bugs")
+- Self-attribution or tool mentions in commit messages
 
 ### Build, Lint, and Test Commands
 
