@@ -7,7 +7,6 @@ import sys
 import textwrap
 import traceback
 
-import appdirs
 
 from bead.exceptions import BoxIndexError
 from bead.tech.fs import Path
@@ -19,6 +18,7 @@ from . import workspace
 from .cmdparse import Command
 from .cmdparse import Parser
 from .environment import Environment
+from .migration import migrate_config_if_needed, get_config_dir, get_state_dir
 from .web import commands as web
 
 
@@ -95,19 +95,11 @@ def make_argument_parser(defaults):
     return parser
 
 
-def run(config_dir: str, argv: Sequence[str]):
-    parser_defaults = dict(config_dir=Path(config_dir))
+def run(config_dir: Path, state_dir: Path, argv: Sequence[str]):
+    parser_defaults = dict(config_dir=config_dir)
     parser = make_argument_parser(parser_defaults)
 
-    # Create config directory if it doesn't exist
-    config_path = Path(config_dir)
-    try:
-        os.makedirs(config_path)
-    except OSError:
-        if not os.path.isdir(config_path):
-            raise
-
-    env = Environment(config_path)
+    env = Environment(config_dir, state_dir)
     return parser.dispatch(argv, env)
 
 
@@ -172,10 +164,16 @@ def main(run=run):
             file=sys.stderr)
         sys.exit(2)
 
-    config_dir = appdirs.user_config_dir(
-        'bead_cli-6a4d9d98-8e64-4a2a-b6c2-8a753ea61daf')
+    migrate_config_if_needed()
+
+    config_dir = get_config_dir()
+    state_dir = get_state_dir()
+
+    config_dir.mkdir(parents=True, exist_ok=True)
+    state_dir.mkdir(parents=True, exist_ok=True)
+
     try:
-        retval = run(config_dir, sys.argv[1:])
+        retval = run(config_dir, state_dir, sys.argv[1:])
     except BoxIndexError as e:
         print_box_index_error(e)
         retval = 1
