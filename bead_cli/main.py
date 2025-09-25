@@ -128,6 +128,29 @@ to get this error.
 """
 
 
+def print_box_index_error(e):
+    """Print BoxIndexError with structured formatting to stderr."""
+    # Format error with structured information
+    error_msg = f"ERROR: {e}"
+    if e.box_name:
+        error_msg = f"ERROR (Box '{e.box_name}'): {e}"
+    print(error_msg, file=sys.stderr)
+
+    # Show index path if available
+    if e.index_path:
+        print(f"Index: {e.index_path}", file=sys.stderr)
+
+    if e.advice:
+        print(f"ADVICE: {e.formatted_advice}", file=sys.stderr)
+    else:
+        # A sensible default for unexpected index errors
+        default_advice = "This might be resolved by running 'bead box reindex"
+        if e.box_name:
+            default_advice += f" {e.box_name}"
+        default_advice += "'."
+        print(f"ADVICE: {default_advice}", file=sys.stderr)
+
+
 def is_existing_cwd():
     """Is the current working directory a valid directory?
 
@@ -154,12 +177,7 @@ def main(run=run):
     try:
         retval = run(config_dir, sys.argv[1:])
     except BoxIndexError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
-        if e.advice:
-            print(f"ADVICE: {e.advice}", file=sys.stderr)
-        else:
-            # A sensible default for unexpected index errors
-            print("ADVICE: This might be resolved by running 'bead box reindex'.", file=sys.stderr)
+        print_box_index_error(e)
         retval = 1
     except KeyboardInterrupt:
         print("Interrupted :(", file=sys.stderr)

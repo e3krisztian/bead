@@ -36,7 +36,7 @@ def box_directory(tmp_path: Path) -> Path:
 def box_index(box_directory: Path) -> BoxIndex:
     """Create a BoxIndex instance."""
     index_file_path = box_directory / 'index.db'
-    return BoxIndex(box_directory, index_file_path)
+    return BoxIndex("test_box", box_directory, index_file_path)
 
 
 def create_unindexed_bead(box_directory: Path, name: str, kind: str = "test-kind"):
@@ -207,7 +207,7 @@ def test_box_index_init_unversioned_db(box_directory: Path):
         conn.execute("CREATE TABLE beads (name TEXT)")
 
     with pytest.raises(BoxIndexError, match="Index database is unversioned"):
-        BoxIndex(box_directory, index_path)
+        BoxIndex("test_box", box_directory, index_path)
 
 
 def test_box_index_init_outdated_db(box_directory: Path):
@@ -220,7 +220,7 @@ def test_box_index_init_outdated_db(box_directory: Path):
 
     # The code now expects SCHEMA_VERSION = 2
     with pytest.raises(BoxIndexError, match="Index schema is out of date"):
-        BoxIndex(box_directory, index_path)
+        BoxIndex("test_box", box_directory, index_path)
 
 
 def test_box_index_init_newer_db(box_directory: Path):
@@ -233,4 +233,4 @@ def test_box_index_init_newer_db(box_directory: Path):
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
 
     with pytest.raises(BoxIndexError, match="Index schema is from a newer version"):
-        BoxIndex(box_directory, index_path)
+        BoxIndex("test_box", box_directory, index_path)

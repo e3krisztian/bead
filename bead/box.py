@@ -334,7 +334,7 @@ class Box:
         self.name = name
         self.location = location
         self.enabled = enabled
-        self.index = BoxIndex(self.directory, Path(index_file_path))
+        self.index = BoxIndex(self.name, self.directory, Path(index_file_path))
 
     @property
     def directory(self):
