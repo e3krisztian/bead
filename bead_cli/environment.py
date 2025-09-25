@@ -22,28 +22,32 @@ class Environment:
     It can also store box specific information (e.g. an index).
     """
 
-    def __init__(self, directory: Path):
-        self.directory = directory
+    def __init__(self, config_dir: Path, state_dir: Path):
+        self.config_dir = Path(config_dir)
+        self.state_dir = Path(state_dir)
         self._content = {}
-        if os.path.exists(self.filename):
+        # Ensure directories exist
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+        if os.path.exists(self.config_file):
             self.load()
 
     @property
-    def filename(self):
-        return self.directory / 'env.json'
+    def config_file(self):
+        return self.config_dir / 'boxes.json'
 
     def load(self):
-        with open(self.filename) as f:
+        with open(self.config_file) as f:
             self._content = persistence.load(f)
 
     def save(self):
-        with open(self.filename, 'w') as f:
+        with open(self.config_file, 'w') as f:
             persistence.dump(self._content, f)
 
     def get_box_index_path(self, box_name: str) -> Path:
-        """Calculate index file path for a box in config directory."""
+        """Calculate index file path for a box in state directory."""
         index_filename = f"box_index_{box_name}.sqlite"
-        return self.directory / index_filename
+        return self.state_dir / index_filename
 
     def get_all_boxes(self):
         def box(box_spec):
