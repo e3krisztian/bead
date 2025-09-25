@@ -71,7 +71,7 @@ def environment(robot):
     with setenv('HOME', robot.home.as_posix()):
         with chdir(robot.cwd):
             try:
-                yield Environment(robot.config_dir)
+                yield Environment(robot.config_dir, robot.state_dir)
             except BaseException:
                 robot.exit_code = -1
                 raise
@@ -140,6 +140,10 @@ class Robot(Fixture):
         return self.base_dir / 'config'
 
     @property
+    def state_dir(self):
+        return self.base_dir / 'state'
+
+    @property
     def home(self):
         return self.base_dir / 'home'
 
@@ -188,7 +192,7 @@ class Robot(Fixture):
         with self.environment:
             with CaptureStdout() as stdout, CaptureStderr() as stderr:
                 try:
-                    self.exit_code = run(''.__class__(self.config_dir), str_args)
+                    self.exit_code = run(self.config_dir, self.state_dir, str_args)
                 except SystemExit as e:
                     self.exit_code = 0 if e.code is None else e.code
                 except BaseException as e:

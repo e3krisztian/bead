@@ -13,7 +13,7 @@ def _deep_unhandled_exception(n=4):
     _deep_unhandled_exception(n - 1)
 
 
-def run_raise_unhandled(config_dir, argv):
+def run_raise_unhandled(config_dir, state_dir, argv):
     _deep_unhandled_exception()
 
 
