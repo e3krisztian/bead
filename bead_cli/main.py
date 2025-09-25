@@ -18,7 +18,8 @@ from . import workspace
 from .cmdparse import Command
 from .cmdparse import Parser
 from .environment import Environment
-from .migration import migrate_config_if_needed, get_config_dir, get_state_dir
+from .migration import migrate_config_if_needed
+import platformdirs
 from .web import commands as web
 
 
@@ -164,10 +165,10 @@ def main(run=run):
             file=sys.stderr)
         sys.exit(2)
 
-    migrate_config_if_needed()
+    config_dir = Path(platformdirs.user_config_dir('bead'))
+    state_dir = Path(platformdirs.user_state_dir('bead'))
 
-    config_dir = get_config_dir()
-    state_dir = get_state_dir()
+    migrate_config_if_needed(config_dir)
 
     config_dir.mkdir(parents=True, exist_ok=True)
     state_dir.mkdir(parents=True, exist_ok=True)

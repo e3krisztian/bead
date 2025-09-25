@@ -1,5 +1,5 @@
 """
-Configuration migration utilities for transitioning to platformdirs-based directories.
+Configuration migration utilities for transitioning to new directory structure.
 """
 
 import shutil
@@ -12,20 +12,9 @@ def get_legacy_dir() -> Path:
     return Path(platformdirs.user_config_dir('bead_cli-6a4d9d98-8e64-4a2a-b6c2-8a753ea61daf'))
 
 
-def get_config_dir() -> Path:
-    """Get user config directory: ~/.config/bead/ (or OS equivalent)"""
-    return Path(platformdirs.user_config_dir('bead'))
-
-
-def get_state_dir() -> Path:
-    """Get user state directory: ~/.local/state/bead/ (or OS equivalent)"""
-    return Path(platformdirs.user_state_dir('bead'))
-
-
-def migrate_config_if_needed():
+def migrate_config_if_needed(config_dir: Path):
     """Copy legacy config to new location if needed"""
     legacy_dir = get_legacy_dir()
-    config_dir = get_config_dir()
 
     if legacy_dir.exists() and not (config_dir / '.migrated').exists():
         print("Migrating configuration to standard directories...")
