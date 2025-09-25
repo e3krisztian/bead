@@ -8,3 +8,7 @@ class BoxError(Exception):
 
 class BoxIndexError(Exception):
     """Box index operation related error"""
+    def __init__(self, message, *, advice=None):
+        super().__init__(message)
+        self.advice = advice
+

@@ -9,6 +9,7 @@ import traceback
 
 import appdirs
 
+from bead.exceptions import BoxIndexError
 from bead.tech.fs import Path
 from bead.tech.timestamp import timestamp
 
@@ -152,6 +153,14 @@ def main(run=run):
         'bead_cli-6a4d9d98-8e64-4a2a-b6c2-8a753ea61daf')
     try:
         retval = run(config_dir, sys.argv[1:])
+    except BoxIndexError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        if e.advice:
+            print(f"ADVICE: {e.advice}", file=sys.stderr)
+        else:
+            # A sensible default for unexpected index errors
+            print("ADVICE: This might be resolved by running 'bead box reindex'.", file=sys.stderr)
+        retval = 1
     except KeyboardInterrupt:
         print("Interrupted :(", file=sys.stderr)
         retval = -1

@@ -44,18 +44,18 @@ def _check_schema_version(conn):
 
     if db_version == 0:
         raise BoxIndexError(
-            f"Index database is unversioned. "
-            f"Please run 'bead box reindex' to upgrade to version {SCHEMA_VERSION}."
+            "Index database is unversioned.",
+            advice=f"Please run 'bead box reindex' to upgrade to version {SCHEMA_VERSION}."
         )
     elif db_version < SCHEMA_VERSION:
         raise BoxIndexError(
-            f"Index schema is out of date (version {db_version}, expected {SCHEMA_VERSION}). "
-            f"Please run 'bead box reindex' to upgrade."
+            f"Index schema is out of date (version {db_version}, expected {SCHEMA_VERSION}).",
+            advice="Please run 'bead box reindex' to upgrade."
         )
     else:  # db_version > SCHEMA_VERSION
         raise BoxIndexError(
-            f"Index schema is from a newer version of bead (version {db_version}, expected {SCHEMA_VERSION}). "
-            f"Please upgrade your 'bead' tool."
+            f"Index schema is from a newer version of bead (version {db_version}, expected {SCHEMA_VERSION}).",
+            advice="Please upgrade your 'bead' tool."
         )
 
 
@@ -242,8 +242,14 @@ class BoxIndex:
                 else:
                     _check_schema_version(conn)
 
-        except (sqlite3.Error, BoxIndexError) as e:
-            raise BoxIndexError(f"Failed to initialize or verify index at {self.index_path}: {e}") from e
+        except BoxIndexError:
+            raise
+        except sqlite3.Error as e:
+            advice = "This might be resolved by running 'bead box reindex'."
+            raise BoxIndexError(
+                f"Failed to initialize or verify index at {self.index_path}: {e}",
+                advice=advice
+            ) from e
 
     @contextmanager
     def _safe_db_access(self, read_only: bool = False):
@@ -254,11 +260,15 @@ class BoxIndex:
                 yield conn
         except sqlite3.DatabaseError as e:
             raise BoxIndexError(
-                "Index database is corrupt. Please run 'bead box reindex' to fix it."
+                "Index database is corrupt.",
+                advice="Please run 'bead box reindex' to fix it."
             ) from e
         except sqlite3.Error as e:
             # Catch other potential sqlite errors
-            raise BoxIndexError(f"A database error occurred: {e}") from e
+            raise BoxIndexError(
+                f"A database error occurred: {e}",
+                advice="This might be resolved by running 'bead box reindex'."
+            ) from e
 
     def _process_files(
         self,
@@ -305,7 +315,10 @@ class BoxIndex:
             with create_update_connection(self.index_path) as conn:
                 create_schema(conn)
         except sqlite3.Error as e:
-            raise BoxIndexError(f"Failed to create new index during rebuild: {e}") from e
+            raise BoxIndexError(
+                f"Failed to create new index during rebuild: {e}",
+                advice="Please check filesystem permissions and available disk space."
+            ) from e
 
         archive_paths = [
             p.relative_to(self.box_directory) for p in self.box_directory.glob('*.zip')
