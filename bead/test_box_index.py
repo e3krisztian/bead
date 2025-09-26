@@ -1,6 +1,5 @@
 import sqlite3
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -72,60 +71,11 @@ def create_invalid_file(box_directory: Path, name: str):
     (box_directory / name).touch()
 
 
-def test_rebuild_success(box_directory: Path, box_index: BoxIndex):
-    create_indexed_bead(box_directory, "bead1")
-    create_indexed_bead(box_directory, "bead2")
-
-    progress_updates = list(box_index.rebuild())
-
-    assert len(progress_updates) == 2
-    # Check the final progress update
-    final_progress = progress_updates[-1]
-    assert final_progress.total == 2
-    assert final_progress.processed == 2
-    assert final_progress.error_count == 0
-    assert final_progress.latest_error is None
-
-    # Verify the index contains the beads
-    assert count_beads_in_index(box_index) == 2
-
-
-def test_rebuild_with_invalid_files(box_directory: Path, box_index: BoxIndex):
-    create_indexed_bead(box_directory, "good_bead")
-    create_invalid_file(box_directory, "bad_file.zip")
-
-    progress_updates = list(box_index.rebuild())
-
-    assert len(progress_updates) == 2
-    final_progress = progress_updates[-1]
-    assert final_progress.total == 2
-    assert final_progress.error_count == 1
-
-    # Find the error progress update
-    error_update = next(p for p in progress_updates if p.latest_error)
-    assert error_update is not None
-    assert "bad_file.zip" in str(error_update.path)
-
-    # Verify that only the good bead is in the index
-    file_paths = get_bead_file_paths_in_index(box_index)
-    assert len(file_paths) == 1
-    assert any("good_bead" in path for path in file_paths)
-
-
-def test_rebuild_fatal_db_error(box_directory: Path, box_index: BoxIndex):
-    create_indexed_bead(box_directory, "bead1")
-
-    # Simulate a database error only during the rebuild
-    with patch("bead.box_index.sqlite3.connect", side_effect=sqlite3.Error("Test DB error")):
-        with pytest.raises(BoxIndexError, match="Test DB error"):
-            # Consume the generator to trigger the error
-            list(box_index.rebuild())
-
 
 def test_sync_add_new_file(box_directory: Path, box_index: BoxIndex):
     # Start with one bead in the index
     create_unindexed_bead(box_directory, "bead1")
-    list(box_index.rebuild())
+    list(box_index.sync())
 
     # Add a new bead (without indexing it)
     create_unindexed_bead(box_directory, "bead2")
@@ -146,7 +96,7 @@ def test_sync_add_new_file(box_directory: Path, box_index: BoxIndex):
 def test_sync_remove_deleted_file(box_directory: Path, box_index: BoxIndex):
     create_unindexed_bead(box_directory, "bead1")
     create_unindexed_bead(box_directory, "bead2")
-    list(box_index.rebuild())
+    list(box_index.sync())
 
     # Close zip cache before deleting files (Windows compatibility)
     bead.zipopener.close_all()
@@ -173,7 +123,7 @@ def test_sync_mixed_operations(box_directory: Path, box_index: BoxIndex):
     # Start with two beads
     create_unindexed_bead(box_directory, "bead1")
     create_unindexed_bead(box_directory, "bead2_to_delete")
-    list(box_index.rebuild())
+    list(box_index.sync())
 
     # Close zip cache before deleting files (Windows compatibility)
     bead.zipopener.close_all()

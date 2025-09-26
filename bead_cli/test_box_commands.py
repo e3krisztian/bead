@@ -209,8 +209,61 @@ def test_reindex_handles_corrupted_index_without_circular_error(robot):
 
     # The reindex command should handle this by using get_all_boxes() instead of get_boxes()
     # or by directly accessing the specific box without going through get_boxes()
-    robot.cli('box', 'reindex', '--box', 'testbox')  # This should work without circular error
+    robot.cli('box', 'reindex', 'testbox')  # This should work without circular error
 
     # Verify the command succeeded (no error output about circular reindex suggestion)
     assert 'ERROR' not in robot.stderr
     assert 'reindex' not in robot.stderr.lower()  # No circular suggestion to run reindex
+
+
+def test_reindex_auto_detect_with_corrupted_index(robot):
+    """Test that 'bead box reindex' (no args) handles corrupted index without circular dependency."""
+    # Create a single box - this should allow auto-detection
+    testbox_dir = robot.cwd / 'testbox_dir'
+    testbox_dir.mkdir()
+    robot.cli('box', 'add', 'testbox', testbox_dir)
+
+    # Corrupt the box index directly without creating Box object
+    with robot.environment as env:
+        index_path = env.get_box_index_path('testbox')
+
+        # Corrupt the database by setting invalid schema version
+        with sqlite3.connect(str(index_path)) as conn:
+            conn.execute("PRAGMA user_version = 1")
+            conn.commit()
+
+    # Now try reindex without specifying box name - should auto-detect
+    robot.cli('box', 'reindex')  # No box name - should auto-detect single box
+
+    # Verify the command succeeded
+    assert robot.exit_code == 0
+    assert 'ERROR' not in robot.stderr
+
+
+def test_reindex_all_with_corrupted_indexes(robot):
+    """Test that 'bead box reindex --all' handles corrupted indexes without circular dependency."""
+    # Create two boxes
+    testbox1_dir = robot.cwd / 'testbox1_dir'
+    testbox1_dir.mkdir()
+    robot.cli('box', 'add', 'testbox1', testbox1_dir)
+
+    testbox2_dir = robot.cwd / 'testbox2_dir'
+    testbox2_dir.mkdir()
+    robot.cli('box', 'add', 'testbox2', testbox2_dir)
+
+    # Corrupt both box indexes directly without creating Box objects
+    with robot.environment as env:
+        for box_name in ['testbox1', 'testbox2']:
+            index_path = env.get_box_index_path(box_name)
+
+            # Corrupt the database by setting invalid schema version
+            with sqlite3.connect(str(index_path)) as conn:
+                conn.execute("PRAGMA user_version = 1")
+                conn.commit()
+
+    # Now try reindex --all - should handle both corrupted indexes
+    robot.cli('box', 'reindex', '--all')
+
+    # Verify the command succeeded
+    assert robot.exit_code == 0
+    assert 'ERROR' not in robot.stderr

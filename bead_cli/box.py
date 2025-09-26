@@ -136,32 +136,33 @@ class CmdDisable(Command):
             print('ERROR:', *e.args)
 
 
-def reindex(box):
-    '''Rebuild index for a single box.'''
+def reindex(box_meta):
+    '''Rebuild index for a single box by syncing with filesystem.'''
     try:
-        print(f'Rebuilding index for box "{box.name}" at {box.location}')
-        return report_progress('Rebuilding', box.index.rebuild())
+        print(f'Rebuilding index for box "{box_meta.name}" at {box_meta.directory}')
+        # Remove any corrupted index and create fresh box
+        box_meta.remove_index()
+        box = box_meta.create_box()
+        return report_progress('Rebuilding', box.index.sync())
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
 
 
-
-
-def reindex_all(boxes):
-    '''Rebuild indexes for all boxes.'''
-    if not boxes:
-        print('No boxes defined')
+def reindex_all(enabled_boxes):
+    '''Rebuild indexes for all enabled boxes using flat metadata.'''
+    if not enabled_boxes:
+        print('No enabled boxes defined')
         return
 
-    print(f'Rebuilding indexes for {len(boxes)} box(es)...')
+    print(f'Rebuilding indexes for {len(enabled_boxes)} box(es)...')
     success_count = 0
 
-    for box in boxes:
-        if reindex(box):
+    for box_meta in enabled_boxes:
+        if reindex(box_meta):
             success_count += 1
 
-    print(f'Completed: {success_count}/{len(boxes)} boxes rebuilt successfully')
+    print(f'Completed: {success_count}/{len(enabled_boxes)} boxes rebuilt successfully')
 
 
 class CmdReindex(Command):
@@ -172,43 +173,40 @@ class CmdReindex(Command):
     '''
 
     def declare(self, arg):
-        def setup_mutually_exclusive_args(parser):
-            group = parser.argparser.add_mutually_exclusive_group()
-            group.add_argument('--box', help='Box name to rebuild')
-            group.add_argument('--all', action='store_true', help='Rebuild all boxes')
-
-        arg(setup_mutually_exclusive_args)
+        arg('box_name', nargs='?', help='Box name to rebuild (optional if only one box exists)')
+        arg('--all', action='store_true', help='Rebuild all boxes')
 
     def run(self, args, env: 'Environment'):
-        if not any([args.box, args.all]):
-            # No arguments provided - check if we can auto-detect single box
-            boxes = env.get_boxes()
-            if len(boxes) == 1:
-                # Auto-use the single box
-                reindex(boxes[0])
-                return
-            elif len(boxes) == 0:
-                print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
-                return
-            else:
-                print('ERROR: Multiple boxes defined. Must specify either --box or --all')
-                return
-
         if args.all:
-            reindex_all(env.get_boxes())
-        else:
-            # Rebuild specific box by name
-            box_name = args.box
-            if not env.is_known_box(box_name):
+            reindex_all(env.get_meta_boxes())
+            return
+
+        if args.box_name:
+            # Specific box requested - use meta boxes to avoid circular dependency
+            box_name = args.box_name
+            box_meta = next((b for b in env.get_meta_boxes() if b.name == box_name), None)
+            if not box_meta:
                 print(f'ERROR: Unknown box "{box_name}"')
                 return
 
-            box = env.get_box(box_name)
-            if box is None:
-                print(f'ERROR: Box "{box_name}" not found')
-                return
+            # Reindex the specified box
+            reindex(box_meta)
+            return
 
-            reindex(box)
+        # No arguments provided - check if we can auto-detect single box
+        # Use meta boxes to avoid circular dependency with corrupted indexes
+        enabled_boxes = env.get_meta_boxes()
+
+        if len(enabled_boxes) == 1:
+            # Auto-use the single enabled box
+            reindex(enabled_boxes[0])
+            return
+        elif len(enabled_boxes) == 0:
+            print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
+            return
+        else:
+            print('ERROR: Multiple boxes defined. Must specify box name or --all')
+            return
 
 
 def index(box):
@@ -219,8 +217,6 @@ def index(box):
     except Exception as e:
         print(f'  ✗ Failed: {e}')
         return False
-
-
 
 
 def index_all(boxes):
@@ -247,40 +243,34 @@ class CmdIndex(Command):
     '''
 
     def declare(self, arg):
-        def setup_mutually_exclusive_args(parser):
-            group = parser.argparser.add_mutually_exclusive_group()
-            group.add_argument('--box', help='Box name to index')
-            group.add_argument('--all', action='store_true', help='Index all boxes')
-
-        arg(setup_mutually_exclusive_args)
+        arg('box_name', nargs='?', help='Box name to index (optional if only one box exists)')
+        arg('--all', action='store_true', help='Index all boxes')
 
     def run(self, args, env: 'Environment'):
-        if not any([args.box, args.all]):
-            # No arguments provided - check if we can auto-detect single box
-            boxes = env.get_boxes()
-            if len(boxes) == 1:
-                # Auto-use the single box
-                index(boxes[0])
-                return
-            elif len(boxes) == 0:
-                print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
-                return
-            else:
-                print('ERROR: Multiple boxes defined. Must specify either --box or --all')
-                return
-
         if args.all:
             index_all(env.get_boxes())
-        else:
-            # Index specific box by name
-            box_name = args.box
-            if not env.is_known_box(box_name):
+            return
+
+        if args.box_name:
+            # Specific box requested - use normal pattern like other CLI commands
+            box_name = args.box_name
+            box = env.get_box(box_name)
+            if box is None:
                 print(f'ERROR: Unknown box "{box_name}"')
                 return
 
-            box = env.get_box(box_name)
-            if box is None:
-                print(f'ERROR: Box "{box_name}" not found')
-                return
-
             index(box)
+            return
+
+        # No arguments provided - check if we can auto-detect single box
+        boxes = env.get_boxes()
+        if len(boxes) == 1:
+            # Auto-use the single box
+            index(boxes[0])
+            return
+        elif len(boxes) == 0:
+            print('ERROR: No boxes defined. Use "bead box add" to define a box first.')
+            return
+        else:
+            print('ERROR: Multiple boxes defined. Must specify box name or --all')
+            return

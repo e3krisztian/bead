@@ -308,35 +308,6 @@ class BoxIndex:
             )
         return processed, error_count
 
-    def rebuild(self) -> Generator[IndexingProgress, None, None]:
-        '''
-        Rebuild index, yielding progress for each file.
-        The caller is responsible for collecting and interpreting errors.
-        '''
-        if self.index_path.exists():
-            self.index_path.unlink()
-
-        # Initialize the new, empty database with the correct schema
-        try:
-            with create_update_connection(self.index_path) as conn:
-                create_schema(conn)
-        except sqlite3.Error as e:
-            raise self._error(
-                f"Failed to create new index during rebuild: {e}",
-                advice="Please check filesystem permissions and available disk space."
-            ) from e
-
-        archive_paths = [
-            p.relative_to(self.box_directory) for p in self.box_directory.glob('*.zip')
-        ]
-        yield from self._process_files(
-            paths=archive_paths,
-            action=self.index_archive_file,
-            total=len(archive_paths),
-            processed=0,
-            error_count=0,
-        )
-
     def sync(self) -> Generator[IndexingProgress, None, None]:
         '''
         Add new files to index and remove deleted files.

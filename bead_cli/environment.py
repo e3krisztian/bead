@@ -3,6 +3,7 @@ User specific environment
 '''
 
 import os
+from dataclasses import dataclass
 
 from bead.box import Box
 from bead.tech import persistence
@@ -12,6 +13,24 @@ ENV_BOXES = 'boxes'
 BOX_NAME = 'name'
 BOX_LOCATION = 'directory'
 BOX_ENABLED = 'enabled'
+
+
+@dataclass
+class MetaBox:
+    """Lightweight box representation without heavy Box object initialization."""
+    name: str
+    directory: Path
+    index_path: Path
+    enabled: bool
+
+    def create_box(self) -> Box:
+        """Create the actual Box object when needed."""
+        return Box(self.name, self.directory, self.index_path, self.enabled)
+
+    def remove_index(self):
+        """Remove index file (e.g., for reindexing)."""
+        if self.index_path.exists():
+            self.index_path.unlink()
 
 
 class Environment:
@@ -60,6 +79,19 @@ class Environment:
 
     def get_boxes(self):
         return [box for box in self.get_all_boxes() if box.enabled]
+
+    def get_meta_boxes(self):
+        """Get enabled meta boxes without initializing heavy Box objects."""
+        return [
+            MetaBox(
+                name=spec.get(BOX_NAME),
+                directory=Path(spec.get(BOX_LOCATION)),
+                index_path=self.get_box_index_path(spec.get(BOX_NAME)),
+                enabled=spec.get(BOX_ENABLED, True)
+            )
+            for spec in self._content.get(ENV_BOXES, [])
+            if spec.get(BOX_ENABLED, True)  # Only include enabled boxes
+        ]
 
     def set_boxes(self, boxes):
         self._content[ENV_BOXES] = [
