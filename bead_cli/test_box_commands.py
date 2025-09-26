@@ -1,4 +1,5 @@
 import os
+import sqlite3
 
 import pytest
 
@@ -183,3 +184,33 @@ def test_input_add_respects_disabled_box(robot):
     input_file = robot.cwd / 'input' / 'the_input' / 'data.txt'
     assert input_file.is_file()
     assert 'hello world' in input_file.read_text()
+
+
+def test_reindex_handles_corrupted_index_without_circular_error(robot):
+    """Test that 'bead box reindex' can handle corrupted box index without circular dependency."""
+
+    # Create a box with valid setup
+    testbox_dir = robot.cwd / 'testbox_dir'
+    testbox_dir.mkdir()
+    robot.cli('box', 'add', 'testbox', testbox_dir)
+
+    # Get the box and corrupt its index by writing invalid schema version
+    with robot.environment as env:
+        box = env.get_box('testbox')
+        index_path = box.index.index_path
+
+        # Corrupt the database by setting invalid schema version (use version 1, current is 3)
+        with sqlite3.connect(str(index_path)) as conn:
+            conn.execute("PRAGMA user_version = 1")
+            conn.commit()
+
+    # Now the box index is corrupted. Trying to get_boxes() would raise BoxIndexError
+    # that suggests running reindex, but reindex itself calls get_boxes() - circular!
+
+    # The reindex command should handle this by using get_all_boxes() instead of get_boxes()
+    # or by directly accessing the specific box without going through get_boxes()
+    robot.cli('box', 'reindex', '--box', 'testbox')  # This should work without circular error
+
+    # Verify the command succeeded (no error output about circular reindex suggestion)
+    assert 'ERROR' not in robot.stderr
+    assert 'reindex' not in robot.stderr.lower()  # No circular suggestion to run reindex
