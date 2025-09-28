@@ -64,16 +64,16 @@ class Fixture:
 
 
 @contextlib.contextmanager
-def environment(robot):
+def environment(shell):
     '''
-    Context manager - enable running code in the context of the robot.
+    Context manager - enable running code in the context of the shell.
     '''
-    with setenv('HOME', robot.home.as_posix()):
-        with chdir(robot.cwd):
+    with setenv('HOME', shell.home.as_posix()):
+        with chdir(shell.cwd):
             try:
-                yield Environment(robot.config_dir, robot.state_dir)
+                yield Environment(shell.config_dir, shell.state_dir)
             except BaseException:
-                robot.exit_code = -1
+                shell.exit_code = -1
                 raise
 
 
@@ -113,9 +113,9 @@ def CaptureStderr():
     return _CaptureStream(contextlib.redirect_stderr)
 
 
-class Robot(Fixture):
+class Shell(Fixture):
     '''
-    Represents a fake user.
+    Represents a test shell environment for running bead commands.
 
     All operations are isolated from the test runner user's environment.
     They work in a dedicated environment with temporary home, config
@@ -167,11 +167,11 @@ class Robot(Fixture):
     @property
     def environment(self):
         '''
-        Context manager - enable running code in the context of this robot.
+        Context manager - enable running code in the context of this shell.
         '''
         return environment(self)
 
-    def cli(self, *args: str | tech.fs.Path, expect_failure=False):
+    def bead(self, *args: str | tech.fs.Path, expect_failure=False):
         '''
         Imitate calling the command line tool with the given args.
         - By default, asserts that the command succeeds (exit code 0).
@@ -185,7 +185,7 @@ class Robot(Fixture):
             assert isinstance(arg, str)
             str_args = arg.split()
             if len(str_args) > 1:
-                return self.cli(*str_args, expect_failure=expect_failure)
+                return self.bead(*str_args, expect_failure=expect_failure)
         else:
             str_args = [(arg if isinstance(arg, str) else arg.as_posix()) for arg in args]
 

@@ -2,27 +2,27 @@ import os
 
 import pytest
 
-from .test_robot import Robot
+from .test_shell import Shell
 
 
 @pytest.fixture
-def robot():
-    with Robot() as robot_instance:
-        yield robot_instance
+def shell():
+    with Shell() as shell_instance:
+        yield shell_instance
 
 
 @pytest.fixture
-def cli(robot):
-    return robot.cli
+def bead(shell):
+    return shell.bead
 
 
 @pytest.fixture
-def cwd(robot):
-    return robot.cwd
+def cwd(shell):
+    return shell.cwd
 
 
-def test_new_fails_if_directory_exists(cli, cwd, robot):
+def test_new_fails_if_directory_exists(bead, cwd, shell):
     os.makedirs(cwd / 'workspace')
-    cli('new', 'workspace', expect_failure=True)
-    assert 'ERROR' in robot.stderr
-    assert 'workspace' not in robot.stdout
+    bead('new', 'workspace', expect_failure=True)
+    assert 'ERROR' in shell.stderr
+    assert 'workspace' not in shell.stdout

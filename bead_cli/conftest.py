@@ -10,7 +10,7 @@ from bead.workspace import Workspace
 from bead.ziparchive import ZipArchive
 from tracelog import TRACELOG
 
-from .test_robot import Robot
+from .test_shell import Shell
 
 # timestamps
 TS1 = '20150901T151015000001+0200'
@@ -40,8 +40,8 @@ def times():
 class CheckAssertions:
     """Helper class for test assertions."""
 
-    def __init__(self, robot):
-        self.robot = robot
+    def __init__(self, shell):
+        self.shell = shell
 
     def loaded(self, input_nick, readme_content):
         """
@@ -50,31 +50,31 @@ class CheckAssertions:
         Test beads are assumed to have different README-s, so the test goes by the expected value
         of the README.
         """
-        readme_path = self.robot.cwd / f'input/{input_nick}/README'
+        readme_path = self.shell.cwd / f'input/{input_nick}/README'
         assert readme_path.exists(), f"README file not found at {readme_path}"
         content = readme_path.read_text()
         assert readme_content in content, f"Expected '{readme_content}' in README content: {content}"
 
     def not_loaded(self, input_nick):
-        readme_path = self.robot.cwd / f'input/{input_nick}/README'
+        readme_path = self.shell.cwd / f'input/{input_nick}/README'
         assert not readme_path.exists(), f"README file should not exist at {readme_path}"
 
 
 @pytest.fixture
-def robot():
+def shell():
     """
-    I am a robot user with a box
+    I am a shell user with a box
     """
-    with Robot() as robot_instance:
-        box_dir = robot_instance.cwd / 'box'
+    with Shell() as shell_instance:
+        box_dir = shell_instance.cwd / 'box'
         os.makedirs(box_dir)
-        robot_instance.cli('box', 'add', 'box', box_dir)
-        yield robot_instance
+        shell_instance.bead('box', 'add', 'box', box_dir)
+        yield shell_instance
 
 
 @pytest.fixture
-def box(robot):
-    with robot.environment as env:
+def box(shell):
+    with shell.environment as env:
         return env.get_box('box')
 
 
@@ -84,41 +84,41 @@ def beads():
 
 
 @pytest.fixture
-def check(robot):
+def check(shell):
     """Fixture providing assertion helpers."""
-    return CheckAssertions(robot)
+    return CheckAssertions(shell)
 
 
-def _new_bead(robot, beads, box, bead_name, inputs=None, tmp_path_factory=None):
+def _new_bead(shell, beads, box, bead_name, inputs=None, tmp_path_factory=None):
     """Helper function to create a new bead."""
-    robot.cli('new', bead_name)
-    robot.cd(bead_name)
-    robot.write_file('README', bead_name)
-    robot.write_file('output/README', bead_name)
-    _add_inputs(robot, inputs)
-    with robot.environment:
-        TRACELOG('store', robot.cwd, TS1, 'to', box.location)
+    shell.bead('new', bead_name)
+    shell.cd(bead_name)
+    shell.write_file('README', bead_name)
+    shell.write_file('output/README', bead_name)
+    _add_inputs(shell, inputs)
+    with shell.environment:
+        TRACELOG('store', shell.cwd, TS1, 'to', box.location)
         beads[bead_name] = ZipArchive(box.store(Workspace('.'), TS1))
-    robot.cd('..')
-    robot.cli('discard', bead_name)
+    shell.cd('..')
+    shell.bead('discard', bead_name)
     return bead_name
 
 
-def _add_inputs(robot, inputs):
+def _add_inputs(shell, inputs):
     """Helper function to add inputs to a bead."""
     inputs = inputs or {}
     for name in inputs:
-        robot.cli('input', 'add', name, inputs[name])
+        shell.bead('input', 'add', name, inputs[name])
 
 
 @pytest.fixture
-def bead_a(robot, beads, box):
-    return _new_bead(robot, beads, box, 'bead_a')
+def bead_a(shell, beads, box):
+    return _new_bead(shell, beads, box, 'bead_a')
 
 
 @pytest.fixture
-def bead_b(robot, beads, box):
-    return _new_bead(robot, beads, box, 'bead_b')
+def bead_b(shell, beads, box):
+    return _new_bead(shell, beads, box, 'bead_b')
 
 
 @pytest.fixture
@@ -140,7 +140,7 @@ def hacked_bead(tmp_path_factory):
     return hacked_bead_path
 
 
-def _bead_with_history(robot, box, bead_name, bead_kind, tmp_path_factory):
+def _bead_with_history(shell, box, bead_name, bead_kind, tmp_path_factory):
     """Helper function to create a bead with history."""
     def make_bead(freeze_time):
         workspace_dir = tmp_path_factory.mktemp('workspace') / bead_name
@@ -152,7 +152,7 @@ def _bead_with_history(robot, box, bead_name, bead_kind, tmp_path_factory):
         box.store(ws, freeze_time)
         tech.fs.rmtree(workspace_dir)
 
-    with robot.environment:
+    with shell.environment:
         make_bead(TS1)
         make_bead(TS2)
         make_bead(TS3)
@@ -162,15 +162,15 @@ def _bead_with_history(robot, box, bead_name, bead_kind, tmp_path_factory):
 
 
 @pytest.fixture
-def bead_with_history(robot, box, tmp_path_factory):
+def bead_with_history(shell, box, tmp_path_factory):
     """
     NOTE: these beads are not added to `beads`, as they share the same name.
     """
     return _bead_with_history(
-        robot, box, 'bead_with_history', 'KIND:bead_with_history', tmp_path_factory)
+        shell, box, 'bead_with_history', 'KIND:bead_with_history', tmp_path_factory)
 
 
 @pytest.fixture
-def bead_with_inputs(robot, beads, box, bead_a, bead_b):
+def bead_with_inputs(shell, beads, box, bead_a, bead_b):
     inputs = dict(input_a=bead_a, input_b=bead_b)
-    return _new_bead(robot, beads, box, 'bead_with_inputs', inputs)
+    return _new_bead(shell, beads, box, 'bead_with_inputs', inputs)
