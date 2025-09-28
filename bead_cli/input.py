@@ -1,4 +1,5 @@
 import os.path
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from bead.box import resolve
@@ -24,6 +25,23 @@ from .common import warning
 
 if TYPE_CHECKING:
     from .environment import Environment
+
+
+class MatchStrategy(Enum):
+    """Strategy for matching beads during input update.
+
+    Historical evolution:
+    - Pre-2019: KIND_ONLY matching
+    - 2019-2025: NAME_ONLY matching
+    - 2025+: NAME_AND_KIND (strict) matching by default
+
+    IMPORTANT: No automatic fallbacks between strategies - any relaxation
+    must be explicit user choice to preserve upgrade coordinate integrity.
+    """
+    NAME_AND_KIND = "name_and_kind"  # Default: strict matching
+    NAME_ONLY = "name_only"          # --no-kind: ignore kind differences
+    KIND_ONLY = "kind_only"          # --no-name: ignore name differences
+
 
 # input_nick
 ALL_INPUTS = DefaultArgSentinel('all inputs')
@@ -107,6 +125,9 @@ class CmdDelete(Command):
 class CmdUpdate(Command):
     '''
     Update input[s] to newest version or defined bead.
+
+    By default, matches by both input name and kind for precise updates.
+    Use --no-kind or --no-name to relax matching constraints.
     '''
 
     def declare(self, arg):
@@ -115,6 +136,20 @@ class CmdUpdate(Command):
         arg(BEAD_TIME)
         arg(BEAD_OFFSET)
         arg(OPTIONAL_WORKSPACE)
+        # Matching options (mutually exclusive)
+        # NOTE: Option names --no-kind/--no-name chosen for better UX over --ignore-kind/--ignore-name
+        # as they more clearly communicate what constraint is being relaxed
+        def add_matching_options(parser):
+            matching_group = parser.argparser.add_mutually_exclusive_group()
+            matching_group.add_argument(
+                '--no-kind', action='store_const', const=MatchStrategy.NAME_ONLY,
+                dest='match_strategy', help='Ignore bead kind when matching (match by name only)')
+            matching_group.add_argument(
+                '--no-name', action='store_const', const=MatchStrategy.KIND_ONLY,
+                dest='match_strategy', help='Ignore bead name when matching (match by kind only)')
+            # Set default strategy
+            parser.argparser.set_defaults(match_strategy=MatchStrategy.NAME_AND_KIND)
+        arg(add_matching_options)
 
     def run(self, args, env: 'Environment'):
         if args.input_nick is ALL_INPUTS:
@@ -134,7 +169,7 @@ class CmdUpdate(Command):
         workspace = get_workspace(args)
         for input in workspace.inputs:
             try:
-                bead = search(env.get_boxes()).by_kind(input.kind).at_or_older(args.bead_time).newest()
+                bead = self._search_for_update(env.get_boxes(), input, args).at_or_older(args.bead_time).newest()
                 # Resolve bead to archive for _update_input
                 archive = resolve(env.get_boxes(), bead)
             except LookupError:
@@ -143,7 +178,7 @@ class CmdUpdate(Command):
                         f'Skipping update of "{input.name}":'
                         + f' no other candidate found ({input.freeze_time})')
                 else:
-                    warning(f'Could not find bead for "{input.name}"')
+                    self._warn_no_match_found(input, args)
             else:
                 _update_input(workspace, input, archive)
         print('All inputs are up to date.')
@@ -167,19 +202,19 @@ class CmdUpdate(Command):
             boxes = env.get_boxes()
             try:
                 if args.bead_offset:
-                    # handle --prev --next - use kind instead of bead name
-                    query = search(boxes).by_kind(input.kind)
+                    # handle --prev --next
+                    query = self._search_for_update(boxes, input, args)
                     if args.bead_offset == 1:
                         bead = query.newer_than(input.freeze_time).oldest()  # next = oldest of newer beads
                     else:
                         bead = query.older_than(input.freeze_time).newest()  # prev = newest of older beads
                 else:
-                    # --time - use kind instead of bead name
-                    bead = search(boxes).by_kind(input.kind).at_or_older(args.bead_time).newest()
+                    # --time
+                    bead = self._search_for_update(boxes, input, args).at_or_older(args.bead_time).newest()
                 # Resolve bead to archive
                 archive = resolve(boxes, bead)
             except LookupError:
-                die(f'Could not find bead for "{input.name}"')
+                self._die_no_match_found(input, args)
         else:
             # path or new bead by name - same as input add, edit
             if args.bead_offset:
@@ -189,6 +224,44 @@ class CmdUpdate(Command):
             _update_input(workspace, input, archive)
         else:
             die('Can not find matching bead')
+
+    def _search_for_update(self, boxes, input, args):
+        """Create search query based on matching strategy."""
+        query = search(boxes)
+
+        if args.match_strategy == MatchStrategy.NAME_ONLY:
+            return query.by_name(input.name)
+        elif args.match_strategy == MatchStrategy.KIND_ONLY:
+            return query.by_kind(input.kind)
+        elif args.match_strategy == MatchStrategy.NAME_AND_KIND:
+            return query.by_name(input.name).by_kind(input.kind)
+        raise ValueError
+
+    def _get_match_description(self, args):
+        """Get human-readable description of current matching mode."""
+        if args.match_strategy == MatchStrategy.NAME_ONLY:
+            return "name only"
+        elif args.match_strategy == MatchStrategy.KIND_ONLY:
+            return "kind only"
+        elif args.match_strategy == MatchStrategy.NAME_AND_KIND:
+            return "name and kind"
+        raise ValueError
+
+    def _warn_no_match_found(self, input, args):
+        """Provide helpful warning when no match found in update_all_inputs."""
+        match_desc = self._get_match_description(args)
+        msg = f'Could not find bead for "{input.name}" (matching by {match_desc})'
+        if args.match_strategy == MatchStrategy.NAME_AND_KIND:
+            msg += '. Try --no-kind or --no-name to relax matching'
+        warning(msg)
+
+    def _die_no_match_found(self, input, args):
+        """Provide helpful error when no match found in update_one_input."""
+        match_desc = self._get_match_description(args)
+        msg = f'Could not find bead for "{input.name}" (matching by {match_desc})'
+        if args.match_strategy == MatchStrategy.NAME_AND_KIND:
+            msg += '. Try --no-kind or --no-name to relax matching'
+        die(msg)
 
 
 def _update_input(workspace, input, archive):

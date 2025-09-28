@@ -56,7 +56,7 @@ def test_update_finds_newest_by_kind_not_name(robot, bead_a, bead_with_history, 
 
     # Update should find the newest bead of the same kind (times.TS5)
     # regardless of the copied bead names
-    cli('input', 'update')
+    cli('input', 'update', '--no-name')
     check.loaded('input1', times.TS5)  # updated to newest of kind
     check.loaded('input2', times.TS5)  # updated to newest of kind
 
@@ -83,7 +83,7 @@ def test_explicit_bead_update_with_new_reference(robot, bead_a, bead_with_histor
     check.loaded('test_input', times.TS3)
 
     # Update without explicit reference should find newest by kind
-    cli('input', 'update', 'test_input')
+    cli('input', 'update', 'test_input', '--no-name')
     check.loaded('test_input', times.TS5)  # finds newest of the kind
 
 
@@ -117,7 +117,7 @@ def test_save_and_edit_preserves_content_id_references(robot, bead_a, bead_with_
     check.loaded('input2', times.TS2)
 
     # Update should still work by kind, finding newest versions
-    cli('input', 'update')
+    cli('input', 'update', '--no-name')
     check.loaded('input1', times.TS5)  # finds newest of the kind
     check.loaded('input2', times.TS5)  # finds newest of the kind
 

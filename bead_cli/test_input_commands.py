@@ -5,6 +5,13 @@ from bead.tech.fs import rmtree
 from bead.workspace import Workspace
 
 
+# Test Quality Guidelines:
+# - Always verify actual file content changes, not just stdout messages
+# - Use README files consistently rather than inventing new files
+# - Ensure original bead files aren't mixed with new bead output files
+# - Content verification proves updates actually worked, not just that commands succeeded
+
+
 def test_basic_usage(robot, bead_with_history, check, times):
     # nextbead with input1 as databead1
     robot.cli('new', 'nextbead')
@@ -132,10 +139,10 @@ def test_update_to_next_version(robot, bead_with_history, check, times):
     robot.cli('input', 'add', 'input1', 'bead_with_history', '--time', times.TS1)
     check.loaded('input1', times.TS1)
 
-    robot.cli('input', 'update', 'input1', '--next')
+    robot.cli('input', 'update', 'input1', '--next', '--no-name')
     check.loaded('input1', times.TS2)
 
-    robot.cli('input', 'update', 'input1', '-N')
+    robot.cli('input', 'update', 'input1', '-N', '--no-name')
     check.loaded('input1', times.TS3)
 
 
@@ -146,10 +153,10 @@ def test_update_to_previous_version(robot, bead_with_history, check, times):
     robot.cli('input', 'add', 'input1', 'bead_with_history', '--time', times.TS4)
     check.loaded('input1', times.TS4)
 
-    robot.cli('input', 'update', 'input1', '--prev')
+    robot.cli('input', 'update', 'input1', '--prev', '--no-name')
     check.loaded('input1', times.TS3)
 
-    robot.cli('input', 'update', 'input1', '-P')
+    robot.cli('input', 'update', 'input1', '-P', '--no-name')
     check.loaded('input1', times.TS2)
 
 
@@ -233,3 +240,151 @@ def test_delete_nonexisting_input(robot, bead_a):
     robot.cli('input', 'delete', 'nonexisting', expect_failure=True)
     assert 'ERROR' in robot.stderr
     assert 'does not exist' in robot.stderr
+
+
+def test_update_default_name_and_kind_matching(robot, bead_a):
+    """Test default behavior: matches by both input name and kind."""
+    # Create workspace with bead_a as input
+    robot.cli('new', 'consumer')
+    robot.cd('consumer')
+    robot.cli('input', 'add', 'bead_a', bead_a)
+    robot.cd('..')
+
+    # Create newer version of bead_a (same name, same kind)
+    robot.cli('edit', bead_a)
+    robot.cd(bead_a)
+    (robot.cwd / 'output' / 'README').write_text('updated content')
+    robot.cli('save')
+    robot.cd('..')
+
+    # Go back to consumer and update
+    robot.cd('consumer')
+    robot.cli('input', 'update', 'bead_a')
+    assert 'Loading new data' in robot.stdout
+    # Verify the content was actually updated
+    assert (robot.cwd / 'input' / 'bead_a' / 'README').read_text() == 'updated content'
+
+
+def test_update_explicit_bead_bypasses_matching_constraints(robot, bead_a):
+    """Test that explicit bead references bypass matching constraints."""
+    # Create workspace with bead_a as input
+    robot.cli('new', 'consumer')
+    robot.cd('consumer')
+    robot.cli('input', 'add', 'bead_a', bead_a)
+    robot.cd('..')
+
+    # Create a completely different bead with different name and kind
+    robot.cli('new', 'different_bead')
+    robot.cd('different_bead')
+    (robot.cwd / 'output' / 'README').write_text('completely different content')
+    robot.cli('save')
+    robot.cd('..')
+
+    # Go back to consumer and update with explicit bead reference
+    robot.cd('consumer')
+    robot.cli('input', 'update', 'bead_a', 'different_bead')
+    assert 'Loading new data' in robot.stdout
+    # Verify the content was actually updated
+    assert (robot.cwd / 'input' / 'bead_a' / 'README').read_text() == 'completely different content'
+
+
+def test_strict_matching_shows_no_update_when_only_incompatible_beads_exist(robot, bead_a):
+    """Test that strict matching shows no update when only incompatible beads exist."""
+    # Create workspace with input named 'bead_a'
+    robot.cli('new', 'consumer')
+    robot.cd('consumer')
+    robot.cli('input', 'add', 'bead_a', bead_a)
+
+    # Store original content for verification
+    original_content = (robot.cwd / 'input' / 'bead_a' / 'README').read_text()
+    robot.cd('..')
+
+    # Create a different bead also named 'bead_a' but with different kind
+    robot.cli('new', 'bead_a')
+    robot.cd('bead_a')
+    (robot.cwd / 'output' / 'different_kind.txt').write_text('different kind content')
+    robot.cli('save')
+    robot.cd('..')
+
+    # Go back to consumer and try to update - should succeed but show "no update" message
+    robot.cd('consumer')
+    robot.cli('input', 'update', 'bead_a')
+    # Should show that it's already at the requested version (no compatible update found)
+    assert 'already at requested version' in robot.stdout
+
+    # Verify content remains unchanged
+    current_content = (robot.cwd / 'input' / 'bead_a' / 'README').read_text()
+    assert current_content == original_content, "Content should remain unchanged when no compatible update exists"
+
+
+def test_strict_matching_blocks_wrong_name_but_no_name_allows_it(robot, bead_a):
+    """Test that strict matching blocks wrong name but --no-name allows it."""
+    # Create workspace with input named bead_a (consistent with other tests)
+    robot.cli('new', 'consumer')
+    robot.cd('consumer')
+    robot.cli('input', 'add', 'bead_a', bead_a)
+
+    # Store original content
+    original_content = (robot.cwd / 'input' / 'bead_a' / 'README').read_text()
+    robot.cd('..')
+
+    # Create newer bead with same kind as bead_a but different name
+    robot.cli('edit', bead_a)
+    robot.cd(bead_a)
+    (robot.cwd / 'output' / 'README').write_text('newer content')
+    robot.cd('..')
+    # Rename the directory to different name before saving
+    old_path = robot.cwd / bead_a
+    new_path = robot.cwd / 'renamed_bead'
+    old_path.rename(new_path)
+    robot.cd('renamed_bead')
+    robot.cli('save')
+    robot.cd('..')
+
+    # Try to update with strict matching - finds the original bead_a (no newer version with same name)
+    robot.cd('consumer')
+    robot.cli('input', 'update', 'bead_a')
+    assert 'already at requested version' in robot.stdout
+
+    # Verify content remains unchanged (renamed_bead was ignored due to name mismatch)
+    current_content = (robot.cwd / 'input' / 'bead_a' / 'README').read_text()
+    assert current_content == original_content
+
+    # But --no-name should find the renamed_bead (newest by kind regardless of name)
+    robot.cli('input', 'update', 'bead_a', '--no-name')
+    assert 'Loading new data' in robot.stdout
+    assert (robot.cwd / 'input' / 'bead_a' / 'README').read_text() == 'newer content'
+
+
+def test_strict_matching_ignores_wrong_kind_but_no_kind_allows_it(robot, bead_a):
+    """Test that strict matching ignores wrong kind but --no-kind allows it."""
+    # Create workspace with input from bead_a (establishes the original kind)
+    robot.cli('new', 'consumer')
+    robot.cd('consumer')
+    robot.cli('input', 'add', 'bead_a', bead_a)
+
+    # Store original content
+    original_content = (robot.cwd / 'input' / 'bead_a' / 'README').read_text()
+    robot.cd('..')
+
+    # Create newer bead with same name but different kind (using 'new' creates different kind)
+    robot.cli('new', 'bead_a')  # Different kind UUID but same name
+    robot.cd('bead_a')
+    (robot.cwd / 'output' / 'README').write_text('newer content with different kind')
+    robot.cli('save')
+    robot.cd('..')
+
+    # Try to update with strict matching - should find original bead and show no update needed
+    robot.cd('consumer')
+    robot.cli('input', 'update', 'bead_a')
+    # Strict matching finds the original bead_a and sees it's already current
+    assert 'already at requested version' in robot.stdout
+
+    # Verify content remains unchanged (different kind bead was ignored)
+    current_content = (robot.cwd / 'input' / 'bead_a' / 'README').read_text()
+    assert current_content == original_content
+
+    # But --no-kind should allow the update to the newer different-kind bead (matches by name only)
+    robot.cli('input', 'update', 'bead_a', '--no-kind')
+    assert 'Loading new data' in robot.stdout
+    assert (robot.cwd / 'input' / 'bead_a' / 'README').read_text() == 'newer content with different kind'

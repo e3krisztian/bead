@@ -36,7 +36,10 @@ There are existing data that are to be converted to beads.
 
 - `bead develop BEAD-NAME`  (create workspace )
 - `cd BEAD-NAME`
-- `bead update NEW-INPUT-NAME` (update data at `input/NEW-INPUT-NAME` from the newest version of the mounted bead)
+- `bead input update NEW-INPUT-NAME` (update data at `input/NEW-INPUT-NAME` from the newest version)
+  - By default, matches by both input name and kind for precise updates
+  - Use `--no-kind` to update to any bead with the same name regardless of kind
+  - Use `--no-name` to update to any bead with the same kind regardless of name
 - run the program
 - `bead save`
 

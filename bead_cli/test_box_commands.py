@@ -55,7 +55,7 @@ def test_shared_box_update(alice, bob, bead):
     alice.cli('save')
 
     # update only one input
-    bob.cli('input', 'update', 'alicebead1')
+    bob.cli('input', 'update', 'alicebead1', '--no-name')
 
     datafile1 = bob.cwd / 'input/alicebead1/datafile'
     assert datafile1.exists()
@@ -66,7 +66,7 @@ def test_shared_box_update(alice, bob, bead):
     assert not datafile2.exists()
 
     # update all inputs
-    bob.cli('input', 'update')
+    bob.cli('input', 'update', '--no-name')
 
     assert datafile2.exists()
     assert '''Alice's new data''' in datafile2.read_text()

@@ -43,3 +43,25 @@ D: will not happen
      e.g. `bead`) would slightly violate the intent of bagit spec.
    - bead code and metadata files are either put under `data` directory
      or they are stored as "unexpected" bagit tag files
+
+
+P: how to create beads of the same kind (for versioning and lineage)
+D: bead kind is a UUID that must be copied from existing bead, only `edit` preserves kind
+   - Same kind: `edit` existing bead, modify content, `save` (copies the UUID)
+   - Different kind: `new` creates fresh workspace with new UUID
+   - Name changes: rename workspace directory before `save`, or rename archive after `save`
+   - Kind UUID is immutable identifier that links beads in same lineage/family
+   - This ensures kind represents actual logical data compatibility
+
+
+P: input update should ensure precise upgrade coordinates to prevent accidental data lineage breaks
+D: strict (name, kind) matching by default with explicit relaxation options
+   - Historical progression: kind-only (pre-2019) → name-only (2019-2025) → name+kind (2025+)
+   - Default: `input update` matches by both input name AND kind for precise upgrades
+   - --no-kind: relaxes to name-only matching (preserves 2019-2025 behavior)
+   - --no-name: relaxes to kind-only matching (preserves pre-2019 behavior)
+   - Mutually exclusive options prevent conflicting matching modes
+   - Explicit bead references (paths/names) bypass all matching constraints
+   - Helpful error messages suggest relaxation options when strict matching fails
+   - No automatic fallbacks to preserve upgrade coordinate integrity
+   - Consistent application across all update modes (auto, --next, --prev, update-all)
