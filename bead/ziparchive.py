@@ -99,7 +99,7 @@ class ZipArchive(Archive):
         for name, hash in self.manifest.items():
             try:
                 info = self.zipfile.getinfo(name)
-            except KeyError:
+            except KeyError:  # zipfile.getinfo() raises KeyError when file doesn't exist in archive
                 return name
             archived_hash = securehash.file(self.zipfile.open(info), info.file_size)
             if hash != archived_hash:
@@ -143,6 +143,13 @@ class ZipArchive(Archive):
 
     def zip_load(self, filename):
         return persistence.zip_load(self.zipfile, filename)
+
+    @property
+    def input_map(self):
+        try:
+            return self.zip_load(layouts.Archive.INPUT_MAP)
+        except KeyError:  # zipfile.open() raises KeyError when file doesn't exist in archive
+            return {}
 
     @property
     def inputs(self):
@@ -193,6 +200,7 @@ class ZipArchive(Archive):
 
     def unpack_meta_to(self, workspace):
         workspace.meta = self.meta
+        workspace.input_map = self.input_map
 
 
 def bead_name_from_file_path(path):

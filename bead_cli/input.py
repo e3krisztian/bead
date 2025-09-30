@@ -101,6 +101,7 @@ class CmdAdd(Command):
             die(f'Not a known bead name: {bead_ref_base}')
 
         _check_load_with_feedback(workspace, args.input_nick, bead)
+        workspace.set_input_bead_name(args.input_nick, bead.name)
 
 
 class CmdDelete(Command):
@@ -120,6 +121,31 @@ class CmdDelete(Command):
             print(f'Input {input_nick} is deleted.')
         else:
             die(f'Input {input_nick} does not exist')
+
+
+class CmdMap(Command):
+    '''
+    Change the name of the bead from which the input is loaded/updated.
+    '''
+
+    def declare(self, arg):
+        arg(INPUT_NICK)
+        arg(BEAD_REF_BASE_defaulting_to(USE_INPUT_NICK))
+        arg(OPTIONAL_WORKSPACE)
+
+    def run(self, args, env: 'Environment'):
+        input_nick = args.input_nick
+        bead_ref_base = args.bead_ref_base
+        workspace = get_workspace(args)
+
+        if input_nick not in [input_spec.name for input_spec in workspace.inputs]:
+            die(f'Unknown input name: {input_nick}')
+
+        if bead_ref_base is USE_INPUT_NICK:
+            bead_ref_base = input_nick
+
+        workspace.set_input_bead_name(input_nick, bead_ref_base)
+        print(f'Input "{input_nick}" mapped to bead "{bead_ref_base}"')
 
 
 class CmdUpdate(Command):
@@ -169,7 +195,7 @@ class CmdUpdate(Command):
         workspace = get_workspace(args)
         for input in workspace.inputs:
             try:
-                bead = self._search_for_update(env.get_boxes(), input, args).at_or_older(args.bead_time).newest()
+                bead = self._search_for_update(env.get_boxes(), input, args, workspace).at_or_older(args.bead_time).newest()
                 # Resolve bead to archive for _update_input
                 archive = resolve(env.get_boxes(), bead)
             except LookupError:
@@ -203,14 +229,14 @@ class CmdUpdate(Command):
             try:
                 if args.bead_offset:
                     # handle --prev --next
-                    query = self._search_for_update(boxes, input, args)
+                    query = self._search_for_update(boxes, input, args, workspace)
                     if args.bead_offset == 1:
                         bead = query.newer_than(input.freeze_time).oldest()  # next = oldest of newer beads
                     else:
                         bead = query.older_than(input.freeze_time).newest()  # prev = newest of older beads
                 else:
                     # --time
-                    bead = self._search_for_update(boxes, input, args).at_or_older(args.bead_time).newest()
+                    bead = self._search_for_update(boxes, input, args, workspace).at_or_older(args.bead_time).newest()
                 # Resolve bead to archive
                 archive = resolve(boxes, bead)
             except LookupError:
@@ -222,19 +248,27 @@ class CmdUpdate(Command):
             archive = resolve_bead(env, bead_ref_base, args.bead_time)
         if archive:
             _update_input(workspace, input, archive)
+            # Update mapping when user specifies explicit bead (not when using existing mapping)
+            if bead_ref_base is not SAME_BEAD_NEWEST_VERSION:
+                workspace.set_input_bead_name(input_nick, archive.name)
         else:
             die('Can not find matching bead')
 
-    def _search_for_update(self, boxes, input, args):
+    def _search_for_update(self, boxes, input, args, workspace=None):
         """Create search query based on matching strategy."""
         query = search(boxes)
 
+        # Use mapped bead name if available, otherwise use input name
+        bead_name = input.name
+        if workspace:
+            bead_name = workspace.get_input_bead_name(input.name)
+
         if args.match_strategy == MatchStrategy.NAME_ONLY:
-            return query.by_name(input.name)
+            return query.by_name(bead_name)
         elif args.match_strategy == MatchStrategy.KIND_ONLY:
             return query.by_kind(input.kind)
         elif args.match_strategy == MatchStrategy.NAME_AND_KIND:
-            return query.by_name(input.name).by_kind(input.kind)
+            return query.by_name(bead_name).by_kind(input.kind)
         raise ValueError
 
     def _get_match_description(self, args):
