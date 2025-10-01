@@ -7,8 +7,6 @@ import pytest
 from bead import layouts
 from bead import tech
 from bead.workspace import Workspace
-from bead.ziparchive import ZipArchive
-from tracelog import TRACELOG
 
 from .test_shell import Shell
 
@@ -78,9 +76,6 @@ def box(shell):
         return env.get_box('box')
 
 
-@pytest.fixture
-def beads():
-    return {}
 
 
 @pytest.fixture
@@ -89,36 +84,6 @@ def check(shell):
     return CheckAssertions(shell)
 
 
-def _new_bead(shell, beads, box, bead_name, inputs=None, tmp_path_factory=None):
-    """Helper function to create a new bead."""
-    shell.bead('new', bead_name)
-    shell.cd(bead_name)
-    shell.write_file('README', bead_name)
-    shell.write_file('output/README', bead_name)
-    _add_inputs(shell, inputs)
-    with shell.environment:
-        TRACELOG('store', shell.cwd, TS1, 'to', box.location)
-        beads[bead_name] = ZipArchive(box.store(Workspace('.'), TS1))
-    shell.cd('..')
-    shell.bead('discard', bead_name)
-    return bead_name
-
-
-def _add_inputs(shell, inputs):
-    """Helper function to add inputs to a bead."""
-    inputs = inputs or {}
-    for name in inputs:
-        shell.bead('input', 'add', name, inputs[name])
-
-
-@pytest.fixture
-def bead_a(shell, beads, box):
-    return _new_bead(shell, beads, box, 'bead_a')
-
-
-@pytest.fixture
-def bead_b(shell, beads, box):
-    return _new_bead(shell, beads, box, 'bead_b')
 
 
 @pytest.fixture
@@ -140,37 +105,3 @@ def hacked_bead(tmp_path_factory):
     return hacked_bead_path
 
 
-def _bead_with_history(shell, box, bead_name, bead_kind, tmp_path_factory):
-    """Helper function to create a bead with history."""
-    def make_bead(freeze_time):
-        workspace_dir = tmp_path_factory.mktemp('workspace') / bead_name
-        ws = Workspace(workspace_dir)
-        ws.create(bead_kind)
-        sentinel_file = ws.directory / f'sentinel-{freeze_time}'
-        tech.fs.write_file(sentinel_file, freeze_time)
-        tech.fs.write_file(ws.directory / 'output/README', freeze_time)
-        box.store(ws, freeze_time)
-        tech.fs.rmtree(workspace_dir)
-
-    with shell.environment:
-        make_bead(TS1)
-        make_bead(TS2)
-        make_bead(TS3)
-        make_bead(TS4)
-        make_bead(TS5)
-    return bead_name
-
-
-@pytest.fixture
-def bead_with_history(shell, box, tmp_path_factory):
-    """
-    NOTE: these beads are not added to `beads`, as they share the same name.
-    """
-    return _bead_with_history(
-        shell, box, 'bead_with_history', 'KIND:bead_with_history', tmp_path_factory)
-
-
-@pytest.fixture
-def bead_with_inputs(shell, beads, box, bead_a, bead_b):
-    inputs = dict(input_a=bead_a, input_b=bead_b)
-    return _new_bead(shell, beads, box, 'bead_with_inputs', inputs)

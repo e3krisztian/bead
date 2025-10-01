@@ -1,36 +1,41 @@
 import os
 
-
 from bead import layouts
 from bead.workspace import Workspace
+from .test_helpers import create_bead_family
 
 
-def test_by_name(shell, bead_a):
-    shell.bead('edit', bead_a)
+def test_by_name(shell, box, check, times, tmp_path_factory):
+    create_bead_family(box, 'test_bead', [times.TS1], tmp_path_factory)
+    shell.bead('edit', 'test_bead')
 
-    assert Workspace(shell.cwd / bead_a).is_valid
-    assert bead_a in shell.read_file(shell.cwd / bead_a / 'README')
+    assert Workspace(shell.cwd / 'test_bead').is_valid
+    readme_content = shell.read_file(shell.cwd / 'test_bead' / 'README')
+    assert 'test_bead' in readme_content
 
 
-def test_missing_bead(shell, bead_a):
+def test_missing_bead(shell, box, check, times, tmp_path_factory):
+    create_bead_family(box, 'missing_bead', [times.TS1], tmp_path_factory)
     shell.bead('box', 'forget', 'box')
-    shell.bead('edit', bead_a, expect_failure=True)
+    shell.bead('edit', 'missing_bead', expect_failure=True)
     assert 'Bead' in shell.stderr
     assert 'not found' in shell.stderr
 
 
 def assert_edit_version(shell, timestamp, *bead_spec):
-    assert bead_spec[0] == 'bead_with_history'
+    assert bead_spec[0] == 'test_history_bead'
     shell.bead('edit', *bead_spec)
-    assert os.path.exists(shell.cwd / 'bead_with_history' / f'sentinel-{timestamp}')
+    assert os.path.exists(shell.cwd / 'test_history_bead' / f'sentinel-{timestamp}')
 
 
-def test_last_version(shell, bead_with_history, times):
-    assert_edit_version(shell, times.TS_LAST, bead_with_history)
+def test_last_version(shell, box, check, times, tmp_path_factory):
+    create_bead_family(box, 'test_history_bead', [times.TS1, times.TS2, times.TS3, times.TS4, times.TS5], tmp_path_factory)
+    assert_edit_version(shell, times.TS5, 'test_history_bead')
 
 
-def test_at_time(shell, bead_with_history, times):
-    assert_edit_version(shell, times.TS1, 'bead_with_history', '-t', times.TS1)
+def test_at_time(shell, box, check, times, tmp_path_factory):
+    create_bead_family(box, 'test_history_bead', [times.TS1, times.TS2, times.TS3, times.TS4, times.TS5], tmp_path_factory)
+    assert_edit_version(shell, times.TS1, 'test_history_bead', '-t', times.TS1)
 
 
 def test_hacked_bead_is_detected(shell, hacked_bead):
@@ -38,17 +43,22 @@ def test_hacked_bead_is_detected(shell, hacked_bead):
     assert 'ERROR' in shell.stderr
 
 
-def test_review_flag(shell, bead_a):
-    shell.bead('edit', '--review', bead_a)
-    ws = shell.cwd / bead_a
+def test_review_flag(shell, box, check, times, tmp_path_factory):
+    create_bead_family(box, 'review_bead', [times.TS1], tmp_path_factory)
+    shell.bead('edit', '--review', 'review_bead')
+    ws = shell.cwd / 'review_bead'
 
     assert Workspace(ws).is_valid
 
     # output must be unpacked as well!
-    assert bead_a in shell.read_file(ws / layouts.Workspace.OUTPUT / 'README')
+    output_readme = shell.read_file(ws / layouts.Workspace.OUTPUT / 'README')
+    assert 'review_bead' in output_readme
 
 
-def test_dies_if_directory_exists(shell, bead_a):
-    os.makedirs(shell.cwd / bead_a)
-    shell.bead('edit', bead_a, expect_failure=True)
+def test_dies_if_directory_exists(shell, box, check, times, tmp_path_factory):
+    create_bead_family(box, 'existing_bead', [times.TS1], tmp_path_factory)
+    os.makedirs(shell.cwd / 'existing_bead')
+    shell.bead('edit', 'existing_bead', expect_failure=True)
     assert 'ERROR' in shell.stderr
+
+

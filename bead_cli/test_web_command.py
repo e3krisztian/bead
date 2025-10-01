@@ -5,38 +5,73 @@ import pytest
 from bead.tech.fs import read_file
 from bead.tech.fs import rmtree
 from bead.tech.fs import write_file
+from bead.workspace import Workspace
 from bead_cli.web.sketch import Sketch
 from tests.sketcher import Sketcher
 from tests.web.test_graphviz import needs_dot
+from .test_helpers import create_bead_family
 
 
-def test_dot_output(shell, bead_with_inputs):
+def create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory):
+    """Create a bead with inputs specifically for web command testing.
+
+    This is a convenience function that creates the standard set of beads
+    used by web command tests.
+    """
+    # Create input beads
+    create_bead_family(box, 'web_bead_a', [times.TS1], tmp_path_factory)
+    create_bead_family(box, 'web_bead_b', [times.TS2], tmp_path_factory)
+
+    # Create bead with inputs
+    shell.bead('new', 'web_with_inputs')
+    shell.cd('web_with_inputs')
+    content = f'web_with_inputs_{times.TS3}'
+    shell.write_file('README', content)
+    shell.write_file('output/README', content)
+
+    # Add inputs
+    shell.bead('input', 'add', 'input_a', 'web_bead_a')
+    shell.bead('input', 'add', 'input_b', 'web_bead_b')
+
+    with shell.environment:
+        box.store(Workspace('.'), times.TS3)
+
+    shell.cd('..')
+    shell.bead('discard', 'web_with_inputs')
+
+
+def test_dot_output(shell, box, check, times, tmp_path_factory):
+    create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory)
     shell.bead('web dot all.dot')
     assert (shell.cwd / 'all.dot').exists()
 
 
 @needs_dot
-def test_svg_output(shell, bead_with_inputs):
+def test_svg_output(shell, box, check, times, tmp_path_factory):
+    create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory)
     shell.bead('web svg all.svg')
     assert (shell.cwd / 'all.svg').exists()
 
 
 @needs_dot
-def test_png_output(shell, bead_with_inputs):
+def test_png_output(shell, box, check, times, tmp_path_factory):
+    create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory)
     shell.bead('web png all.png')
     assert (shell.cwd / 'all.png').exists()
 
 
-def test_meta_save_load(shell, bead_with_inputs, box):
+def test_meta_save_load(shell, box, check, times, tmp_path_factory):
+    create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory)
+
     shell.bead('web save all.web')
     assert (shell.cwd / 'all.web').exists()
 
     shell.bead('web dot all.dot')
     orig_web_dot = read_file(shell.cwd / 'all.dot')
 
-    assert 'bead_a' in orig_web_dot
-    assert 'bead_b' in orig_web_dot
-    assert bead_with_inputs in orig_web_dot
+    assert 'web_bead_a' in orig_web_dot
+    assert 'web_bead_b' in orig_web_dot
+    assert 'web_with_inputs' in orig_web_dot
 
     # destroy everything, except the meta files
     write_file(shell.cwd / 'all.dot', '')
@@ -49,7 +84,9 @@ def test_meta_save_load(shell, bead_with_inputs, box):
     assert orig_web_dot == meta_web_dot
 
 
-def test_heads_only(shell, bead_with_history):
+def test_heads_only(shell, box, check, times, tmp_path_factory):
+    create_bead_family(box, 'web_history_bead', [times.TS1, times.TS2, times.TS3, times.TS4, times.TS5], tmp_path_factory)
+
     shell.bead('web dot all.dot heads dot heads-only.dot')
     full_web = read_file(shell.cwd / 'all.dot')
     heads_only_web = read_file(shell.cwd / 'heads-only.dot')
@@ -62,6 +99,8 @@ def test_invalid_command_reported(shell):
     assert 'ERROR' in shell.stderr
     assert re.search('.ould not .*parse', shell.stderr)
     assert str(['this-command-does-not-exist', 'c']) in shell.stderr
+
+
 
 
 @pytest.fixture

@@ -624,8 +624,10 @@ def create_bead_family(box, bead_name, timestamps, tmp_path_factory, kind='KIND:
         ws = Workspace(workspace_dir)  # ws.name becomes bead_name
         ws.create(kind)
 
-        # Create unique content per timestamp to avoid test collisions
-        tech.fs.write_file(ws.directory / 'output/README', timestamp)
+        # Create content with both bead name and timestamp for uniqueness
+        content = f'{bead_name}_{timestamp}'
+        tech.fs.write_file(ws.directory / 'README', content)
+        tech.fs.write_file(ws.directory / 'output/README', content)
 
         box.store(ws, timestamp)  # All stored with same bead_name
         tech.fs.rmtree(workspace_dir)  # Clean up workspace

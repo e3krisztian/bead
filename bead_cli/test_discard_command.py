@@ -1,21 +1,25 @@
 import os
 import platform
 
+from .test_helpers import create_bead_family
 
 
-def test_with_default_workspace(shell, bead_with_inputs):
-    shell.bead('edit', bead_with_inputs)
-    shell.cd(bead_with_inputs)
+
+def test_with_default_workspace(shell, box, times, tmp_path_factory):
+    create_bead_family(box, 'test_bead', [times.TS1], tmp_path_factory)
+    shell.bead('edit', 'test_bead')
+    shell.cd('test_bead')
     shell.bead('discard')
 
-    assert bead_with_inputs in shell.stdout
+    assert 'test_bead' in shell.stdout
 
 
-def test_with_explicit_workspace(shell, bead_with_inputs):
-    shell.bead('edit', bead_with_inputs)
-    shell.bead('discard', bead_with_inputs)
+def test_with_explicit_workspace(shell, box, times, tmp_path_factory):
+    create_bead_family(box, 'test_bead', [times.TS1], tmp_path_factory)
+    shell.bead('edit', 'test_bead')
+    shell.bead('discard', 'test_bead')
 
-    assert bead_with_inputs in shell.stdout
+    assert 'test_bead' in shell.stdout
 
 
 def test_invalid_workspace(shell):
