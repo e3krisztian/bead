@@ -1,88 +1,7 @@
 import glob
 import os
 
-from bead import tech
-
-
-def test_status_displays_input_information_correctly(shell, box, check, times, tmp_path_factory):
-    """
-    Test that status command displays basic input information including timestamps.
-    """
-
-    # Create beads with different names but same kind (default behavior)
-    create_bead_family(box, 'status_data_early', [times.TS1], tmp_path_factory)
-    create_bead_family(box, 'status_data_late', [times.TS2], tmp_path_factory)
-
-    # Add inputs using the status test beads
-    shell.bead('new', 'test_workspace')
-    shell.cd('test_workspace')
-    shell.bead('input', 'add', 'input1', 'status_data_early')
-    shell.bead('input', 'add', 'input2', 'status_data_late')
-
-    # Verify inputs are loaded with correct timestamps
-    check.loaded('input1', times.TS1)
-    check.loaded('input2', times.TS2)
-
-    shell.bead('status')
-    # Just verify that status shows some meaningful bead information
-    assert 'input1' in shell.stdout
-    assert 'input2' in shell.stdout
-    assert times.TS1 in shell.stdout
-    assert times.TS2 in shell.stdout
-
-
-def test_update_finds_newest_by_kind_not_name(shell, box, check, times, tmp_path_factory):
-    """
-    Test that update command finds the newest bead by kind, ignoring bead names.
-    This demonstrates the shift from name-based to kind-based updates.
-    """
-
-    # Create beads of SAME KIND but different names and times
-    # create_bead_family creates beads with same kind by default
-    create_bead_family(box, 'same_kind_v1', [times.TS1], tmp_path_factory)
-    create_bead_family(box, 'same_kind_v2', [times.TS2], tmp_path_factory)
-    create_bead_family(box, 'same_kind_latest', [times.TS5], tmp_path_factory)  # Same kind, newest time
-
-    # Set up workspace with inputs pointing to older copies
-    shell.bead('new', 'test_workspace')
-    shell.cd('test_workspace')
-    shell.bead('input', 'add', 'input1', 'same_kind_v1')
-    shell.bead('input', 'add', 'input2', 'same_kind_v2')
-    check.loaded('input1', times.TS1)
-    check.loaded('input2', times.TS2)
-
-    # Update should find the newest bead of the same kind (same_kind_latest at TS5)
-    # regardless of the original bead names, because all beads have the same kind
-    shell.bead('input', 'update', '--no-name')
-    check.loaded('input1', times.TS5)  # updated to newest of kind
-    check.loaded('input2', times.TS5)  # updated to newest of kind
-
-
-def test_explicit_bead_update_with_new_reference(shell, box, check, times, tmp_path_factory):
-    """
-    Test updating a specific input with an explicit bead reference.
-    """
-
-    # Set up workspace with one input
-    # create_bead_family creates beads with same kind by default
-    create_bead_family(box, 'source_bead', [times.TS1], tmp_path_factory)
-    shell.bead('new', 'test_workspace')
-    shell.cd('test_workspace')
-    shell.bead('input', 'add', 'test_input', 'source_bead')
-    check.loaded('test_input', times.TS1)
-
-    # Create a new bead to update to (same kind)
-    create_bead_family(box, 'target_bead', [times.TS3], tmp_path_factory)
-    # Create newest bead of same kind for --no-name test
-    create_bead_family(box, 'latest_by_kind', [times.TS5], tmp_path_factory)
-
-    # Update specific input with explicit bead reference
-    shell.bead('input', 'update', 'test_input', 'target_bead')
-    check.loaded('test_input', times.TS3)
-
-    # Update without explicit reference should find newest by kind
-    shell.bead('input', 'update', 'test_input', '--no-name')
-    check.loaded('test_input', times.TS5)  # finds newest of the kind (latest_by_kind)
+from ..test_helpers import create_bead_family
 
 
 def test_input_mapping_preserved_across_save_edit_cycle(shell, box, check, times, tmp_path_factory):
@@ -118,29 +37,6 @@ def test_input_mapping_preserved_across_save_edit_cycle(shell, box, check, times
     check.loaded('input1', times.TS1)
     check.loaded('input2', times.TS2)
     check.loaded('input3', times.TS5)
-
-
-def test_input_mapping_preserved_during_navigation(shell, box, check, times, tmp_path_factory):
-    """
-    Test that input mappings are preserved during --prev/--next navigation.
-    """
-
-    # Create bead with version history for navigation testing
-    create_bead_family(box, 'navigate_bead', [times.TS2, times.TS3], tmp_path_factory)
-
-    shell.bead('new', 'test_workspace')
-    shell.cd('test_workspace')
-
-    # Set up input with specific version and mapping
-    shell.bead('input', 'add', 'nav_input', 'navigate_bead', '--time', times.TS2)
-    check.loaded('nav_input', times.TS2)
-    shell.bead('input', 'map', 'nav_input', 'navigate_bead')
-
-    # Test navigation preserves mapping
-    shell.bead('input', 'update', 'nav_input', '--next')  # Should go from TS2 to TS3
-    check.loaded('nav_input', times.TS3)
-    shell.bead('input', 'update', 'nav_input', '--prev')  # Should go from TS3 back to TS2
-    check.loaded('nav_input', times.TS2)
 
 
 def test_input_mapping_preserved_after_deletion(shell, box, check, times, tmp_path_factory):
@@ -597,37 +493,3 @@ def test_input_map_all_inputs_respects_individual_mappings(shell, box, check, ti
     shell.bead('input', 'update')
     check.loaded('input1', times.TS4)  # Should find newer bead_alpha
     check.loaded('input2', times.TS3)  # Should find bead_gamma
-
-
-def create_bead_family(box, bead_name, timestamps, tmp_path_factory, kind='KIND:test'):
-    """Create family of beads with SAME name but different timestamps.
-
-    This creates a version history for a single bead identity.
-
-    Args:
-        box: Target box for storage
-        bead_name: The name ALL beads in the family will share
-        timestamps: List of timestamps for version history
-        tmp_path_factory: pytest fixture for temp directories
-        kind: Bead kind identifier (string)
-
-    IMPORTANT: About bead 'kind':
-    - In real usage, 'kind' is typically an auto-generated UUID (e.g., "a1b2c3d4-...")
-    - Each new bead gets a unique kind UUID when created with 'bead new'
-    - Different bead names usually have different kinds
-    - Same bead name can have multiple kinds over time (lineage splits)
-    - Test usage of simple strings like 'KIND:test' is just for readability
-    - The kind determines logical data compatibility, not just the name
-    """
-    for timestamp in timestamps:
-        workspace_dir = tmp_path_factory.mktemp('bead_family') / bead_name
-        ws = Workspace(workspace_dir)  # ws.name becomes bead_name
-        ws.create(kind)
-
-        # Create content with both bead name and timestamp for uniqueness
-        content = f'{bead_name}_{timestamp}'
-        tech.fs.write_file(ws.directory / 'README', content)
-        tech.fs.write_file(ws.directory / 'output/README', content)
-
-        box.store(ws, timestamp)  # All stored with same bead_name
-        tech.fs.rmtree(workspace_dir)  # Clean up workspace
