@@ -5,7 +5,7 @@ import tempfile
 
 from bead import tech
 import bead.zipopener
-from tracelog import TRACELOG
+from bead import log
 
 from .environment import Environment
 from .main import run
@@ -128,7 +128,7 @@ class Shell(Fixture):
     def setUp(self):
         super().setUp()
         self.base_dir = self.useFixture(TempDir()).path
-        TRACELOG('makedirs', self.home)
+        log.debug('Test setup: makedirs %s', self.home)
         os.makedirs(self.home)
         self.cd(self.home)
 
@@ -161,7 +161,7 @@ class Shell(Fixture):
         Change to directory
         '''
         self.cwd = self._path(dir)
-        TRACELOG(dir, realdir=self.cwd)
+        log.debug('cd %s (resolved: %s)', dir, self.cwd)
         assert os.path.isdir(self.cwd)
 
     @property
@@ -178,7 +178,7 @@ class Shell(Fixture):
         - If expect_failure=True, asserts that the command fails (exit code != 0).
         - Returns the command's exit code.
         '''
-        TRACELOG(*args)
+        log.debug('bead command: %s', args)
         if len(args) == 1:
             # special case: input is a single string
             arg = args[0]
@@ -196,7 +196,7 @@ class Shell(Fixture):
                 except SystemExit as e:
                     self.exit_code = 0 if e.code is None else e.code
                 except BaseException as e:
-                    TRACELOG(EXCEPTION=e)
+                    log.debug('Exception during bead command: %s', e)
                     raise
                 finally:
                     # invalidate zip file cache
@@ -208,9 +208,9 @@ class Shell(Fixture):
                     self.stderr = stderr.text
                     #
                     if self.stdout:
-                        TRACELOG(STDOUT=self.stdout)
+                        log.debug('STDOUT: %s', self.stdout)
                     if self.stderr:
-                        TRACELOG(STDERR=self.stderr)
+                        log.debug('STDERR: %s', self.stderr)
 
         if expect_failure:
             assert self.exit_code != 0, "Command was expected to fail, but it succeeded."
@@ -227,7 +227,7 @@ class Shell(Fixture):
 
     def write_file(self, path, content):
         assert not os.path.isabs(path)
-        TRACELOG(path, content, realpath=self.cwd / path)
+        log.debug('write_file: %s (realpath: %s)', path, self.cwd / path)
         tech.fs.write_file(self.cwd / path, content)
 
     def read_file(self, filename):
@@ -239,5 +239,5 @@ class Shell(Fixture):
 
         All other files, workspaces remain available.
         '''
-        TRACELOG('rmtree', self.config_dir)
+        log.debug('reset: rmtree %s', self.config_dir)
         tech.fs.rmtree(self.config_dir)

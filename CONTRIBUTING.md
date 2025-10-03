@@ -72,7 +72,7 @@ Before submitting your contribution, please ensure it passes all checks.
 #### Linting & Formatting
 - **Run the linter**: `ruff check .`
 - **Format imports automatically**: `isort .`
-- **Run the static type checker**: `pytype -k -j auto bead bead_cli __main__.py tests tracelog.py dev/build.py` or `uvx ty check`
+- **Run the static type checker**: `pytype -k -j auto bead bead_cli __main__.py tests dev/build.py` or `uvx ty check`
 - **Run all pre-commit hooks**: `pre-commit run --all-files`
 
 #### Building

@@ -15,7 +15,7 @@ from typing import Tuple
 from zipfile import BadZipFile
 from zipfile import ZipFile
 
-from tracelog import TRACELOG
+from bead import log
 
 __all__ = ('BadZipFile', 'open', 'close_all')
 
@@ -45,17 +45,20 @@ class OpenZipLRUCache:
             _, access_time = filename_access_time
             return access_time
         least_recently_used_filename, _ = sorted(self.access_times.items(), key=access_time)[0]
-        TRACELOG(
-            f'{least_recently_used_filename}: {self.access_times[least_recently_used_filename]}')
+        log.debug(
+            'LRU eviction candidate: %s (access_time: %d)',
+            least_recently_used_filename,
+            self.access_times[least_recently_used_filename]
+        )
         return least_recently_used_filename
 
     def access(self, filename):
-        TRACELOG(f'{filename}: {self.access_count}')
+        log.debug('Accessing zip: %s (count: %d)', filename, self.access_count)
         self.access_times[filename] = self.access_count
         self.access_count += 1
 
     def close(self, filename):
-        TRACELOG(f'{filename}')
+        log.debug('Closing zip: %s', filename)
         self.open_zip_files[filename].close()
         del self.open_zip_files[filename]
         del self.access_times[filename]
@@ -72,7 +75,7 @@ close_all = _cache.close_all
 
 
 def _cleanup():
-    TRACELOG(vars(_cache))
+    log.debug('Cleanup cache state: open_files=%d access_count=%d', len(_cache.open_zip_files), _cache.access_count)
     close_all()
 
 

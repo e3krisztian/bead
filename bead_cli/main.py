@@ -1,6 +1,7 @@
 # PYTHON_ARGCOMPLETE_OK
 from collections.abc import Sequence
 import importlib.metadata
+import logging
 import os
 import subprocess
 import sys
@@ -97,6 +98,62 @@ def make_argument_parser(defaults):
     return parser
 
 
+def setup_logging(debug: bool, log_dir: Path):
+    """
+    Configure logging based on debug flag.
+
+    Args:
+        debug: Enable debug logging to file
+        log_dir: Directory for log files
+    """
+    if debug:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / 'bead-debug.log'
+
+        # Manually add handlers for full control (basicConfig only works once)
+        file_handler = logging.FileHandler(log_file)
+        console_handler = logging.StreamHandler()
+
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
+
+        logging.root.addHandler(file_handler)
+        logging.root.addHandler(console_handler)
+        logging.root.setLevel(logging.DEBUG)
+    else:
+        # Only log WARNING and above to stderr (for warnings from libraries, etc.)
+        logging.root.setLevel(logging.WARNING)
+
+
+def cleanup_old_error_files(error_dir: Path, keep_count: int = 20, max_age_days: int = 90):
+    """
+    Clean up old error files to prevent accumulation.
+
+    Keeps the most recent keep_count files, and deletes any older than max_age_days.
+    """
+    import time
+
+    if not error_dir.exists():
+        return
+
+    cutoff_time = time.time() - (max_age_days * 86400)
+    error_files = sorted(error_dir.glob('error_*.txt'), key=lambda p: p.stat().st_mtime)
+
+    # Delete files older than max_age_days
+    for error_file in error_files:
+        if error_file.stat().st_mtime < cutoff_time:
+            error_file.unlink()
+
+    # Re-scan after age-based cleanup
+    error_files = sorted(error_dir.glob('error_*.txt'), key=lambda p: p.stat().st_mtime)
+
+    # Keep only the most recent keep_count files
+    if len(error_files) > keep_count:
+        for old_file in error_files[:-keep_count]:
+            old_file.unlink()
+
+
 def run(config_dir: Path, state_dir: Path, argv: Sequence[str]):
     parser_defaults = dict(config_dir=config_dir)
     parser = make_argument_parser(parser_defaults)
@@ -107,18 +164,12 @@ def run(config_dir: Path, state_dir: Path, argv: Sequence[str]):
 
 FAILURE_TEMPLATE = """\
 {exception}
+An unexpected error occurred. Details saved to:
+  {error_report}
 
-If you are using the latest version, and have not reported this error yet
-please report this problem by copy-pasting the content of file {error_report}
-at {repo}/issues/new
-and/or attaching the file to an email to {dev}@gmail.com.
-
-Please make sure you copy-paste from the file {error_report}
-and not from the console, as the shown exception text was shortened
-for your convenience, thus it is not really helpful in fixing the bug.
-
-Please provide as much context as possible about what you were doing with bead
-to get this error.
+Please report this issue at:
+  {repo}/issues/new
+(Attach the error file above)
 """
 
 
@@ -166,13 +217,23 @@ def main(run=run):
             file=sys.stderr)
         sys.exit(2)
 
+    # Setup directories
     config_dir = Path(platformdirs.user_config_dir('bead'))
     state_dir = Path(platformdirs.user_state_dir('bead'))
+    log_dir = Path(os.environ.get('BEAD_LOG_DIR', platformdirs.user_log_dir('bead')))
 
     migrate_config_if_needed(config_dir)
 
     config_dir.mkdir(parents=True, exist_ok=True)
     state_dir.mkdir(parents=True, exist_ok=True)
+
+    # Setup logging
+    debug = os.environ.get('BEAD_DEBUG') == '1'
+    setup_logging(debug, log_dir)
+
+    # Clean up old error files
+    error_dir = log_dir / 'errors'
+    cleanup_old_error_files(error_dir)
 
     try:
         retval = run(config_dir, state_dir, sys.argv[1:])
@@ -189,9 +250,13 @@ def main(run=run):
         sys_argv = f'{sys.argv!r}'
         exception = traceback.format_exc()
         short_exception = traceback.format_exc(limit=1)
-        error_report = os.path.realpath(f'error_{timestamp()}.txt')
+
+        # Write error report to log directory
+        error_dir.mkdir(parents=True, exist_ok=True)
+        error_report = error_dir / f'error_{timestamp()}.txt'
         with open(error_report, 'w') as f:
             f.write(f'sys_argv = {sys_argv}\n')
+            f.write(f'cwd = {os.getcwd()}\n')
             f.write(f'{exception}\n')
             f.write(f'{get_version_info()}\n')
         print(
@@ -199,7 +264,6 @@ def main(run=run):
                 exception=short_exception,
                 error_report=error_report,
                 repo='https://github.com/e3krisztian/bead',
-                dev='e3krisztian',
             ),
             file=sys.stderr
         )

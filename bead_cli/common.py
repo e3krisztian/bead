@@ -5,6 +5,7 @@ from typing import Iterable, NoReturn
 from tqdm import tqdm
 
 from bead import box as bead_box
+from bead import log
 from bead.bead import Archive
 from bead.box_index import BoxIndexError, IndexingProgress
 from bead.exceptions import InvalidArchive
@@ -22,6 +23,7 @@ ERROR_EXIT = 1
 
 
 def die(msg) -> NoReturn:
+    log.error(msg)
     sys.stderr.write('ERROR: ')
     sys.stderr.write(msg)
     sys.stderr.write('\n')
@@ -29,12 +31,14 @@ def die(msg) -> NoReturn:
 
 
 def warning(msg):
+    log.warning(msg)
     sys.stderr.write('WARNING: ')
     sys.stderr.write(msg)
     sys.stderr.write('\n')
 
 
 def info(msg):
+    log.info(msg)
     sys.stderr.write(msg)
     sys.stderr.write('\n')
 

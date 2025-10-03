@@ -1,3 +1,4 @@
+
 import pytest
 
 from bead_cli.main import main
@@ -20,6 +21,10 @@ def run_raise_unhandled(config_dir, state_dir, argv):
 def test_unhandled_error(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
+    # Set BEAD_LOG_DIR to tmp_path so we can find the error file
+    log_dir = tmp_path / 'logs'
+    monkeypatch.setenv('BEAD_LOG_DIR', str(log_dir))
+
     argv = ['1', 'unhandled', 'ecxeptipons']
     argv_text = f'{argv}'
     monkeypatch.setattr('sys.argv', argv)
@@ -28,7 +33,12 @@ def test_unhandled_error(tmp_path, capsys, monkeypatch):
         main(run=run_raise_unhandled)
 
     stderr = capsys.readouterr().err
-    [error_report_path] = list(tmp_path.glob('error_*.txt'))
+
+    # Error file should be in log_dir/errors/
+    error_dir = log_dir / 'errors'
+    error_files = list(error_dir.glob('error_*.txt'))
+    assert len(error_files) == 1
+    error_report_path = error_files[0]
 
     # stderr is what the user see
     assert 'UnhandledError' in stderr
@@ -38,11 +48,16 @@ def test_unhandled_error(tmp_path, capsys, monkeypatch):
     error_report_text = error_report_path.read_text()
     assert 'UnhandledError' in error_report_text
     assert argv_text in error_report_text
+    assert f'cwd = {tmp_path}' in error_report_text
     assert error_report_text.count('_deep_unhandled_exception') > 3
 
 
 def test_keyboard_interrupt(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)
+
+    # Set BEAD_LOG_DIR to tmp_path
+    log_dir = tmp_path / 'logs'
+    monkeypatch.setenv('BEAD_LOG_DIR', str(log_dir))
 
     def run_raise_keyboardinterrupt(*args, **kwargs):
         raise KeyboardInterrupt
@@ -51,7 +66,11 @@ def test_keyboard_interrupt(tmp_path, capsys, monkeypatch):
         main(run=run_raise_keyboardinterrupt)
 
     stderr = capsys.readouterr().err
-    assert [] == list(tmp_path.glob('error_*.txt'))
+
+    # No error file should be created for keyboard interrupt
+    error_dir = log_dir / 'errors'
+    if error_dir.exists():
+        assert [] == list(error_dir.glob('error_*.txt'))
 
     # stderr is what the user see
     assert 'Interrupted' in stderr
@@ -60,6 +79,10 @@ def test_keyboard_interrupt(tmp_path, capsys, monkeypatch):
 def test_help(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
+    # Set BEAD_LOG_DIR to tmp_path
+    log_dir = tmp_path / 'logs'
+    monkeypatch.setenv('BEAD_LOG_DIR', str(log_dir))
+
     argv = ['.', '--help']
     monkeypatch.setattr('sys.argv', argv)
 
@@ -67,7 +90,11 @@ def test_help(tmp_path, capsys, monkeypatch):
         main()
 
     stdout = capsys.readouterr().out
-    assert [] == list(tmp_path.glob('error_*.txt'))
+
+    # No error file should be created for help
+    error_dir = log_dir / 'errors'
+    if error_dir.exists():
+        assert [] == list(error_dir.glob('error_*.txt'))
 
     # stdout is what the user see
     assert 'usage:' in stdout.lower()

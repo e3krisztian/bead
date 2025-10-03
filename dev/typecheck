@@ -2,4 +2,4 @@
 uv sync
 ruff check
 uvx ty check
-exec pytype -k -j auto bead bead_cli __main__.py tests tracelog.py dev/build.py
+exec pytype -k -j auto bead bead_cli __main__.py tests dev/build.py
