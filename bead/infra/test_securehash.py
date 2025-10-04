@@ -1,7 +1,7 @@
-from .. import tech
+from .. import infra
 
-securehash = tech.securehash
-write_file = tech.fs.write_file
+securehash = infra.securehash
+write_file = infra.fs.write_file
 
 
 def test_file_hash(tmp_path):

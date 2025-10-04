@@ -5,15 +5,15 @@ import shutil
 
 from . import layouts
 from . import meta
-from . import tech
+from . import infra
 from . import zipopener
 from .bead import Archive
 from .exceptions import InvalidArchive
 
 # technology modules
-timestamp = tech.timestamp
-securehash = tech.securehash
-persistence = tech.persistence
+timestamp = infra.timestamp
+securehash = infra.securehash
+persistence = infra.persistence
 
 
 META_KEYS = (
@@ -162,26 +162,26 @@ class ZipArchive(Archive):
         except Exception as e:
             raise InvalidArchive(self.archive_filename) from e
 
-    def extract_file(self, zip_path: str, fs_path: tech.fs.Path):
+    def extract_file(self, zip_path: str, fs_path: infra.fs.Path):
         '''
             Extract zip_path from zipfile to fs_path.
         '''
-        fs_path = tech.fs.Path(os.path.normpath(fs_path.as_posix()))
+        fs_path = infra.fs.Path(os.path.normpath(fs_path.as_posix()))
 
         upperdirs = os.path.dirname(fs_path.as_posix())
         if upperdirs:
-            tech.fs.ensure_directory(tech.fs.Path(upperdirs))
+            infra.fs.ensure_directory(infra.fs.Path(upperdirs))
 
         with self.zipfile.open(zip_path) as source:
             with open(fs_path, 'wb') as target:
                 shutil.copyfileobj(source, target)
 
-    def extract_dir(self, zip_dir: str, fs_dir: tech.fs.Path):
+    def extract_dir(self, zip_dir: str, fs_dir: infra.fs.Path):
         '''
             Extract all files from zipfile under zip_dir to fs_dir.
         '''
 
-        tech.fs.ensure_directory(fs_dir)
+        infra.fs.ensure_directory(fs_dir)
 
         zip_dir_prefix = zip_dir + '/'
         zip_dir_prefix_len = len(zip_dir_prefix)

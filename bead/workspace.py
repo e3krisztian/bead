@@ -7,14 +7,14 @@ import zipfile
 
 from . import layouts
 from . import meta
-from . import tech
+from . import infra
 from .bead import Archive
 from .bead import Bead
 
 # technology modules
-persistence = tech.persistence
-securehash = tech.securehash
-fs = tech.fs
+persistence = infra.persistence
+securehash = infra.securehash
+fs = infra.fs
 
 
 # generated with `uuidgen -t`
@@ -73,7 +73,7 @@ class Workspace(Bead):
 
     @property
     def freeze_time_str(self):
-        return tech.timestamp.timestamp()
+        return infra.timestamp.timestamp()
 
     @property
     def box_name(self):
@@ -268,7 +268,7 @@ class _ZipCreator:
         self.zipfile.writestr(zip_path, bytes)
         self.add_hash(zip_path, securehash.bytes(bytes))
 
-    def create(self, zip_file_name: tech.fs.Path, workspace, timestamp, comment: str):
+    def create(self, zip_file_name: infra.fs.Path, workspace, timestamp, comment: str):
         assert workspace.is_valid
         user_compression_preference = os.environ.get('BEAD_ZIP_COMPRESSION')
         compression = {

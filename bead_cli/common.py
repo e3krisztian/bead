@@ -9,8 +9,8 @@ from bead import log
 from bead.bead import Archive
 from bead.box_index import BoxIndexError, IndexingProgress
 from bead.exceptions import InvalidArchive
-from bead.tech.timestamp import parse_iso8601
-from bead.tech.timestamp import time_from_user
+from bead.infra.timestamp import parse_iso8601
+from bead.infra.timestamp import time_from_user
 from bead.workspace import Workspace
 from bead.ziparchive import ZipArchive
 

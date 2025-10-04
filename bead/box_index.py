@@ -12,7 +12,7 @@ from .bead import Bead
 from .box_query import QueryCondition
 from .exceptions import BoxIndexError, InvalidArchive
 from .meta import InputSpec
-from .tech import sqlite
+from .infra import sqlite
 from .ziparchive import ZipArchive
 
 
@@ -121,7 +121,7 @@ def timestamp_to_unix_utc_microseconds(timestamp):
     if hasattr(timestamp, 'timestamp'):
         return int(timestamp.timestamp() * 1_000_000)
     elif isinstance(timestamp, str):
-        from .tech.timestamp import time_from_timestamp
+        from .infra.timestamp import time_from_timestamp
         dt = time_from_timestamp(timestamp)
         return int(dt.timestamp() * 1_000_000)
     return timestamp

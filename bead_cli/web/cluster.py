@@ -1,7 +1,7 @@
 from typing import Dict
 from typing import Iterable
 
-from bead.tech.timestamp import EPOCH_STR
+from bead.infra.timestamp import EPOCH_STR
 
 from . import graphviz
 from .dummy import Dummy

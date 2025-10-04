@@ -2,7 +2,7 @@ import os
 from typing import TYPE_CHECKING
 
 from bead import layouts
-from bead import tech
+from bead import infra
 from bead.exceptions import BoxError
 from bead.exceptions import InvalidArchive
 from bead.workspace import Workspace
@@ -25,7 +25,7 @@ from .common import warning
 if TYPE_CHECKING:
     from .environment import Environment
 
-timestamp = tech.timestamp.timestamp
+timestamp = infra.timestamp.timestamp
 
 
 def assert_may_be_valid_name(name):
@@ -58,7 +58,7 @@ class CmdNew(Command):
         if os.path.exists(workspace.directory):
             die(f'Directory {workspace.name} already exists.')
 
-        kind = tech.identifier.uuid()
+        kind = infra.identifier.uuid()
         workspace.create(kind)
         print(f'Created workspace "{workspace.name}"')
 
@@ -96,9 +96,9 @@ class CmdSave(Command):
             boxes = env.get_boxes()
             if not boxes:
                 warning('No boxes have been defined')
-                beadbox = tech.fs.Path(os.path.expanduser('~/BeadBox'))
+                beadbox = infra.fs.Path(os.path.expanduser('~/BeadBox'))
                 info(f'Creating and using a new one with name `home` and location {beadbox}')
-                tech.fs.ensure_directory(beadbox)
+                infra.fs.ensure_directory(beadbox)
                 env.add_box('home', beadbox)
                 env.save()
                 # continue with newly created box
@@ -281,5 +281,5 @@ class CmdDiscard(Command):
         directory = workspace.directory
         # on non-posix systems (Windows) it might happen, that we can not remove
         # the directory we are in -> ignore errors
-        tech.fs.rmtree(directory, ignore_errors=os.name != 'posix')
+        infra.fs.rmtree(directory, ignore_errors=os.name != 'posix')
         print(f'Deleted workspace {directory}')

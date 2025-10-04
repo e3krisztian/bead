@@ -5,7 +5,7 @@ import zipfile
 import pytest
 
 from bead import layouts
-from bead import tech
+from bead import infra
 from bead.workspace import Workspace
 
 from .test_shell import Shell
@@ -92,8 +92,8 @@ def hacked_bead(tmp_path_factory):
     workspace_dir = tmp_path_factory.mktemp('workspace') / 'hacked_bead'
     ws = Workspace(workspace_dir)
     ws.create('hacked-kind')
-    tech.fs.write_file(ws.directory / 'code', 'code')
-    tech.fs.write_file(ws.directory / 'output/README', 'README')
+    infra.fs.write_file(ws.directory / 'code', 'code')
+    infra.fs.write_file(ws.directory / 'output/README', 'README')
     ws.pack(hacked_bead_path, TS1, comment='hacked bead')
     with zipfile.ZipFile(hacked_bead_path, 'a') as z:
         with warnings.catch_warnings():

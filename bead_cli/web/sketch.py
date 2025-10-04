@@ -9,7 +9,7 @@ from typing import Tuple
 import attr
 from cached_property import cached_property
 
-from bead.tech.timestamp import EPOCH_STR
+from bead.infra.timestamp import EPOCH_STR
 
 from . import graphviz
 from .cluster import Cluster

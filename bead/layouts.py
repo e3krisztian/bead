@@ -2,9 +2,9 @@
 layout of beads
 '''
 
-from . import tech
+from . import infra
 
-Path = tech.fs.Path
+Path = infra.fs.Path
 
 
 class Archive:

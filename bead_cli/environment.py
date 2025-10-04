@@ -6,8 +6,8 @@ import os
 from dataclasses import dataclass
 
 from bead.box import Box
-from bead.tech import persistence
-from bead.tech.fs import Path
+from bead.infra import persistence
+from bead.infra.fs import Path
 
 ENV_BOXES = 'boxes'
 BOX_NAME = 'name'

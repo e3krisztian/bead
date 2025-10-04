@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from typing import Set
 import webbrowser
 
-from bead import tech
+from bead import infra
 from bead.box import search
 
 from . import sketch as web_sketch
@@ -139,7 +139,7 @@ class SketchProcessor:
 
 class ProcessorWithFileName(SketchProcessor):
     def __init__(self, args):
-        self.file_name = tech.fs.Path(args.pop())
+        self.file_name = infra.fs.Path(args.pop())
 
 
 class LoadAll(SketchProcessor):
@@ -168,7 +168,7 @@ class Save(ProcessorWithFileName):
 class WriteDot(ProcessorWithFileName):
     def __call__(self, sketch):
         dot_str = sketch.as_dot()
-        tech.fs.write_file(self.file_name, dot_str)
+        infra.fs.write_file(self.file_name, dot_str)
         return sketch
 
 

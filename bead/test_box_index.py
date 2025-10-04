@@ -5,7 +5,7 @@ import pytest
 import bead.zipopener
 from .box_index import BoxIndex
 from .exceptions import BoxIndexError
-from .tech import sqlite
+from .infra import sqlite
 from .workspace import Workspace
 
 

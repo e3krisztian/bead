@@ -1,6 +1,6 @@
 import os
 
-from bead.tech.fs import rmtree
+from bead.infra.fs import rmtree
 from bead.workspace import Workspace
 from ..test_helpers import create_bead_family, create_bead_with_inputs
 

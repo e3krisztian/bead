@@ -5,7 +5,7 @@ from typing import Sequence
 from .exceptions import InvalidArchive
 from .meta import BeadName
 from .meta import InputSpec
-from .tech.timestamp import time_from_timestamp
+from .infra.timestamp import time_from_timestamp
 
 
 class Bead:

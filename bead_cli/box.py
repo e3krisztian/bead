@@ -1,7 +1,7 @@
 import shutil
 from typing import TYPE_CHECKING
 
-from bead import tech
+from bead import infra
 
 from .cmdparse import Command
 from .common import die, report_progress
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from .environment import Environment
 
 
-def seed_box_index(box_directory: tech.fs.Path, new_index_path: tech.fs.Path):
+def seed_box_index(box_directory: infra.fs.Path, new_index_path: infra.fs.Path):
     """Seed new index with existing box index data to speed up first sync."""
     old_index_path = box_directory / '.index.sqlite'
     if old_index_path.exists():
@@ -29,14 +29,14 @@ class CmdAdd(Command):
 
     def declare(self, arg):
         arg('name')
-        arg('directory', type=tech.fs.Path)
+        arg('directory', type=infra.fs.Path)
 
     def run(self, args, env: 'Environment'):
         '''
         Define a box.
         '''
         name: str = args.name
-        directory: tech.fs.Path = args.directory
+        directory: infra.fs.Path = args.directory
 
         if not directory.is_dir():
             die(f'"{directory}" is not an existing directory!')

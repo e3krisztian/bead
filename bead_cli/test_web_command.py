@@ -2,9 +2,9 @@ import re
 
 import pytest
 
-from bead.tech.fs import read_file
-from bead.tech.fs import rmtree
-from bead.tech.fs import write_file
+from bead.infra.fs import read_file
+from bead.infra.fs import rmtree
+from bead.infra.fs import write_file
 from bead.workspace import Workspace
 from bead_cli.web.sketch import Sketch
 from tests.sketcher import Sketcher

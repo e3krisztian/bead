@@ -14,8 +14,8 @@ from typing import Dict, List
 
 from bead.workspace import Workspace
 from bead import layouts
-from bead.tech import timestamp
-from bead.tech import fs
+from bead.infra import timestamp
+from bead.infra import fs
 from bead.ziparchive import ZipArchive
 
 # Data Dictionaries

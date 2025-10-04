@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from bead.tech import sqlite
-from bead.tech.timestamp import timestamp as now_ts
+from bead.infra import sqlite
+from bead.infra.timestamp import timestamp as now_ts
 from bead.workspace import Workspace
 
 from .test_shell import Shell
