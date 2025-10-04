@@ -4,7 +4,7 @@ Configuration migration utilities for transitioning to new directory structure.
 
 import shutil
 import platformdirs
-from pathlib import Path
+from bead.infra.fs import Path
 
 
 def get_legacy_dir() -> Path:

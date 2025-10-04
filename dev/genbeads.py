@@ -9,7 +9,7 @@ import random
 import sys
 import zipfile
 from dataclasses import dataclass, field
-from pathlib import Path
+from bead.infra.fs import Path
 from typing import Dict, List
 
 from bead.workspace import Workspace

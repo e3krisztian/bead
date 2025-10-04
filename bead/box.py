@@ -13,17 +13,15 @@ Boxes can be used to:
 from abc import ABC
 from abc import abstractmethod
 
-from . import infra
 from .bead import Archive
 from .bead import Bead
 from .box_index import BoxIndex
 from .box_query import QueryCondition
 from .exceptions import BoxError
 from .exceptions import InvalidArchive
+from .infra.fs import Path
 from .infra.timestamp import time_from_timestamp
 from .ziparchive import ZipArchive
-
-Path = infra.fs.Path
 
 
 ARCHIVE_COMMENT = '''

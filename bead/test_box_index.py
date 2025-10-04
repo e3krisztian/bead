@@ -1,4 +1,4 @@
-from pathlib import Path
+from bead.infra.fs import Path
 
 import pytest
 

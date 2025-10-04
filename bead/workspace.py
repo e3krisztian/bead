@@ -7,14 +7,18 @@ import zipfile
 
 from . import layouts
 from . import meta
-from . import infra
 from .bead import Archive
 from .bead import Bead
-
-# technology modules
-persistence = infra.persistence
-securehash = infra.securehash
-fs = infra.fs
+from .infra import persistence
+from .infra import securehash
+from .infra.fs import Path
+from .infra.fs import all_subpaths
+from .infra.fs import ensure_directory
+from .infra.fs import make_readonly
+from .infra.fs import make_writable
+from .infra.fs import rmtree
+from .infra.fs import write_file
+from .infra.timestamp import timestamp
 
 
 # generated with `uuidgen -t`
@@ -23,10 +27,10 @@ META_VERSION = 'aaa947a6-1f7a-11e6-ba3a-0021cc73492e'
 
 class Workspace(Bead):
 
-    directory: fs.Path
+    directory: Path
 
     def __init__(self, directory):
-        self.directory = fs.Path(directory).resolve()
+        self.directory = Path(directory).resolve()
 
     @property
     def is_valid(self):
@@ -73,7 +77,7 @@ class Workspace(Bead):
 
     @property
     def freeze_time_str(self):
-        return infra.timestamp.timestamp()
+        return timestamp()
 
     @property
     def box_name(self):
@@ -94,7 +98,7 @@ class Workspace(Bead):
         bead_meta = {
             meta.KIND: kind,
             meta.INPUTS: {}}
-        fs.write_file(
+        write_file(
             dir / layouts.Workspace.BEAD_META,
             persistence.dumps(bead_meta))
 
@@ -102,18 +106,18 @@ class Workspace(Bead):
 
     def create_directories(self):
         dir = self.directory
-        fs.ensure_directory(dir)
-        fs.ensure_directory(dir / layouts.Workspace.INPUT)
-        fs.make_readonly(dir / layouts.Workspace.INPUT)
-        fs.ensure_directory(dir / layouts.Workspace.OUTPUT)
-        fs.ensure_directory(dir / layouts.Workspace.TEMP)
-        fs.ensure_directory(dir / layouts.Workspace.META)
+        ensure_directory(dir)
+        ensure_directory(dir / layouts.Workspace.INPUT)
+        make_readonly(dir / layouts.Workspace.INPUT)
+        ensure_directory(dir / layouts.Workspace.OUTPUT)
+        ensure_directory(dir / layouts.Workspace.TEMP)
+        ensure_directory(dir / layouts.Workspace.META)
 
-    def pack(self, zipfilename: fs.Path, freeze_time, comment: str):
+    def pack(self, zipfilename: Path, freeze_time, comment: str):
         '''
         Create archive from workspace.
         '''
-        zipfilename = fs.Path(zipfilename)
+        zipfilename = Path(zipfilename)
         assert not zipfilename.exists()
         try:
             _ZipCreator().create(zipfilename, self, freeze_time, comment)
@@ -154,17 +158,17 @@ class Workspace(Bead):
         Make output data files in archive available under input directory
         '''
         input_dir = self.directory / layouts.Workspace.INPUT
-        fs.make_writable(input_dir)
+        make_writable(input_dir)
         try:
             self.add_input(
                 input_nick,
                 archive.kind, archive.content_id, archive.freeze_time_str)
             destination_dir = input_dir / input_nick
             archive.unpack_data_to(destination_dir)
-            for f in fs.all_subpaths(destination_dir):
-                fs.make_readonly(f)
+            for f in all_subpaths(destination_dir):
+                make_readonly(f)
         finally:
-            fs.make_readonly(input_dir)
+            make_readonly(input_dir)
 
     def unload(self, input_nick):
         '''
@@ -172,11 +176,11 @@ class Workspace(Bead):
         '''
         assert self.has_input(input_nick)
         input_dir = self.directory / layouts.Workspace.INPUT
-        fs.make_writable(input_dir)
+        make_writable(input_dir)
         try:
-            fs.rmtree(input_dir / input_nick)
+            rmtree(input_dir / input_nick)
         finally:
-            fs.make_readonly(input_dir)
+            make_readonly(input_dir)
 
     @property
     def _input_map_filename(self):
@@ -268,7 +272,7 @@ class _ZipCreator:
         self.zipfile.writestr(zip_path, bytes)
         self.add_hash(zip_path, securehash.bytes(bytes))
 
-    def create(self, zip_file_name: infra.fs.Path, workspace, timestamp, comment: str):
+    def create(self, zip_file_name: Path, workspace, freeze_timestamp, comment: str):
         assert workspace.is_valid
         user_compression_preference = os.environ.get('BEAD_ZIP_COMPRESSION')
         compression = {
@@ -289,7 +293,7 @@ class _ZipCreator:
                 self.zipfile.comment = comment.encode('utf-8')
                 self.add_data(workspace)
                 self.add_code(workspace)
-                self.add_meta(workspace, timestamp)
+                self.add_meta(workspace, freeze_timestamp)
         finally:
             self.zipfile = None
 
@@ -314,11 +318,11 @@ class _ZipCreator:
             workspace.directory / layouts.Workspace.OUTPUT,
             layouts.Archive.DATA)
 
-    def add_meta(self, workspace, timestamp):
+    def add_meta(self, workspace, freeze_timestamp):
         bead_meta = {
             meta.META_VERSION: META_VERSION,
             meta.KIND: workspace.kind,
-            meta.FREEZE_TIME: timestamp,
+            meta.FREEZE_TIME: freeze_timestamp,
             meta.INPUTS: {
                 input.name: {
                     meta.INPUT_KIND: input.kind,

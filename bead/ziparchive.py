@@ -5,15 +5,15 @@ import shutil
 
 from . import layouts
 from . import meta
-from . import infra
 from . import zipopener
 from .bead import Archive
 from .exceptions import InvalidArchive
-
-# technology modules
-timestamp = infra.timestamp
-securehash = infra.securehash
-persistence = infra.persistence
+from .infra import persistence
+from .infra import securehash
+from .infra.fs import Path
+from .infra.fs import ensure_directory
+from .infra.timestamp import time_from_timestamp
+from .infra.timestamp import timestamp
 
 
 META_KEYS = (
@@ -72,9 +72,8 @@ class ZipArchive(Archive):
         return all(key in meta for key in META_KEYS)
 
     def _bead_creation_time_is_in_the_past(self):
-        read_time = timestamp.time_from_timestamp
-        now = read_time(timestamp.timestamp())
-        freeze_time = read_time(self.meta[meta.FREEZE_TIME])
+        now = time_from_timestamp(timestamp())
+        freeze_time = time_from_timestamp(self.meta[meta.FREEZE_TIME])
         # we could be strict, but unfortunately on windows the resolution
         # of datetime.now is low yielding the same value for multiple calls
         # so we need that = in the <= to get the tests pass
@@ -162,26 +161,26 @@ class ZipArchive(Archive):
         except Exception as e:
             raise InvalidArchive(self.archive_filename) from e
 
-    def extract_file(self, zip_path: str, fs_path: infra.fs.Path):
+    def extract_file(self, zip_path: str, fs_path: Path):
         '''
             Extract zip_path from zipfile to fs_path.
         '''
-        fs_path = infra.fs.Path(os.path.normpath(fs_path.as_posix()))
+        fs_path = Path(os.path.normpath(fs_path.as_posix()))
 
         upperdirs = os.path.dirname(fs_path.as_posix())
         if upperdirs:
-            infra.fs.ensure_directory(infra.fs.Path(upperdirs))
+            ensure_directory(Path(upperdirs))
 
         with self.zipfile.open(zip_path) as source:
             with open(fs_path, 'wb') as target:
                 shutil.copyfileobj(source, target)
 
-    def extract_dir(self, zip_dir: str, fs_dir: infra.fs.Path):
+    def extract_dir(self, zip_dir: str, fs_dir: Path):
         '''
             Extract all files from zipfile under zip_dir to fs_dir.
         '''
 
-        infra.fs.ensure_directory(fs_dir)
+        ensure_directory(fs_dir)
 
         zip_dir_prefix = zip_dir + '/'
         zip_dir_prefix_len = len(zip_dir_prefix)

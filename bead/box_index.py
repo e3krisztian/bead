@@ -5,7 +5,7 @@ SQLite-based index for bead storage and retrieval.
 import json
 from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
+from bead.infra.fs import Path
 from typing import Callable, Generator, Optional
 
 from .bead import Bead

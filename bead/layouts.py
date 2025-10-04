@@ -2,9 +2,7 @@
 layout of beads
 '''
 
-from . import infra
-
-Path = infra.fs.Path
+from .infra.fs import Path
 
 
 class Archive:

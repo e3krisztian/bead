@@ -3,9 +3,12 @@ import io
 import os
 import tempfile
 
-from bead import infra
 import bead.zipopener
 from bead import log
+from bead.infra.fs import Path
+from bead.infra.fs import read_file
+from bead.infra.fs import rmtree
+from bead.infra.fs import write_file
 
 from .environment import Environment
 from .main import run
@@ -78,13 +81,13 @@ def environment(shell):
 
 
 class TempDir(Fixture):
-    path: infra.fs.Path
+    path: Path
 
     def setUp(self):
         super().setUp()
-        self.path = infra.fs.Path(tempfile.mkdtemp())
+        self.path = Path(tempfile.mkdtemp())
         # we need our own rmtree, that can remove read only files as well
-        self.addCleanup(infra.fs.rmtree, self.path, ignore_errors=True)
+        self.addCleanup(rmtree, self.path, ignore_errors=True)
 
 
 class _CaptureStream(Fixture):
@@ -122,8 +125,8 @@ class Shell(Fixture):
     and working directories.
     '''
 
-    cwd: infra.fs.Path
-    base_dir: infra.fs.Path
+    cwd: Path
+    base_dir: Path
 
     def setUp(self):
         super().setUp()
@@ -154,7 +157,7 @@ class Shell(Fixture):
         if os.path.isabs(path):
             return path
         else:
-            return infra.fs.Path(os.path.normpath(self.cwd / path))
+            return Path(os.path.normpath(self.cwd / path))
 
     def cd(self, dir):
         '''
@@ -171,7 +174,7 @@ class Shell(Fixture):
         '''
         return environment(self)
 
-    def bead(self, *args: str | infra.fs.Path, expect_failure=False):
+    def bead(self, *args: str | Path, expect_failure=False):
         '''
         Imitate calling the command line tool with the given args.
         - By default, asserts that the command succeeds (exit code 0).
@@ -228,10 +231,10 @@ class Shell(Fixture):
     def write_file(self, path, content):
         assert not os.path.isabs(path)
         log.debug('write_file: %s (realpath: %s)', path, self.cwd / path)
-        infra.fs.write_file(self.cwd / path, content)
+        write_file(self.cwd / path, content)
 
     def read_file(self, filename):
-        return infra.fs.read_file(self.cwd / filename)
+        return read_file(self.cwd / filename)
 
     def reset(self):
         '''
@@ -240,4 +243,4 @@ class Shell(Fixture):
         All other files, workspaces remain available.
         '''
         log.debug('reset: rmtree %s', self.config_dir)
-        infra.fs.rmtree(self.config_dir)
+        rmtree(self.config_dir)

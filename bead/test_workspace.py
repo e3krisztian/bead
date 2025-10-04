@@ -6,15 +6,12 @@ import pytest
 from bead.exceptions import InvalidArchive
 
 from . import layouts
-from . import infra
 from . import workspace as m
+from .infra.fs import Path
+from .infra.fs import ensure_directory
+from .infra.fs import write_file
+from .infra.timestamp import timestamp
 from .ziparchive import ZipArchive
-
-write_file = infra.fs.write_file
-ensure_directory = infra.fs.ensure_directory
-temp_dir = infra.fs.temp_dir
-timestamp = infra.timestamp.timestamp
-Path = infra.fs.Path
 
 A_KIND = 'an arbitrary identifier that is not used by chance'
 

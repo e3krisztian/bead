@@ -5,7 +5,8 @@ and managing test data in a consistent way across all test files.
 """
 
 import glob
-from bead import infra
+from bead.infra.fs import rmtree
+from bead.infra.fs import write_file
 from bead.workspace import Workspace
 from bead.ziparchive import ZipArchive
 
@@ -37,15 +38,15 @@ def create_bead_family(box, bead_name, timestamps, tmp_path_factory, kind='KIND:
 
         # Create content with both bead name and timestamp for uniqueness
         content = f'{bead_name}_{timestamp}'
-        infra.fs.write_file(ws.directory / 'README', content)
-        infra.fs.write_file(ws.directory / 'output/README', content)
+        write_file(ws.directory / 'README', content)
+        write_file(ws.directory / 'output/README', content)
 
         # Create sentinel files for tests that expect them
         sentinel_file = ws.directory / f'sentinel-{timestamp}'
-        infra.fs.write_file(sentinel_file, timestamp)
+        write_file(sentinel_file, timestamp)
 
         box.store(ws, timestamp)  # All stored with same bead_name
-        infra.fs.rmtree(workspace_dir)  # Clean up workspace
+        rmtree(workspace_dir)  # Clean up workspace
 
 
 def get_bead_archive(box, bead_name, timestamp):
