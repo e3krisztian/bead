@@ -3,8 +3,7 @@ SQLite-based index for bead storage and retrieval.
 '''
 
 import json
-import sqlite3
-from contextlib import closing, contextmanager
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Generator, Optional
@@ -13,6 +12,7 @@ from .bead import Bead
 from .box_query import QueryCondition
 from .exceptions import BoxIndexError, InvalidArchive
 from .meta import InputSpec
+from .tech import sqlite
 from .ziparchive import ZipArchive
 
 
@@ -42,19 +42,6 @@ def is_new_db(conn):
     """Check if the database is uninitialized."""
     cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='beads'")
     return cursor.fetchone() is None
-
-
-def create_update_connection(index_path: Path):
-    '''Create database connection for updates.'''
-    conn = sqlite3.connect(str(index_path))
-    return closing(conn)
-
-
-def create_query_connection(index_path: Path):
-    '''Create read-only database connection for queries.'''
-    # NOTE: read-only connections can not create/update the schema
-    conn = sqlite3.connect(f"file:{index_path}?mode=ro", uri=True)
-    return closing(conn)
 
 
 def create_schema(conn):
@@ -216,7 +203,7 @@ class BoxIndex:
         self.index_path = Path(index_file_path)
 
         try:
-            with create_update_connection(self.index_path) as conn:
+            with sqlite.transaction(self.index_path) as conn:
                 if is_new_db(conn):
                     create_schema(conn)
                 else:
@@ -224,7 +211,7 @@ class BoxIndex:
 
         except BoxIndexError:
             raise
-        except sqlite3.Error as e:
+        except sqlite.Error as e:
             advice = "This might be resolved by running '{REINDEX_COMMAND}'."
             raise self._error(
                 f"Failed to initialize or verify index: {e}",
@@ -261,15 +248,14 @@ class BoxIndex:
     def _safe_db_access(self, read_only: bool = False):
         '''A context manager to safely access the database, handling corruption errors.'''
         try:
-            conn_factory = create_query_connection if read_only else create_update_connection
-            with conn_factory(self.index_path) as conn:
+            with sqlite.transaction(self.index_path, read_only=read_only) as conn:
                 yield conn
-        except sqlite3.DatabaseError as e:
+        except sqlite.DatabaseError as e:
             raise self._error(
                 "Index database is corrupt.",
                 advice="Please run '{REINDEX_COMMAND}' to fix it."
             ) from e
-        except sqlite3.Error as e:
+        except sqlite.Error as e:
             # Catch other potential sqlite errors
             raise self._error(
                 f"A database error occurred: {e}",
@@ -296,7 +282,7 @@ class BoxIndex:
             except InvalidArchive as e:
                 latest_error = IndexingError(path=path, reason=str(e))
                 error_count += 1
-            # Note: sqlite3.Error (raised as BoxIndexError) is not caught here
+            # Note: sqlite.Error (raised as BoxIndexError) is not caught here
             # and will terminate the generator.
 
             yield IndexingProgress(

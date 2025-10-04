@@ -1,5 +1,3 @@
-import sqlite3
-from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -7,21 +5,20 @@ import pytest
 import bead.zipopener
 from .box_index import BoxIndex
 from .exceptions import BoxIndexError
+from .tech import sqlite
 from .workspace import Workspace
 
 
 def count_beads_in_index(box_index: BoxIndex) -> int:
     """Return the total number of beads in the index."""
-    with closing(sqlite3.connect(box_index.index_path)) as conn:
-        [[count]] = conn.execute("SELECT COUNT(*) FROM beads")
-        return count
+    result = sqlite.query_one(box_index.index_path, "SELECT COUNT(*) FROM beads")
+    return result[0]
 
 
 def get_bead_file_paths_in_index(box_index: BoxIndex) -> set[str]:
     """Return set of file paths currently in the index."""
-    with closing(sqlite3.connect(box_index.index_path)) as conn:
-        cursor = conn.execute("SELECT file_path FROM beads")
-        return {row[0] for row in cursor}
+    rows = sqlite.query_all(box_index.index_path, "SELECT file_path FROM beads")
+    return {row[0] for row in rows}
 
 
 @pytest.fixture
@@ -154,8 +151,7 @@ def test_box_index_init_unversioned_db(box_directory: Path):
     """Verify that an unversioned DB raises the correct error."""
     index_path = box_directory / "index.db"
     # Manually create an old-style, unversioned database (user_version == 0)
-    with closing(sqlite3.connect(index_path)) as conn:
-        conn.execute("CREATE TABLE beads (name TEXT)")
+    sqlite.execute(index_path, "CREATE TABLE beads (name TEXT)")
 
     with pytest.raises(BoxIndexError, match="Index database is unversioned"):
         BoxIndex("test_box", box_directory, index_path)
@@ -165,9 +161,10 @@ def test_box_index_init_outdated_db(box_directory: Path):
     """Verify that an outdated DB raises the correct error."""
     index_path = box_directory / "index.db"
     # Manually create a database with an old schema version
-    with closing(sqlite3.connect(index_path)) as conn:
+    with sqlite.transaction(index_path) as conn:
         conn.execute("CREATE TABLE beads (name TEXT)")
         conn.execute("PRAGMA user_version = 1")
+        conn.commit()
 
     # The code now expects SCHEMA_VERSION = 2
     with pytest.raises(BoxIndexError, match="Index schema is out of date"):
@@ -179,9 +176,10 @@ def test_box_index_init_newer_db(box_directory: Path):
     from bead.box_index import SCHEMA_VERSION
     index_path = box_directory / "index.db"
     # Manually create a database with a future schema version
-    with closing(sqlite3.connect(index_path)) as conn:
+    with sqlite.transaction(index_path) as conn:
         conn.execute("CREATE TABLE beads (name TEXT)")
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
+        conn.commit()
 
     with pytest.raises(BoxIndexError, match="Index schema is from a newer version"):
         BoxIndex("test_box", box_directory, index_path)

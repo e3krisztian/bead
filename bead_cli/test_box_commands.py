@@ -1,9 +1,8 @@
 import os
-import sqlite3
-from contextlib import closing
 
 import pytest
 
+from bead.tech import sqlite
 from bead.tech.timestamp import timestamp as now_ts
 from bead.workspace import Workspace
 
@@ -201,9 +200,7 @@ def test_reindex_handles_corrupted_index_without_circular_error(shell):
         index_path = box.index.index_path
 
         # Corrupt the database by setting invalid schema version (use version 1, current is 3)
-        with closing(sqlite3.connect(str(index_path))) as conn:
-            conn.execute("PRAGMA user_version = 1")
-            conn.commit()
+        sqlite.execute(index_path, "PRAGMA user_version = 1")
 
     # Now the box index is corrupted. Trying to get_boxes() would raise BoxIndexError
     # that suggests running reindex, but reindex itself calls get_boxes() - circular!
@@ -229,9 +226,7 @@ def test_reindex_auto_detect_with_corrupted_index(shell):
         index_path = env.get_box_index_path('testbox')
 
         # Corrupt the database by setting invalid schema version
-        with closing(sqlite3.connect(str(index_path))) as conn:
-            conn.execute("PRAGMA user_version = 1")
-            conn.commit()
+        sqlite.execute(index_path, "PRAGMA user_version = 1")
 
     # Now try reindex without specifying box name - should auto-detect
     shell.bead('box', 'reindex')  # No box name - should auto-detect single box
@@ -258,9 +253,7 @@ def test_reindex_all_with_corrupted_indexes(shell):
             index_path = env.get_box_index_path(box_name)
 
             # Corrupt the database by setting invalid schema version
-            with closing(sqlite3.connect(str(index_path))) as conn:
-                conn.execute("PRAGMA user_version = 1")
-                conn.commit()
+            sqlite.execute(index_path, "PRAGMA user_version = 1")
 
     # Now try reindex --all - should handle both corrupted indexes
     shell.bead('box', 'reindex', '--all')
