@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from contextlib import closing
 
 import pytest
 
@@ -200,7 +201,7 @@ def test_reindex_handles_corrupted_index_without_circular_error(shell):
         index_path = box.index.index_path
 
         # Corrupt the database by setting invalid schema version (use version 1, current is 3)
-        with sqlite3.connect(str(index_path)) as conn:
+        with closing(sqlite3.connect(str(index_path))) as conn:
             conn.execute("PRAGMA user_version = 1")
             conn.commit()
 
@@ -228,7 +229,7 @@ def test_reindex_auto_detect_with_corrupted_index(shell):
         index_path = env.get_box_index_path('testbox')
 
         # Corrupt the database by setting invalid schema version
-        with sqlite3.connect(str(index_path)) as conn:
+        with closing(sqlite3.connect(str(index_path))) as conn:
             conn.execute("PRAGMA user_version = 1")
             conn.commit()
 
@@ -257,7 +258,7 @@ def test_reindex_all_with_corrupted_indexes(shell):
             index_path = env.get_box_index_path(box_name)
 
             # Corrupt the database by setting invalid schema version
-            with sqlite3.connect(str(index_path)) as conn:
+            with closing(sqlite3.connect(str(index_path))) as conn:
                 conn.execute("PRAGMA user_version = 1")
                 conn.commit()
 

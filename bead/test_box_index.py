@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -11,14 +12,14 @@ from .workspace import Workspace
 
 def count_beads_in_index(box_index: BoxIndex) -> int:
     """Return the total number of beads in the index."""
-    with sqlite3.connect(box_index.index_path) as conn:
+    with closing(sqlite3.connect(box_index.index_path)) as conn:
         [[count]] = conn.execute("SELECT COUNT(*) FROM beads")
         return count
 
 
 def get_bead_file_paths_in_index(box_index: BoxIndex) -> set[str]:
     """Return set of file paths currently in the index."""
-    with sqlite3.connect(box_index.index_path) as conn:
+    with closing(sqlite3.connect(box_index.index_path)) as conn:
         cursor = conn.execute("SELECT file_path FROM beads")
         return {row[0] for row in cursor}
 
@@ -153,7 +154,7 @@ def test_box_index_init_unversioned_db(box_directory: Path):
     """Verify that an unversioned DB raises the correct error."""
     index_path = box_directory / "index.db"
     # Manually create an old-style, unversioned database (user_version == 0)
-    with sqlite3.connect(index_path) as conn:
+    with closing(sqlite3.connect(index_path)) as conn:
         conn.execute("CREATE TABLE beads (name TEXT)")
 
     with pytest.raises(BoxIndexError, match="Index database is unversioned"):
@@ -164,7 +165,7 @@ def test_box_index_init_outdated_db(box_directory: Path):
     """Verify that an outdated DB raises the correct error."""
     index_path = box_directory / "index.db"
     # Manually create a database with an old schema version
-    with sqlite3.connect(index_path) as conn:
+    with closing(sqlite3.connect(index_path)) as conn:
         conn.execute("CREATE TABLE beads (name TEXT)")
         conn.execute("PRAGMA user_version = 1")
 
@@ -178,7 +179,7 @@ def test_box_index_init_newer_db(box_directory: Path):
     from bead.box_index import SCHEMA_VERSION
     index_path = box_directory / "index.db"
     # Manually create a database with a future schema version
-    with sqlite3.connect(index_path) as conn:
+    with closing(sqlite3.connect(index_path)) as conn:
         conn.execute("CREATE TABLE beads (name TEXT)")
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
 
