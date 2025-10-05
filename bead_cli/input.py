@@ -1,6 +1,6 @@
 import os.path
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, NoReturn, overload
 
 from bead.box import resolve
 from bead.box import search
@@ -38,9 +38,13 @@ class MatchStrategy(Enum):
     IMPORTANT: No automatic fallbacks between strategies - any relaxation
     must be explicit user choice to preserve upgrade coordinate integrity.
     """
-    NAME_AND_KIND = "name_and_kind"  # Default: strict matching
-    NAME_ONLY = "name_only"          # --no-kind: ignore kind differences
-    KIND_ONLY = "kind_only"          # --no-name: ignore name differences
+    NAME_AND_KIND = ("name_and_kind", "name and kind")  # Default: strict matching
+    NAME_ONLY = ("name_only", "name only")              # --no-kind: ignore kind differences
+    KIND_ONLY = ("kind_only", "kind only")              # --no-name: ignore name differences
+
+    def __init__(self, value, display_name):
+        self._value_ = value
+        self.display_name = display_name
 
 
 # input_nick
@@ -214,7 +218,7 @@ class CmdUpdate(Command):
                         f'Skipping update of "{input.name}":'
                         + f' no other candidate found ({input.freeze_time})')
                 else:
-                    self._warn_no_match_found(input, args)
+                    self._no_match_found(input, args, fatal=False)
             else:
                 _update_input(workspace, input, archive)
         print('All inputs are up to date.')
@@ -231,43 +235,16 @@ class CmdUpdate(Command):
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
 
-        # Determine if explicit bead reference was given (for verification)
-        # Both explicit bead names and file paths show clear user intent
-        explicit_bead_name_given = (
-            bead_ref_base is not SAME_BEAD_NEWEST_VERSION
-        )
+        # Acquire archive using appropriate strategy
+        boxes = env.get_boxes()
+        explicit_bead_name_given = (bead_ref_base is not SAME_BEAD_NEWEST_VERSION)
 
         if bead_ref_base is SAME_BEAD_NEWEST_VERSION:
-            # Update from existing input
-            if args.bead_offset and args.bead_time is not TIME_LATEST:
-                die('You can give either --prev/--next or --time, not both')
-
-            try:
-                archive = self._find_archive_for_update(
-                    env.get_boxes(), input, args.bead_time, args.bead_offset,
-                    match_strategy=args.match_strategy, workspace=workspace
-                )
-            except LookupError:
-                self._die_no_match_found(input, args)
+            archive = self._acquire_archive_for_existing_input(boxes, input, args, workspace)
+        elif os.path.isfile(bead_ref_base):
+            archive = self._acquire_archive_from_file(bead_ref_base, args)
         else:
-            # Explicit bead reference (path or new bead by name)
-            if args.bead_offset:
-                die('--prev/--next is not supported when an input is replaced with another bead')
-
-            # If it's a file path, use it directly
-            if os.path.isfile(bead_ref_base):
-                from bead.ziparchive import ZipArchive
-                archive = ZipArchive(bead_ref_base)
-            else:
-                # Search for bead by explicit name using match strategy
-                try:
-                    archive = self._find_archive_for_update(
-                        env.get_boxes(), input, args.bead_time, offset=None,
-                        match_strategy=args.match_strategy, workspace=workspace,
-                        bead_name_override=bead_ref_base
-                    )
-                except LookupError:
-                    die(f'Not a known bead name: {bead_ref_base}')
+            archive = self._acquire_archive_by_name(boxes, input, bead_ref_base, args, workspace)
 
         # Verify constraints before updating
         self._verify_archive_constraints(input, archive, args, workspace, explicit_bead_name_given)
@@ -276,6 +253,41 @@ class CmdUpdate(Command):
         # Update mapping when user specifies explicit bead (not when using existing mapping)
         if bead_ref_base is not SAME_BEAD_NEWEST_VERSION:
             workspace.set_input_bead_name(input_nick, archive.name)
+
+    def _acquire_archive_for_existing_input(self, boxes, input, args, workspace):
+        """Acquire archive by updating existing input to newer version."""
+        if args.bead_offset and args.bead_time is not TIME_LATEST:
+            die('You can give either --prev/--next or --time, not both')
+
+        try:
+            return self._find_archive_for_update(
+                boxes, input, args.bead_time, args.bead_offset,
+                match_strategy=args.match_strategy, workspace=workspace
+            )
+        except LookupError:
+            self._no_match_found(input, args, fatal=True)
+
+    def _acquire_archive_from_file(self, bead_ref_base, args):
+        """Acquire archive directly from file path."""
+        if args.bead_offset:
+            die('--prev/--next is not supported when an input is replaced with another bead')
+
+        from bead.ziparchive import ZipArchive
+        return ZipArchive(bead_ref_base)
+
+    def _acquire_archive_by_name(self, boxes, input, bead_ref_base, args, workspace):
+        """Acquire archive by searching for explicitly named bead."""
+        if args.bead_offset:
+            die('--prev/--next is not supported when an input is replaced with another bead')
+
+        try:
+            return self._find_archive_for_update(
+                boxes, input, args.bead_time, offset=None,
+                match_strategy=args.match_strategy, workspace=workspace,
+                bead_name_override=bead_ref_base
+            )
+        except LookupError:
+            die(f'Not a known bead name: {bead_ref_base}')
 
     def _find_archive_for_update(self, boxes, input, time, offset, match_strategy, workspace=None, bead_name_override=None):
         """Find and resolve archive for input update based on matching strategy.
@@ -328,60 +340,44 @@ class CmdUpdate(Command):
         # Resolve bead to archive
         return resolve(boxes, bead)
 
-    def _get_match_description(self, args):
-        """Get human-readable description of current matching mode."""
-        if args.match_strategy == MatchStrategy.NAME_ONLY:
-            return "name only"
-        elif args.match_strategy == MatchStrategy.KIND_ONLY:
-            return "kind only"
-        elif args.match_strategy == MatchStrategy.NAME_AND_KIND:
-            return "name and kind"
-        raise ValueError
+    @overload
+    def _no_match_found(self, input, args, fatal: Literal[True]) -> NoReturn: ...
 
-    def _warn_no_match_found(self, input, args):
-        """Provide helpful warning when no match found in update_all_inputs."""
-        match_desc = self._get_match_description(args)
+    @overload
+    def _no_match_found(self, input, args, fatal: Literal[False] = False) -> None: ...
+
+    def _no_match_found(self, input, args, fatal=False):
+        """Report when no matching bead found during update."""
+        match_desc = args.match_strategy.display_name
         msg = f'Could not find bead for "{input.name}" (matching by {match_desc})'
         if args.match_strategy == MatchStrategy.NAME_AND_KIND:
             msg += '. Try --no-kind or --no-name to relax matching'
-        warning(msg)
-
-    def _die_no_match_found(self, input, args):
-        """Provide helpful error when no match found in update_one_input."""
-        match_desc = self._get_match_description(args)
-        msg = f'Could not find bead for "{input.name}" (matching by {match_desc})'
-        if args.match_strategy == MatchStrategy.NAME_AND_KIND:
-            msg += '. Try --no-kind or --no-name to relax matching'
-        die(msg)
+        (die if fatal else warning)(msg)
 
     def _verify_archive_constraints(self, input, archive, args, workspace, explicit_bead_name=False):
-        """Verify archive meets safety constraints.
+        """Verify archive meets safety constraints (name, kind, time)."""
+        self._verify_name_constraint(input, archive, args, workspace, explicit_bead_name)
+        self._verify_kind_constraint(input, archive, args)
+        self._verify_time_constraint(input, archive, args)
 
-        Checks that the archive is compatible with the current input in terms of
-        name (via mapping), kind, and time (no unintended downgrades).
+    def _verify_name_constraint(self, input, archive, args, workspace, explicit_bead_name):
+        """Verify archive name matches expected bead name.
 
-        Args:
-            input: Current InputSpec from workspace
-            archive: Candidate Archive to verify
-            args: Command arguments (contains flags like --force, --no-kind, etc.)
-            workspace: Current Workspace (for name mapping)
-            explicit_bead_name: True if user provided explicit bead name (skips name verification)
-
-        Raises:
-            SystemExit: When constraints violated and not explicitly relaxed
+        Skipped when user explicitly provides a bead name (intentional change).
         """
-        # 1. Name verification - ONLY when user didn't explicitly provide a bead name
-        # When user says "update myinput new_bead", the name change is intentional
-        if not explicit_bead_name:
-            mapped_name = workspace.get_input_bead_name(input.name)
-            if archive.name != mapped_name:
-                # Allow if --no-name (KIND_ONLY strategy) or --force
-                no_name_relaxed = (args.match_strategy == MatchStrategy.KIND_ONLY)
-                if not (no_name_relaxed or args.force):
-                    die(f'Name change detected: {mapped_name} → {archive.name}. '
-                        f'Use --no-name or --force to allow.')
+        if explicit_bead_name:
+            return
 
-        # 2. Kind verification - ALWAYS check (unless explicitly relaxed)
+        mapped_name = workspace.get_input_bead_name(input.name)
+        if archive.name != mapped_name:
+            # Allow if --no-name (KIND_ONLY strategy) or --force
+            no_name_relaxed = (args.match_strategy == MatchStrategy.KIND_ONLY)
+            if not (no_name_relaxed or args.force):
+                die(f'Name change detected: {mapped_name} → {archive.name}. '
+                    f'Use --no-name or --force to allow.')
+
+    def _verify_kind_constraint(self, input, archive, args):
+        """Verify archive kind matches input kind."""
         if archive.kind != input.kind:
             # Allow if --no-kind (NAME_ONLY strategy) or --force
             no_kind_relaxed = (args.match_strategy == MatchStrategy.NAME_ONLY)
@@ -389,7 +385,8 @@ class CmdUpdate(Command):
                 die(f'Kind mismatch: expected {input.kind}, got {archive.kind}. '
                     f'Use --no-kind or --force to allow.')
 
-        # 3. Time verification (downgrade detection) - ALWAYS check (unless explicitly relaxed)
+    def _verify_time_constraint(self, input, archive, args):
+        """Verify archive is not a downgrade (unless explicitly allowed)."""
         allows_downgrade = (
             args.allow_downgrade or
             args.force or
