@@ -176,6 +176,15 @@ class CmdUpdate(Command):
             # Set default strategy
             parser.argparser.set_defaults(match_strategy=MatchStrategy.NAME_AND_KIND)
         arg(add_matching_options)
+        # Safety options
+        def add_safety_options(parser):
+            parser.argparser.add_argument(
+                '--force', action='store_true',
+                help='Bypass all safety checks (name, kind, time)')
+            parser.argparser.add_argument(
+                '--allow-downgrade', action='store_true',
+                help='Allow updating to older version')
+        arg(add_safety_options)
 
     def run(self, args, env: 'Environment'):
         if args.input_nick is ALL_INPUTS:
@@ -222,6 +231,12 @@ class CmdUpdate(Command):
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
 
+        # Determine if explicit bead reference was given (for verification)
+        # Both explicit bead names and file paths show clear user intent
+        explicit_bead_name_given = (
+            bead_ref_base is not SAME_BEAD_NEWEST_VERSION
+        )
+
         if bead_ref_base is SAME_BEAD_NEWEST_VERSION:
             # Update from existing input
             if args.bead_offset and args.bead_time is not TIME_LATEST:
@@ -253,6 +268,9 @@ class CmdUpdate(Command):
                     )
                 except LookupError:
                     die(f'Not a known bead name: {bead_ref_base}')
+
+        # Verify constraints before updating
+        self._verify_archive_constraints(input, archive, args, workspace, explicit_bead_name_given)
 
         _update_input(workspace, input, archive)
         # Update mapping when user specifies explicit bead (not when using existing mapping)
@@ -335,6 +353,53 @@ class CmdUpdate(Command):
         if args.match_strategy == MatchStrategy.NAME_AND_KIND:
             msg += '. Try --no-kind or --no-name to relax matching'
         die(msg)
+
+    def _verify_archive_constraints(self, input, archive, args, workspace, explicit_bead_name=False):
+        """Verify archive meets safety constraints.
+
+        Checks that the archive is compatible with the current input in terms of
+        name (via mapping), kind, and time (no unintended downgrades).
+
+        Args:
+            input: Current InputSpec from workspace
+            archive: Candidate Archive to verify
+            args: Command arguments (contains flags like --force, --no-kind, etc.)
+            workspace: Current Workspace (for name mapping)
+            explicit_bead_name: True if user provided explicit bead name (skips name verification)
+
+        Raises:
+            SystemExit: When constraints violated and not explicitly relaxed
+        """
+        # 1. Name verification - ONLY when user didn't explicitly provide a bead name
+        # When user says "update myinput new_bead", the name change is intentional
+        if not explicit_bead_name:
+            mapped_name = workspace.get_input_bead_name(input.name)
+            if archive.name != mapped_name:
+                # Allow if --no-name (KIND_ONLY strategy) or --force
+                no_name_relaxed = (args.match_strategy == MatchStrategy.KIND_ONLY)
+                if not (no_name_relaxed or args.force):
+                    die(f'Name change detected: {mapped_name} → {archive.name}. '
+                        f'Use --no-name or --force to allow.')
+
+        # 2. Kind verification - ALWAYS check (unless explicitly relaxed)
+        if archive.kind != input.kind:
+            # Allow if --no-kind (NAME_ONLY strategy) or --force
+            no_kind_relaxed = (args.match_strategy == MatchStrategy.NAME_ONLY)
+            if not (no_kind_relaxed or args.force):
+                die(f'Kind mismatch: expected {input.kind}, got {archive.kind}. '
+                    f'Use --no-kind or --force to allow.')
+
+        # 3. Time verification (downgrade detection) - ALWAYS check (unless explicitly relaxed)
+        allows_downgrade = (
+            args.allow_downgrade or
+            args.force or
+            args.bead_offset or  # --prev/--next
+            args.bead_time != TIME_LATEST  # --time
+        )
+        if archive.freeze_time < input.freeze_time:
+            if not allows_downgrade:
+                die(f'Downgrade detected: {input.freeze_time} → {archive.freeze_time}. '
+                    f'Use --allow-downgrade or --force to allow.')
 
 
 def _update_input(workspace, input, archive):

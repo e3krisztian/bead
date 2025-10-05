@@ -1,7 +1,22 @@
 import os
 
+from bead.box import search
 from bead.workspace import Workspace
 from ..test_helpers import create_bead_family, create_bead_with_inputs
+
+
+def get_archive_path(box, bead_name):
+    """Get the file path of a bead archive by name.
+
+    Args:
+        box: Box fixture
+        bead_name: Name of the bead to find
+
+    Returns:
+        Path to the bead archive file
+    """
+    bead = search([box]).by_name(bead_name).newest()
+    return box.resolve(bead).location
 
 
 def test_update_unloaded_input_with_another_bead(shell, box, check, times, tmp_path_factory):
@@ -35,7 +50,8 @@ def test_update_with_hacked_bead_is_refused(shell, hacked_bead, box, check, time
     shell.bead('new', 'test_workspace')
     shell.cd('test_workspace')
     shell.bead('input', 'add', 'intelligence', 'test_bead')
-    shell.bead('input', 'update', 'intelligence', hacked_bead)
+    # Need --force since hacked_bead (file path) has different kind from test_bead
+    shell.bead('input', 'update', 'intelligence', hacked_bead, '--force')
     check.loaded('intelligence', 'test_bead')
     assert 'WARNING' in shell.stderr
 
@@ -49,10 +65,10 @@ def test_update_to_next_version(shell, box, check, times, tmp_path_factory):
     shell.bead('input', 'add', 'input1', 'history_bead', '--time', times.TS1)
     check.loaded('input1', times.TS1)
 
-    shell.bead('input', 'update', 'input1', '--next', '--no-name')
+    shell.bead('input', 'update', 'input1', '--next')
     check.loaded('input1', times.TS2)
 
-    shell.bead('input', 'update', 'input1', '-N', '--no-name')
+    shell.bead('input', 'update', 'input1', '-N')
     check.loaded('input1', times.TS3)
 
 
@@ -65,10 +81,10 @@ def test_update_to_previous_version(shell, box, check, times, tmp_path_factory):
     shell.bead('input', 'add', 'input1', 'history_bead', '--time', times.TS4)
     check.loaded('input1', times.TS4)
 
-    shell.bead('input', 'update', 'input1', '--prev', '--no-name')
+    shell.bead('input', 'update', 'input1', '--prev')
     check.loaded('input1', times.TS3)
 
-    shell.bead('input', 'update', 'input1', '-P', '--no-name')
+    shell.bead('input', 'update', 'input1', '-P')
     check.loaded('input1', times.TS2)
 
 
@@ -137,7 +153,7 @@ def test_update_default_name_and_kind_matching(shell, box, check, times, tmp_pat
 
 
 def test_update_explicit_bead_bypasses_matching_constraints(shell, box, check, times, tmp_path_factory):
-    """Test that explicit bead references bypass matching constraints."""
+    """Test that explicit bead name with --no-kind can bypass kind matching."""
     # Create initial bead
     create_bead_family(box, 'test_bead', [times.TS1], tmp_path_factory)
 
@@ -150,9 +166,10 @@ def test_update_explicit_bead_bypasses_matching_constraints(shell, box, check, t
     # Create a completely different bead with different name and kind
     create_bead_family(box, 'different_bead', [times.TS2], tmp_path_factory, kind='KIND:different')
 
-    # Go back to consumer and update with explicit bead reference
+    # Go back to consumer and update with explicit bead name
+    # Only --no-kind needed (name verification skipped for explicit names)
     shell.cd('consumer')
-    shell.bead('input', 'update', 'bead_a', 'different_bead')
+    shell.bead('input', 'update', 'bead_a', 'different_bead', '--no-kind')
     assert 'Loading new data' in shell.stdout
     # Verify the content was actually updated
     readme_content = (shell.cwd / 'input' / 'bead_a' / 'README').read_text()
@@ -370,11 +387,184 @@ def test_update_with_new_bead_name_respects_kind_matching(shell, box, check, tim
     workspace = Workspace(shell.cwd)
     assert workspace.get_input_bead_name('myinput') == 'new_bead'
 
-    # Reset to original state
-    shell.bead('input', 'update', 'myinput', 'original_bead')
+    # Reset to original state (downgrade, needs flag)
+    shell.bead('input', 'update', 'myinput', 'original_bead', '--allow-downgrade')
     check.loaded('myinput', times.TS1)
 
     # Update to 'new_bead' WITH --no-kind: should match by name only
     # Should find the newest new_bead regardless of kind (TS3 with KIND:different)
     shell.bead('input', 'update', 'myinput', 'new_bead', '--no-kind')
     check.loaded('myinput', times.TS3)
+
+
+def test_default_update_blocks_name_change(shell, box, check, times, tmp_path_factory):
+    """Test that default update (no explicit bead) blocks name changes unless --no-name is used."""
+    create_bead_family(box, 'original_name', [times.TS1], tmp_path_factory, kind='KIND:test')
+    create_bead_family(box, 'renamed', [times.TS3], tmp_path_factory, kind='KIND:test')
+
+    shell.bead('new', 'workspace')
+    shell.cd('workspace')
+    shell.bead('input', 'add', 'myinput', 'original_name')
+    check.loaded('myinput', times.TS1)
+
+    # Default update without explicit bead should succeed but show "already at requested version"
+    # (name mismatch prevents finding the renamed bead)
+    shell.bead('input', 'update', 'myinput')
+    assert 'already at requested version' in shell.stdout  # No compatible update found
+
+    # With --no-name should find renamed bead (newest by kind)
+    shell.bead('input', 'update', 'myinput', '--no-name')
+    check.loaded('myinput', times.TS3)
+
+
+def test_file_path_skips_name_check_but_respects_time_check(shell, box, check, times, tmp_path_factory):
+    """Test that file path with name mismatch skips name check but respects time check."""
+    create_bead_family(box, 'original', [times.TS3], tmp_path_factory, kind='KIND:test')
+    create_bead_family(box, 'renamed', [times.TS2], tmp_path_factory, kind='KIND:test')
+
+    shell.bead('new', 'workspace')
+    shell.cd('workspace')
+    shell.bead('input', 'add', 'myinput', 'original')
+
+    archive_path = get_archive_path(box, 'renamed')
+
+    # File path with different name should fail on downgrade (TS3 -> TS2)
+    shell.bead('input', 'update', 'myinput', str(archive_path), expect_failure=True)
+    assert 'Downgrade detected' in shell.stderr
+
+    # With --allow-downgrade should work (name check is skipped for file paths)
+    shell.bead('input', 'update', 'myinput', str(archive_path), '--allow-downgrade')
+    check.loaded('myinput', times.TS2)
+
+
+def test_explicit_bead_downgrade_blocked_without_flags(shell, box, check, times, tmp_path_factory):
+    """Test that explicit bead name with different bead that's older requires --allow-downgrade."""
+    # Create two different bead families
+    create_bead_family(box, 'newer_bead', [times.TS3], tmp_path_factory)
+    create_bead_family(box, 'older_bead', [times.TS1], tmp_path_factory)
+
+    shell.bead('new', 'workspace')
+    shell.cd('workspace')
+    shell.bead('input', 'add', 'myinput', 'newer_bead')
+    check.loaded('myinput', times.TS3)
+
+    # Try to update to older_bead (explicit name, but older timestamp) - should fail
+    shell.bead('input', 'update', 'myinput', 'older_bead', expect_failure=True)
+    assert 'Downgrade detected' in shell.stderr
+
+    # With --allow-downgrade should work
+    shell.bead('input', 'update', 'myinput', 'older_bead', '--allow-downgrade')
+    check.loaded('myinput', times.TS1)
+
+
+def test_downgrade_requires_allow_downgrade_or_force(shell, box, check, times, tmp_path_factory):
+    """Test that downgrades require --allow-downgrade, --force, or explicit --time."""
+    create_bead_family(box, 'versioned', [times.TS1, times.TS3], tmp_path_factory)
+
+    shell.bead('new', 'workspace')
+    shell.cd('workspace')
+    shell.bead('input', 'add', 'myinput', 'versioned', '--time', times.TS3)
+    check.loaded('myinput', times.TS3)
+
+    # Using --time with older timestamp implicitly allows downgrade
+    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS1)
+    check.loaded('myinput', times.TS1)
+
+    # Reset to TS3
+    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS3)
+    check.loaded('myinput', times.TS3)
+
+    # With --allow-downgrade and explicit --time should also work
+    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS1, '--allow-downgrade')
+    check.loaded('myinput', times.TS1)
+
+    # Reset to TS3 again
+    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS3)
+    check.loaded('myinput', times.TS3)
+
+    # With --force should also work
+    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS1, '--force')
+    check.loaded('myinput', times.TS1)
+
+
+def test_file_path_kind_mismatch_requires_force(shell, box, check, times, tmp_path_factory):
+    """Test that file path with kind mismatch can use --force to bypass kind verification."""
+    create_bead_family(box, 'original', [times.TS1], tmp_path_factory, kind='KIND:original')
+    create_bead_family(box, 'different_kind_bead', [times.TS3], tmp_path_factory, kind='KIND:different')
+
+    shell.bead('new', 'workspace')
+    shell.cd('workspace')
+    shell.bead('input', 'add', 'myinput', 'original')
+    check.loaded('myinput', times.TS1)
+
+    archive_path = get_archive_path(box, 'different_kind_bead')
+
+    # File path with kind mismatch should fail on kind verification (no downgrade, newer TS3 > TS1)
+    shell.bead('input', 'update', 'myinput', str(archive_path), expect_failure=True)
+    assert 'Kind mismatch' in shell.stderr
+
+    # With --force should bypass kind verification
+    shell.bead('input', 'update', 'myinput', str(archive_path), '--force')
+    check.loaded('myinput', times.TS3)
+
+
+def test_force_bypasses_all_constraints(shell, box, check, times, tmp_path_factory):
+    """Test that --force bypasses kind and time constraints."""
+    create_bead_family(box, 'original', [times.TS3], tmp_path_factory, kind='KIND:original')
+    create_bead_family(box, 'different_kind', [times.TS1], tmp_path_factory, kind='KIND:different')
+
+    shell.bead('new', 'workspace')
+    shell.cd('workspace')
+    shell.bead('input', 'add', 'myinput', 'original')
+    check.loaded('myinput', times.TS3)
+
+    # Update to completely different bead (different kind and older)
+    # --force should bypass both kind and time verification (--no-kind still needed for search)
+    shell.bead('input', 'update', 'myinput', 'different_kind', '--no-kind', '--force')
+    check.loaded('myinput', times.TS1)
+
+
+def test_prev_implicitly_allows_downgrade(shell, box, check, times, tmp_path_factory):
+    """Test that --prev implicitly allows downgrade."""
+    create_bead_family(box, 'versioned', [times.TS1, times.TS2, times.TS3], tmp_path_factory)
+
+    shell.bead('new', 'workspace')
+    shell.cd('workspace')
+    shell.bead('input', 'add', 'myinput', 'versioned', '--time', times.TS3)
+
+    # --prev should allow downgrade without --allow-downgrade
+    shell.bead('input', 'update', 'myinput', '--prev')
+    check.loaded('myinput', times.TS2)
+
+
+def test_file_path_respects_kind_and_time_constraints(shell, box, check, times, tmp_path_factory):
+    """Test that file path updates skip name check but respect kind/time constraints separately."""
+    # Create beads with different kinds
+    create_bead_family(box, 'original', [times.TS1], tmp_path_factory, kind='KIND:original')
+    create_bead_family(box, 'different_kind_newer', [times.TS3], tmp_path_factory, kind='KIND:different')
+    create_bead_family(box, 'different_kind_older', [times.TS1], tmp_path_factory, kind='KIND:different')
+
+    shell.bead('new', 'workspace')
+    shell.cd('workspace')
+    shell.bead('input', 'add', 'myinput', 'original')
+    check.loaded('myinput', times.TS1)
+
+    # Test 1: Kind mismatch blocks (even with newer timestamp - no downgrade)
+    archive_path_newer = get_archive_path(box, 'different_kind_newer')
+    shell.bead('input', 'update', 'myinput', str(archive_path_newer), expect_failure=True)
+    assert 'Kind mismatch' in shell.stderr
+
+    # With --no-kind should work (name check already skipped for file paths)
+    shell.bead('input', 'update', 'myinput', str(archive_path_newer), '--no-kind')
+    check.loaded('myinput', times.TS3)
+
+    # Test 2: Downgrade blocks (with same kind to isolate time constraint)
+    # Input is now at TS3 with KIND:different, so use same kind for downgrade test
+    create_bead_family(box, 'same_kind_older', [times.TS1], tmp_path_factory, kind='KIND:different')
+    archive_path_downgrade = get_archive_path(box, 'same_kind_older')
+    shell.bead('input', 'update', 'myinput', str(archive_path_downgrade), expect_failure=True)
+    assert 'Downgrade detected' in shell.stderr
+
+    # With --allow-downgrade should work (name check already skipped, kind matches)
+    shell.bead('input', 'update', 'myinput', str(archive_path_downgrade), '--allow-downgrade')
+    check.loaded('myinput', times.TS1)

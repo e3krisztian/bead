@@ -68,7 +68,7 @@ def test_input_mapping_preserved_after_deletion(shell, box, check, times, tmp_pa
     # Verify other mappings still work correctly
     shell.bead('input', 'update', 'input2')  # Should use preserve_beta mapping -> TS3
     check.loaded('input2', times.TS3)
-    shell.bead('input', 'update', 'input3')  # Should use preserve_alpha mapping -> TS1
+    shell.bead('input', 'update', 'input3', '--allow-downgrade')  # Should use preserve_alpha mapping -> TS1 (downgrade from TS5)
     check.loaded('input3', times.TS1)
 
 
