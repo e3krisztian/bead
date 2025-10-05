@@ -238,17 +238,28 @@ class CmdUpdate(Command):
             # Explicit bead reference (path or new bead by name)
             if args.bead_offset:
                 die('--prev/--next is not supported when an input is replaced with another bead')
-            try:
-                archive = resolve_bead(env, bead_ref_base, args.bead_time)
-            except LookupError:
-                die(f'Not a known bead name: {bead_ref_base}')
+
+            # If it's a file path, use it directly
+            if os.path.isfile(bead_ref_base):
+                from bead.ziparchive import ZipArchive
+                archive = ZipArchive(bead_ref_base)
+            else:
+                # Search for bead by explicit name using match strategy
+                try:
+                    archive = self._find_archive_for_update(
+                        env.get_boxes(), input, args.bead_time, offset=None,
+                        match_strategy=args.match_strategy, workspace=workspace,
+                        bead_name_override=bead_ref_base
+                    )
+                except LookupError:
+                    die(f'Not a known bead name: {bead_ref_base}')
 
         _update_input(workspace, input, archive)
         # Update mapping when user specifies explicit bead (not when using existing mapping)
         if bead_ref_base is not SAME_BEAD_NEWEST_VERSION:
             workspace.set_input_bead_name(input_nick, archive.name)
 
-    def _find_archive_for_update(self, boxes, input, time, offset, match_strategy, workspace=None):
+    def _find_archive_for_update(self, boxes, input, time, offset, match_strategy, workspace=None, bead_name_override=None):
         """Find and resolve archive for input update based on matching strategy.
 
         Args:
@@ -258,6 +269,7 @@ class CmdUpdate(Command):
             offset: Version offset (1 for --next, -1 for --prev, 0/None for newest)
             match_strategy: MatchStrategy enum value
             workspace: Workspace (optional, for input name mapping)
+            bead_name_override: If provided, use this name instead of input/mapped name
 
         Returns:
             Archive object ready for loading
@@ -267,10 +279,13 @@ class CmdUpdate(Command):
         """
         query = search(boxes)
 
-        # Use mapped bead name if available, otherwise use input name
-        bead_name = input.name
-        if workspace:
+        # Determine which bead name to search for
+        if bead_name_override:
+            bead_name = bead_name_override
+        elif workspace:
             bead_name = workspace.get_input_bead_name(input.name)
+        else:
+            bead_name = input.name
 
         if match_strategy == MatchStrategy.NAME_ONLY:
             query = query.by_name(bead_name)

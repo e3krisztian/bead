@@ -344,3 +344,37 @@ def test_update_with_nonexistent_bead_shows_error(shell, box, times, tmp_path_fa
 
     # Should show error message, not crash with unhandled exception
     assert 'ERROR' in shell.stderr or 'not found' in shell.stderr.lower()
+
+
+def test_update_with_new_bead_name_respects_kind_matching(shell, box, check, times, tmp_path_factory):
+    """Test that updating with new bead name respects kind unless --no-kind is given."""
+    # Create original bead with KIND:original
+    create_bead_family(box, 'original_bead', [times.TS1], tmp_path_factory, kind='KIND:original')
+
+    # Create two beads with same name 'new_bead' but different kinds
+    create_bead_family(box, 'new_bead', [times.TS2], tmp_path_factory, kind='KIND:original')  # Matching kind
+    create_bead_family(box, 'new_bead', [times.TS3], tmp_path_factory, kind='KIND:different')  # Different kind, newer
+
+    # Create workspace with input from original_bead
+    shell.bead('new', 'consumer')
+    shell.cd('consumer')
+    shell.bead('input', 'add', 'myinput', 'original_bead')
+    check.loaded('myinput', times.TS1)
+
+    # Update to 'new_bead' WITHOUT --no-kind: should match by name AND kind
+    # Should find new_bead with KIND:original (TS2), not the newer one with KIND:different (TS3)
+    shell.bead('input', 'update', 'myinput', 'new_bead')
+    check.loaded('myinput', times.TS2)
+
+    # Verify the mapping was updated to new_bead
+    workspace = Workspace(shell.cwd)
+    assert workspace.get_input_bead_name('myinput') == 'new_bead'
+
+    # Reset to original state
+    shell.bead('input', 'update', 'myinput', 'original_bead')
+    check.loaded('myinput', times.TS1)
+
+    # Update to 'new_bead' WITH --no-kind: should match by name only
+    # Should find the newest new_bead regardless of kind (TS3 with KIND:different)
+    shell.bead('input', 'update', 'myinput', 'new_bead', '--no-kind')
+    check.loaded('myinput', times.TS3)
