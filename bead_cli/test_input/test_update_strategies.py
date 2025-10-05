@@ -329,3 +329,18 @@ def test_input_mapping_preserved_during_navigation(shell, box, check, times, tmp
     check.loaded('nav_input', times.TS3)
     shell.bead('input', 'update', 'nav_input', '--prev')  # Should go from TS3 back to TS2
     check.loaded('nav_input', times.TS2)
+
+
+def test_update_with_nonexistent_bead_shows_error(shell, box, times, tmp_path_factory):
+    """Test that updating with a non-existent bead name shows proper error."""
+    create_bead_family(box, 'existing_bead', [times.TS1], tmp_path_factory)
+
+    shell.bead('new', 'test_workspace')
+    shell.cd('test_workspace')
+    shell.bead('input', 'add', 'myinput', 'existing_bead')
+
+    # Try to update with non-existent bead - should fail gracefully
+    shell.bead('input', 'update', 'myinput', 'nonexistent_bead', expect_failure=True)
+
+    # Should show error message, not crash with unhandled exception
+    assert 'ERROR' in shell.stderr or 'not found' in shell.stderr.lower()

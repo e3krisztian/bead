@@ -238,15 +238,15 @@ class CmdUpdate(Command):
             # Explicit bead reference (path or new bead by name)
             if args.bead_offset:
                 die('--prev/--next is not supported when an input is replaced with another bead')
-            archive = resolve_bead(env, bead_ref_base, args.bead_time)
+            try:
+                archive = resolve_bead(env, bead_ref_base, args.bead_time)
+            except LookupError:
+                die(f'Not a known bead name: {bead_ref_base}')
 
-        if archive:
-            _update_input(workspace, input, archive)
-            # Update mapping when user specifies explicit bead (not when using existing mapping)
-            if bead_ref_base is not SAME_BEAD_NEWEST_VERSION:
-                workspace.set_input_bead_name(input_nick, archive.name)
-        else:
-            die('Can not find matching bead')
+        _update_input(workspace, input, archive)
+        # Update mapping when user specifies explicit bead (not when using existing mapping)
+        if bead_ref_base is not SAME_BEAD_NEWEST_VERSION:
+            workspace.set_input_bead_name(input_nick, archive.name)
 
     def _find_archive_for_update(self, boxes, input, time, offset, match_strategy, workspace=None):
         """Find and resolve archive for input update based on matching strategy.
