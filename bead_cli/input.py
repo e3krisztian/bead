@@ -188,16 +188,17 @@ class CmdUpdate(Command):
             die('Too many arguments')
         if args.bead_offset:
             die("--next, --prev can not be specified when updating all inputs")
-        
+
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
-        
+
         workspace = get_workspace(args)
         for input in workspace.inputs:
             try:
-                bead = self._search_for_update(env.get_boxes(), input, args, workspace).at_or_older(args.bead_time).newest()
-                # Resolve bead to archive for _update_input
-                archive = resolve(env.get_boxes(), bead)
+                archive = self._find_archive_for_update(
+                    env.get_boxes(), input, args.bead_time, offset=None,
+                    match_strategy=args.match_strategy, workspace=workspace
+                )
             except LookupError:
                 if workspace.is_loaded(input.name):
                     print(
@@ -217,35 +218,28 @@ class CmdUpdate(Command):
         if input is None:
             die(f'Workspace does not have input "{input_nick}"'
                 ' - did you want to add it as a new one?')
-        
+
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
-        
+
         if bead_ref_base is SAME_BEAD_NEWEST_VERSION:
+            # Update from existing input
             if args.bead_offset and args.bead_time is not TIME_LATEST:
                 die('You can give either --prev/--next or --time, not both')
 
-            boxes = env.get_boxes()
             try:
-                if args.bead_offset:
-                    # handle --prev --next
-                    query = self._search_for_update(boxes, input, args, workspace)
-                    if args.bead_offset == 1:
-                        bead = query.newer_than(input.freeze_time).oldest()  # next = oldest of newer beads
-                    else:
-                        bead = query.older_than(input.freeze_time).newest()  # prev = newest of older beads
-                else:
-                    # --time
-                    bead = self._search_for_update(boxes, input, args, workspace).at_or_older(args.bead_time).newest()
-                # Resolve bead to archive
-                archive = resolve(boxes, bead)
+                archive = self._find_archive_for_update(
+                    env.get_boxes(), input, args.bead_time, args.bead_offset,
+                    match_strategy=args.match_strategy, workspace=workspace
+                )
             except LookupError:
                 self._die_no_match_found(input, args)
         else:
-            # path or new bead by name - same as input add, edit
+            # Explicit bead reference (path or new bead by name)
             if args.bead_offset:
                 die('--prev/--next is not supported when an input is replaced with another bead')
             archive = resolve_bead(env, bead_ref_base, args.bead_time)
+
         if archive:
             _update_input(workspace, input, archive)
             # Update mapping when user specifies explicit bead (not when using existing mapping)
@@ -254,8 +248,23 @@ class CmdUpdate(Command):
         else:
             die('Can not find matching bead')
 
-    def _search_for_update(self, boxes, input, args, workspace=None):
-        """Create search query based on matching strategy."""
+    def _find_archive_for_update(self, boxes, input, time, offset, match_strategy, workspace=None):
+        """Find and resolve archive for input update based on matching strategy.
+
+        Args:
+            boxes: List of boxes to search
+            input: InputSpec from workspace
+            time: Timestamp constraint (for newest search)
+            offset: Version offset (1 for --next, -1 for --prev, 0/None for newest)
+            match_strategy: MatchStrategy enum value
+            workspace: Workspace (optional, for input name mapping)
+
+        Returns:
+            Archive object ready for loading
+
+        Raises:
+            LookupError: When no matching bead is found
+        """
         query = search(boxes)
 
         # Use mapped bead name if available, otherwise use input name
@@ -263,13 +272,28 @@ class CmdUpdate(Command):
         if workspace:
             bead_name = workspace.get_input_bead_name(input.name)
 
-        if args.match_strategy == MatchStrategy.NAME_ONLY:
-            return query.by_name(bead_name)
-        elif args.match_strategy == MatchStrategy.KIND_ONLY:
-            return query.by_kind(input.kind)
-        elif args.match_strategy == MatchStrategy.NAME_AND_KIND:
-            return query.by_name(bead_name).by_kind(input.kind)
-        raise ValueError
+        if match_strategy == MatchStrategy.NAME_ONLY:
+            query = query.by_name(bead_name)
+        elif match_strategy == MatchStrategy.KIND_ONLY:
+            query = query.by_kind(input.kind)
+        elif match_strategy == MatchStrategy.NAME_AND_KIND:
+            query = query.by_name(bead_name).by_kind(input.kind)
+        else:
+            raise ValueError(f"Unknown match strategy: {match_strategy}")
+
+        # Apply time/offset constraint and get bead
+        if offset == 1:
+            # --next: oldest of newer beads
+            bead = query.newer_than(input.freeze_time).oldest()
+        elif offset == -1:
+            # --prev: newest of older beads
+            bead = query.older_than(input.freeze_time).newest()
+        else:
+            # newest at or before time
+            bead = query.at_or_older(time).newest()
+
+        # Resolve bead to archive
+        return resolve(boxes, bead)
 
     def _get_match_description(self, args):
         """Get human-readable description of current matching mode."""
