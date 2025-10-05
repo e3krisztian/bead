@@ -101,3 +101,68 @@ D: input map system to decouple input names from source bead names
    - Supports mapping inputs to differently-named beads of same kind
    - Maintains backward compatibility (archives without input_map work seamlessly)
    - Preserves mappings across save/edit cycles for development continuity
+
+
+P: input update safety - prevent accidental constraint violations during updates
+D: three-level verification system with explicit bypass flags
+   Problem context:
+   - Search filters beads, but bugs could bypass constraints
+   - Users need safety checks before actual data replacement
+   - Different update modes need consistent safety guarantees
+   - Clear user intent (file paths, explicit names) should skip verification
+
+   Verification architecture:
+   - Defense-in-depth: verification is redundant with search but catches bugs
+   - Three independent constraints: name, kind, time (downgrade)
+   - Each constraint can be relaxed independently or all bypassed with --force
+   - Verification runs after search, before actual input update
+
+   Name verification:
+   - Only runs when no explicit bead name given (default update mode)
+   - Skipped for file paths and explicit bead names (clear user intent)
+   - Checks archive.name matches workspace.get_input_bead_name(input.name)
+   - Can be relaxed with --no-name or --force
+   - Error message: "Name change detected: old → new. Use --no-name or --force to allow."
+
+   Kind verification:
+   - Always runs (no implicit bypass)
+   - Checks archive.kind matches input.kind
+   - Can be relaxed with --no-kind or --force
+   - Error message: "Kind mismatch: expected KIND1, got KIND2. Use --no-kind or --force to allow."
+
+   Time verification (downgrade detection):
+   - Prevents updating to older versions by default
+   - Checks archive.freeze_time >= input.freeze_time
+   - Implicitly allowed by temporal navigation: --prev, --next, --time
+   - Can be explicitly allowed with --allow-downgrade or --force
+   - Error message: "Downgrade detected: TIME1 → TIME2. Use --allow-downgrade or --force to allow."
+
+   Bypass flags:
+   - --force: Bypass ALL verifications (name, kind, time)
+   - --allow-downgrade: Bypass only time verification
+   - --no-kind/--no-name: Relax search AND verification for that constraint
+
+   Implementation location: bead_cli/input.py:357-402
+   - _verify_archive_constraints(input, archive, args, workspace, explicit_bead_name)
+   - Called after search succeeds, before _update_input()
+   - Uses match_strategy enum to check --no-kind/--no-name state
+   - explicit_bead_name parameter controls name verification skip
+
+   Key design insight: File paths indicate clear user intent
+   - File path given → user explicitly chose this specific archive
+   - Explicit bead name given → user explicitly requested this bead
+   - Default update (no args) → verify name matches to prevent surprises
+   - This prevents verification from being overly restrictive
+
+   Test isolation principle:
+   - When testing one constraint failure, relax others to avoid false positives
+   - Example: kind mismatch test uses newer timestamp (no downgrade)
+   - Example: downgrade test uses same kind (no kind mismatch)
+   - Ensures each test verifies exactly one constraint
+
+   Benefits:
+   - Catches search bugs before data replacement
+   - Consistent safety across all update modes
+   - Clear error messages suggest appropriate flags
+   - File paths and explicit names bypass unnecessary checks
+   - Each constraint independently relaxable for flexibility

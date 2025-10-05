@@ -1,3 +1,4 @@
+import glob
 import os
 
 from bead.infra.fs import rmtree
@@ -221,3 +222,66 @@ def test_status_displays_input_information_correctly(shell, box, check, times, t
     assert 'input2' in shell.stdout
     assert times.TS1 in shell.stdout
     assert times.TS2 in shell.stdout
+
+
+def test_load_warns_when_bead_found_under_different_name(shell, box, check, times, tmp_path_factory):
+    """
+    Test that load warns when a bead is found by content_id but under a different name.
+
+    Scenario:
+    1. Create bead "original_name"
+    2. Create workspace with input from "original_name"
+    3. Rename archive to "different_name" (same content_id)
+    4. Load input -> should succeed but warn about name mismatch
+    """
+    # 1. Create bead "original_name"
+    create_bead_family(box, 'original_name', [times.TS1], tmp_path_factory)
+
+    # 2. Create workspace with input from "original_name"
+    create_bead_with_inputs(
+        shell, box, 'test_workspace',
+        {'test_input': 'original_name'},
+        times.TS2, tmp_path_factory
+    )
+
+    # Get the content_id and archive path
+    shell.bead('edit', 'test_workspace')
+    shell.cd('test_workspace')
+    with shell.environment:
+        ws = Workspace('.')
+        input_spec = ws.get_input('test_input')
+        original_content_id = input_spec.content_id
+
+    # Unload the input so we can test loading it fresh
+    shell.bead('input', 'unload', 'test_input')
+
+    # 3. Simulate renaming: move/rename the archive file
+    original_archives = glob.glob(str(box.directory / f'original_name_{times.TS1}.zip'))
+    assert len(original_archives) == 1, "Should find exactly one archive"
+    original_archive_path = original_archives[0]
+
+    # Rename to different name (simulating a renamed bead with same content)
+    new_archive_path = str(box.directory / f'different_name_{times.TS1}.zip')
+    os.rename(original_archive_path, new_archive_path)
+
+    # Use CLI to reindex the box (this will remove the old entry and add the new one)
+    shell.bead('box', 'index', box.name)
+
+    # Verify: should find by content_id under different name
+    try:
+        found_bead = box.search().by_content_id(original_content_id).first()
+        assert found_bead.name == 'different_name', f"Should find bead under new name, got {found_bead.name}"
+    except LookupError:
+        raise AssertionError("Should be able to find bead by content_id")
+
+    # 4. Try to load - should succeed but warn
+    shell.bead('input', 'load', 'test_input')
+
+    # Should succeed in loading
+    with shell.environment:
+        assert Workspace('.').is_loaded('test_input'), "Input should be loaded"
+
+    # Should warn about name mismatch
+    assert 'WARNING' in shell.stderr, "Should show warning"
+    assert 'original_name' in shell.stderr, "Should mention expected name"
+    assert 'different_name' in shell.stderr, "Should mention actual name"

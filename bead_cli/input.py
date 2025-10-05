@@ -448,18 +448,28 @@ def _load(env, workspace, input):
     assert input is not None
     if not workspace.is_loaded(input.name):
         content_id = input.content_id
-        archive = None
-        for box in env.get_boxes():
-            # Only try to find by exact content_id match
+        expected_bead_name = workspace.get_input_bead_name(input.name)
+        boxes = env.get_boxes()
+
+        # First attempt: search by both name and content_id
+        try:
+            bead = search(boxes).by_name(expected_bead_name).by_content_id(content_id).first()
+            archive = resolve(boxes, bead)
+        except LookupError:
+            # Second attempt: search by content_id only
             try:
-                bead = box.search().by_content_id(content_id).first()
-                archive = box.resolve(bead)
-                break
+                bead = search(boxes).by_content_id(content_id).first()
+                archive = resolve(boxes, bead)
+                # Warn about name mismatch
+                if bead.name != expected_bead_name:
+                    warning(
+                        f'Input "{input.name}" expected bead "{expected_bead_name}" '
+                        f'but found under name "{bead.name}"'
+                    )
             except LookupError:
-                continue
-        if archive is None:
-            warning(f'Could not find bead for input "{input.name}" - not loaded!')
-            return
+                warning(f'Could not find bead for input "{input.name}" - not loaded!')
+                return
+
         _check_load_with_feedback(workspace, input.name, archive)
     else:
         print(f'"{input.name}" is already loaded - skipping')
