@@ -4,6 +4,7 @@ Functions to persist python structures or load them.
 
 import io
 import json
+from typing import Any
 
 # json is used for serializing objects for persistence as it is
 # - in the standard library from >=2.6 (including 3.*)
@@ -16,7 +17,7 @@ import json
 ReadError = json.JSONDecodeError
 
 
-JSON_SAVE_OPTIONS = dict(
+JSON_SAVE_OPTIONS: dict[str, Any] = dict(
     indent=4,
     sort_keys=True,
     ensure_ascii=True,
