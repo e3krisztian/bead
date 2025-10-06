@@ -1,7 +1,6 @@
 import datetime
 import string
 from typing import Dict
-from typing import Optional
 
 from bead.meta import InputSpec
 from bead_cli.web.dummy import Dummy
@@ -44,7 +43,7 @@ class Sketcher:
     def compile(self, dag: str):
         # 'a1 -a-> b2 -> c4 a2 -another-a-> b2'
         label = None
-        src: Optional[Dummy] = None
+        src: Dummy | None = None
         for fragment in dag.split():
             if fragment.startswith("-"):
                 label = fragment.rstrip(">").strip("-").strip(":")

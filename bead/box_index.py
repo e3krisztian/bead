@@ -6,7 +6,7 @@ import json
 from contextlib import contextmanager
 from dataclasses import dataclass
 from bead.infra.fs import Path
-from typing import Callable, Generator, Optional
+from typing import Callable, Generator
 
 from .bead import Bead
 from .box_query import QueryCondition
@@ -26,7 +26,7 @@ class IndexingProgress:
     processed: int                          # Number of archives processed so far
     path: Path                              # The path of the archive just processed
     error_count: int                        # Total number of errors encountered so far
-    latest_error: Optional['IndexingError'] # The error for the current `path`, if any
+    latest_error: 'IndexingError | None' # The error for the current `path`, if any
 
 
 @dataclass(frozen=True)

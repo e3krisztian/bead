@@ -2,9 +2,12 @@ import os.path
 from enum import Enum
 from typing import TYPE_CHECKING, Literal, NoReturn, overload
 
+from bead.bead import Archive
+from bead.box import Box
 from bead.box import resolve
 from bead.box import search
 from bead.exceptions import InvalidArchive
+from bead.meta import InputSpec
 from bead.workspace import Workspace
 
 from . import arg_help
@@ -254,7 +257,9 @@ class CmdUpdate(Command):
         if bead_ref_base is not SAME_BEAD_NEWEST_VERSION:
             workspace.set_input_bead_name(input_nick, archive.name)
 
-    def _acquire_archive_for_existing_input(self, boxes, input, args, workspace):
+    def _acquire_archive_for_existing_input(
+        self, boxes: list[Box], input: InputSpec, args, workspace: Workspace
+    ) -> Archive:
         """Acquire archive by updating existing input to newer version."""
         if args.bead_offset and args.bead_time is not TIME_LATEST:
             die('You can give either --prev/--next or --time, not both')
@@ -267,7 +272,7 @@ class CmdUpdate(Command):
         except LookupError:
             self._no_match_found(input, args, fatal=True)
 
-    def _acquire_archive_from_file(self, bead_ref_base, args):
+    def _acquire_archive_from_file(self, bead_ref_base, args) -> Archive:
         """Acquire archive directly from file path."""
         if args.bead_offset:
             die('--prev/--next is not supported when an input is replaced with another bead')
@@ -275,7 +280,9 @@ class CmdUpdate(Command):
         from bead.ziparchive import ZipArchive
         return ZipArchive(bead_ref_base)
 
-    def _acquire_archive_by_name(self, boxes, input, bead_ref_base, args, workspace):
+    def _acquire_archive_by_name(
+        self, boxes: list[Box], input: InputSpec, bead_ref_base, args, workspace: Workspace
+    ) -> Archive:
         """Acquire archive by searching for explicitly named bead."""
         if args.bead_offset:
             die('--prev/--next is not supported when an input is replaced with another bead')
@@ -289,7 +296,16 @@ class CmdUpdate(Command):
         except LookupError:
             die(f'Not a known bead name: {bead_ref_base}')
 
-    def _find_archive_for_update(self, boxes, input, time, offset, match_strategy, workspace=None, bead_name_override=None):
+    def _find_archive_for_update(
+        self,
+        boxes: list[Box],
+        input: InputSpec,
+        time,
+        offset: int | None,
+        match_strategy: MatchStrategy,
+        workspace: Workspace | None = None,
+        bead_name_override: str | None = None
+    ) -> Archive:
         """Find and resolve archive for input update based on matching strategy.
 
         Args:
@@ -354,13 +370,17 @@ class CmdUpdate(Command):
             msg += '. Try --no-kind or --no-name to relax matching'
         (die if fatal else warning)(msg)
 
-    def _verify_archive_constraints(self, input, archive, args, workspace, explicit_bead_name=False):
+    def _verify_archive_constraints(
+        self, input: InputSpec, archive: Archive, args, workspace: Workspace, explicit_bead_name: bool = False
+    ) -> None:
         """Verify archive meets safety constraints (name, kind, time)."""
         self._verify_name_constraint(input, archive, args, workspace, explicit_bead_name)
         self._verify_kind_constraint(input, archive, args)
         self._verify_time_constraint(input, archive, args)
 
-    def _verify_name_constraint(self, input, archive, args, workspace, explicit_bead_name):
+    def _verify_name_constraint(
+        self, input: InputSpec, archive: Archive, args, workspace: Workspace, explicit_bead_name: bool
+    ) -> None:
         """Verify archive name matches expected bead name.
 
         Skipped when user explicitly provides a bead name (intentional change).
@@ -376,7 +396,7 @@ class CmdUpdate(Command):
                 die(f'Name change detected: {mapped_name} → {archive.name}. '
                     f'Use --no-name or --force to allow.')
 
-    def _verify_kind_constraint(self, input, archive, args):
+    def _verify_kind_constraint(self, input: InputSpec, archive: Archive, args) -> None:
         """Verify archive kind matches input kind."""
         if archive.kind != input.kind:
             # Allow if --no-kind (NAME_ONLY strategy) or --force
@@ -385,7 +405,7 @@ class CmdUpdate(Command):
                 die(f'Kind mismatch: expected {input.kind}, got {archive.kind}. '
                     f'Use --no-kind or --force to allow.')
 
-    def _verify_time_constraint(self, input, archive, args):
+    def _verify_time_constraint(self, input: InputSpec, archive: Archive, args) -> None:
         """Verify archive is not a downgrade (unless explicitly allowed)."""
         allows_downgrade = (
             args.allow_downgrade or
@@ -399,7 +419,7 @@ class CmdUpdate(Command):
                     f'Use --allow-downgrade or --force to allow.')
 
 
-def _update_input(workspace, input, archive):
+def _update_input(workspace: Workspace, input: InputSpec, archive: Archive) -> None:
     if workspace.is_loaded(input.name) and input.content_id == archive.content_id:
         assert input.kind == archive.kind
         assert input.freeze_time == archive.freeze_time
@@ -441,7 +461,7 @@ class CmdLoad(Command):
             _load(env, workspace, workspace.get_input(input_nick))
 
 
-def _load(env, workspace, input):
+def _load(env: 'Environment', workspace: Workspace, input: InputSpec) -> None:
     assert input is not None
     if not workspace.is_loaded(input.name):
         content_id = input.content_id
@@ -472,7 +492,7 @@ def _load(env, workspace, input):
         print(f'"{input.name}" is already loaded - skipping')
 
 
-def _check_load_with_feedback(workspace: Workspace, input_nick, archive):
+def _check_load_with_feedback(workspace: Workspace, input_nick: str, archive: Archive) -> None:
     try:
         verify_with_feedback(archive)
     except InvalidArchive:
