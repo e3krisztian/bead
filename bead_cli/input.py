@@ -230,8 +230,9 @@ class CmdUpdate(Command):
         input_nick = args.input_nick
         bead_ref_base = args.bead_ref_base
         workspace = get_workspace(args)
-        input = workspace.get_input(input_nick)
-        if input is None:
+        try:
+            input = workspace.get_input(input_nick)
+        except LookupError:
             die(f'Workspace does not have input "{input_nick}"'
                 ' - did you want to add it as a new one?')
 
@@ -456,9 +457,11 @@ class CmdLoad(Command):
             else:
                 warning('No inputs defined to load.')
         else:
-            if not workspace.has_input(input_nick):
+            try:
+                input = workspace.get_input(input_nick)
+            except LookupError:
                 die(f'No input with name {input_nick}')
-            _load(env, workspace, workspace.get_input(input_nick))
+            _load(env, workspace, input)
 
 
 def _load(env: 'Environment', workspace: Workspace, input: InputSpec) -> None:

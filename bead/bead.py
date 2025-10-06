@@ -37,10 +37,11 @@ class Bead:
     def freeze_time(self):
         return time_from_timestamp(self.freeze_time_str)
 
-    def get_input(self, name):
+    def get_input(self, name) -> InputSpec:
         for input in self.inputs:
             if name == input.name:
                 return input
+        raise LookupError(f'Input "{name}" not found')
 
 
 class Archive(Bead, metaclass=ABCMeta):
