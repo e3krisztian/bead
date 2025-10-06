@@ -93,6 +93,8 @@ order_by_type=true
 group_by_package=true
 
 [tool.pyright]
+venvPath = "."
+venv = ".venv.Linux"
 reportUnusedCallResult = false
 reportUnknownParameterType = false
 reportUnknownVariableType = false
