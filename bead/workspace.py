@@ -7,8 +7,7 @@ import zipfile
 
 from . import layouts
 from . import meta
-from .bead import Archive
-from .bead import Bead
+from .bead import Archive, Computation
 from .infra import persistence
 from .infra import securehash
 from .infra.fs import Path
@@ -18,14 +17,20 @@ from .infra.fs import make_readonly
 from .infra.fs import make_writable
 from .infra.fs import rmtree
 from .infra.fs import write_file
-from .infra.timestamp import timestamp
 
 
 # generated with `uuidgen -t`
 META_VERSION = 'aaa947a6-1f7a-11e6-ba3a-0021cc73492e'
 
 
-class Workspace(Bead):
+class Workspace(Computation):
+    '''
+    Mutable workspace for developing a computation.
+
+    Like a kitchen workspace where you're actively working with
+    ingredients (inputs) and code to produce outputs. The computation
+    can be modified, rerun, and eventually frozen into a Bead.
+    '''
 
     directory: Path
 
@@ -66,22 +71,6 @@ class Workspace(Bead):
     @property
     def inputs(self):
         return tuple(meta.parse_inputs(self.meta))
-
-    # faked Bead properties
-    @property
-    def content_id(self):
-        # note, that it is not a valid, unique
-        # content_id for referencing
-        # however it is easily recognisable on graphs
-        return f'<WORKSPACE {self.directory}>'
-
-    @property
-    def freeze_time_str(self):
-        return timestamp()
-
-    @property
-    def box_name(self):
-        return '<UNSAVED>'
 
     # workspace constructors
     def create(self, kind):

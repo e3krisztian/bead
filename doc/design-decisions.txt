@@ -166,3 +166,41 @@ D: three-level verification system with explicit bypass flags
    - Clear error messages suggest appropriate flags
    - File paths and explicit names bypass unnecessary checks
    - Each constraint independently relaxable for flexibility
+
+
+P: naming for computation lifecycle stages
+D: Computation base class with Workspace and Bead subclasses
+   Core insight:
+   - A bead represents a frozen computation: output = code(*inputs)
+   - Workspace and frozen bead are the same computation in different lifecycle stages
+   - Both share core identity: kind (what type), name (which one), inputs (dependencies)
+
+   Recipe analogy:
+   - Computation = Recipe identity: what dish (kind), dish name (name), ingredients list (inputs)
+   - Workspace = Kitchen workspace: actively cooking with ingredients and recipe steps
+   - Bead = Finished dish: frozen result with timestamp and provenance
+
+   Class hierarchy:
+   ```
+   Computation:
+     - kind, name, inputs: Core computation identity
+     - get_input(name): Helper to look up input by name
+
+   Workspace(Computation):
+     - Mutable development environment
+     - Attributes can change until frozen
+
+   Bead(Computation):
+     - Immutable frozen snapshot
+     - Adds: content_id, freeze_time_str, box_name for provenance
+   ```
+
+   "Is-a" test validation:
+   - ✓ "Workspace is a Computation" - correct
+   - ✓ "Bead is a Computation" - correct
+   - Attributes flow: Workspace → freeze → Bead
+
+   Benefits:
+   - Natural lifecycle progression: develop → freeze → archive
+   - Clear semantic distinction: mutable vs immutable
+   - Recipe analogy provides intuitive mental model
