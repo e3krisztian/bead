@@ -130,14 +130,19 @@ class Environment:
 
     def get_box(self, name):
         '''
-        Return box having :name or None.
+        Return box having :name or raise LookupError if not found.
         '''
         for box in self.get_all_boxes():
             if box.name == name:
                 return box
+        raise LookupError(f'Box not found: {name}')
 
     def is_known_box(self, name):
-        return self.get_box(name) is not None
+        try:
+            self.get_box(name)
+            return True
+        except LookupError:
+            return False
 
     def _set_box_enabled(self, name, is_enabled):
         boxes = self.get_all_boxes()

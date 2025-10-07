@@ -112,8 +112,9 @@ class CmdSave(Command):
                     '(more than one boxes exists)')
             box = boxes[0]
         else:
-            box = env.get_box(box_name)
-            if box is None:
+            try:
+                box = env.get_box(box_name)
+            except LookupError:
                 die(f'Unknown box: {box_name}')
         try:
             location = box.store(workspace, timestamp())

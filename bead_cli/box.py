@@ -254,8 +254,9 @@ class CmdIndex(Command):
         if args.box_name:
             # Specific box requested - use normal pattern like other CLI commands
             box_name = args.box_name
-            box = env.get_box(box_name)
-            if box is None:
+            try:
+                box = env.get_box(box_name)
+            except LookupError:
                 print(f'ERROR: Unknown box "{box_name}"')
                 return
 
