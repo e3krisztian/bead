@@ -21,7 +21,7 @@ from .cmdparse import Parser
 from .environment import Environment
 from .migration import migrate_config_if_needed
 import platformdirs
-from .web import commands as web
+from .graph import commands as graph_commands
 
 
 def output_of(shell_cmd: str):
@@ -65,7 +65,7 @@ def make_argument_parser(defaults):
             ('discard', workspace.CmdDiscard, 'Delete workspace.'),
             ('save', workspace.CmdSave, 'Save workspace in a box.'),
             ('status', workspace.CmdStatus, 'Show workspace information.'),
-            ('web', web.CmdWeb, 'Manage/visualize the big picture - connections between beads.'),
+            ('graph', graph_commands.CmdGraph, 'Visualize dependency graph and connections between beads.'),
             ('nuke', workspace.CmdDiscard, 'Delete workspace. (same as discard)'),
             ('version', CmdVersion, 'Show program version.'),
         ))

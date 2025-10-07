@@ -10,7 +10,7 @@ from bead.box import search
 from bead.infra.fs import Path
 from bead.infra.fs import write_file
 
-from . import sketch as web_sketch
+from . import sketch as graph_sketch
 from ..cmdparse import Command
 from ..common import die
 from .dummy import Dummy
@@ -22,54 +22,77 @@ if TYPE_CHECKING:
     from ..environment import Environment
 
 
-class CmdWeb(Command):
+class CmdGraph(Command):
     '''
-    Visualize the big picture.
+    Visualize dependency graph and connections between beads.
 
-    Capture/load/filter/save/visualize connections between all available
-    computation archives.
+    This command processes a graph of beads through a pipeline of sub-commands.
+    Each sub-command transforms the graph and passes it to the next command.
 
-    Sub-commands describe a processing pipe-line, where each sub command
-    work on an input graph, and yield an output graph.
+    By default, the pipeline starts by scanning all enabled boxes and loading
+    all beads. Use "load" to skip scanning and start from a saved graph.
 
-    The processing pipe-line by default starts off with the graph of
-    available archives and their input connections clustered by name.
-    (see also "load" below for an alternative, speedier initial graph)
+    PIPELINE COMMANDS:
 
-    Available pipe-line commands:
-
-    load filename.web
-        Throw away current graph and load previously exported web from file.
-        When it is the first command, discovering all archives is skipped.
+    load <filename.web>
+        Load previously saved graph from file (skips box scanning)
 
     / [source-name[s]] .. [sink-name[s]] /
-        Filters computations by following input connections:
-        - if the set of sources is not empty:
-          drop all that do not have any of the sources as direct/indirect
-          inputs.
-        - if the set of sinks is not empty:
-          drop all that are not direct/indirect inputs to any of the sinks.
+        Filter by following input connections:
+        - sources: keep only beads reachable from these clusters
+        - sinks: keep only beads that lead to these clusters
+        - use ".." to separate sources from sinks
+        - use "/" to end the filter expression
 
-    save filename.web
-        Save current web metadata to file - ("load" above is one use case).
+    save <filename.web>
+        Save current graph metadata to file for later reuse
 
-    png filename.png
-        Save connections as image in PNG format
+    dot <filename.dot>
+        Export graph in GraphViz DOT format
 
-    svg filename.svg
-        Save connections as image in SVG format
+    png <filename.png>
+        Render graph as PNG image (requires graphviz)
+
+    svg <filename.svg>
+        Render graph as SVG image (requires graphviz)
 
     color
-        Assign freshness to nodes, which are visualized as colors.
-        Answers the question: "Are all input at the latest version?"
+        Assign freshness colors based on input versions:
+        - green: all inputs are up-to-date
+        - orange: some inputs are outdated
+        - grey: superseded by newer version
+        - red: phantom (referenced but missing)
 
     heads
-        Reduce graph to include only most recent computations per
-        cluster and possibly a few older ones, that are referenced
-        by outdated, but not yet superseded (updated) computations.
+        Show only the most recent beads per cluster, plus any older
+        beads that are still referenced by outdated computations
 
-    view filename
-        open filename in browser (shortcut after save/png/svg)
+    view <filename>
+        Open file in browser
+
+    EXAMPLES:
+
+    # Visualize all beads
+    bead graph dot all.dot
+
+    # Create colored PNG of all beads
+    bead graph color png overview.png
+
+    # Show only latest versions
+    bead graph heads color svg latest.svg
+
+    # Filter: show path from data_input to final_report
+    bead graph / data_input .. final_report / color png path.png
+
+    # Fast workflow: cache expensive scan, then filter
+    bead graph save cache.web
+    bead graph load cache.web / analysis .. / heads png filtered.png
+
+    # Multiple filters: sources AND sinks
+    bead graph / raw_data processed_data .. / / .. final_output / color svg result.svg
+
+    # View in browser after creating
+    bead graph heads color svg latest.svg view latest.svg
     '''
 
     FORMATTER_CLASS = argparse.RawDescriptionHelpFormatter
@@ -90,11 +113,14 @@ class CmdWeb(Command):
 
         commands, remaining_words = parse_commands(env, args.words)
         if remaining_words:
-            msg = 'Could not fully parse command line.\n'
+            msg = 'ERROR: Could not fully parse command line.\n'
             if commands:
-                msg += 'Parsed commands:'
-                msg += '\n\t'.join(map(str, commands))
-            msg += f'\nCould not parse: {remaining_words}'
+                msg += '\nSuccessfully parsed:\n'
+                for cmd in commands:
+                    msg += f'  - {cmd}\n'
+            msg += f'\nFailed to parse: {remaining_words}\n'
+            msg += '\nValid sub-commands: load, save, dot, png, svg, /, color, heads, view'
+            msg += '\nRun "bead graph --help" for examples and documentation.'
             die(msg)
 
         sketch = Sketch.from_beads([])
@@ -216,9 +242,9 @@ class Filter(SketchProcessor):
 
     def __call__(self, sketch):
         if self.sources:
-            sketch = web_sketch.set_sources(sketch, self.sources)
+            sketch = graph_sketch.set_sources(sketch, self.sources)
         if self.sinks:
-            sketch = web_sketch.set_sinks(sketch, self.sinks)
+            sketch = graph_sketch.set_sinks(sketch, self.sinks)
         return sketch
 
 
@@ -234,7 +260,7 @@ class SetFreshness(SketchProcessor):
 
 class KeepOnlyHeads(SketchProcessor):
     def __call__(self, sketch):
-        return web_sketch.heads_of(sketch).drop_deleted_inputs()
+        return graph_sketch.heads_of(sketch).drop_deleted_inputs()
 
 
 SUBCOMMANDS = {

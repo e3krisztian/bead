@@ -3,9 +3,9 @@ import string
 from typing import Dict
 
 from bead.meta import InputSpec
-from bead_cli.web.dummy import Dummy
-from bead_cli.web.graph import Ref
-from bead_cli.web.sketch import Sketch
+from bead_cli.graph.dummy import Dummy
+from bead_cli.graph.graph import Ref
+from bead_cli.graph.sketch import Sketch
 
 TS_BASE = datetime.datetime(
     year=2000, month=1, day=1, tzinfo=datetime.timezone.utc
@@ -18,7 +18,7 @@ class Sketcher:
     """
     Factory properly connected Dummy-s.
 
-    For use in test fixtures and to create coherent bead web graphs for docs.
+    For use in test fixtures and to create coherent bead graphs for docs.
     a1 is older than a2, a9 is older than b1
     """
     def __init__(self):

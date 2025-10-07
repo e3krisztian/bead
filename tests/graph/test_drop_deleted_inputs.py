@@ -1,4 +1,4 @@
-from bead_cli.web.sketch import Sketch
+from bead_cli.graph.sketch import Sketch
 from tests.sketcher import Sketcher
 from tests.sketcher import bead
 

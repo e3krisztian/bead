@@ -1,9 +1,9 @@
 import pytest
 
-from bead_cli.web.freshness import OUT_OF_DATE
-from bead_cli.web.freshness import PHANTOM
-from bead_cli.web.freshness import SUPERSEDED
-from bead_cli.web.freshness import UP_TO_DATE
+from bead_cli.graph.freshness import OUT_OF_DATE
+from bead_cli.graph.freshness import PHANTOM
+from bead_cli.graph.freshness import SUPERSEDED
+from bead_cli.graph.freshness import UP_TO_DATE
 from tests.sketcher import Sketcher
 from tests.sketcher import bead
 

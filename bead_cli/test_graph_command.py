@@ -6,17 +6,17 @@ from bead.infra.fs import read_file
 from bead.infra.fs import rmtree
 from bead.infra.fs import write_file
 from bead.workspace import Workspace
-from bead_cli.web.sketch import Sketch
+from bead_cli.graph.sketch import Sketch
 from tests.sketcher import Sketcher
-from tests.web.test_graphviz import needs_dot
+from tests.graph.test_graphviz import needs_dot
 from .test_helpers import create_bead_family
 
 
-def create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory):
-    """Create a bead with inputs specifically for web command testing.
+def create_bead_with_inputs_for_graph(shell, box, times, tmp_path_factory):
+    """Create a bead with inputs specifically for graph command testing.
 
     This is a convenience function that creates the standard set of beads
-    used by web command tests.
+    used by graph command tests.
     """
     # Create input beads
     create_bead_family(box, 'web_bead_a', [times.TS1], tmp_path_factory)
@@ -41,32 +41,32 @@ def create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory):
 
 
 def test_dot_output(shell, box, check, times, tmp_path_factory):
-    create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory)
-    shell.bead('web dot all.dot')
+    create_bead_with_inputs_for_graph(shell, box, times, tmp_path_factory)
+    shell.bead('graph dot all.dot')
     assert (shell.cwd / 'all.dot').exists()
 
 
 @needs_dot
 def test_svg_output(shell, box, check, times, tmp_path_factory):
-    create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory)
-    shell.bead('web svg all.svg')
+    create_bead_with_inputs_for_graph(shell, box, times, tmp_path_factory)
+    shell.bead('graph svg all.svg')
     assert (shell.cwd / 'all.svg').exists()
 
 
 @needs_dot
 def test_png_output(shell, box, check, times, tmp_path_factory):
-    create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory)
-    shell.bead('web png all.png')
+    create_bead_with_inputs_for_graph(shell, box, times, tmp_path_factory)
+    shell.bead('graph png all.png')
     assert (shell.cwd / 'all.png').exists()
 
 
 def test_meta_save_load(shell, box, check, times, tmp_path_factory):
-    create_bead_with_inputs_for_web(shell, box, times, tmp_path_factory)
+    create_bead_with_inputs_for_graph(shell, box, times, tmp_path_factory)
 
-    shell.bead('web save all.web')
+    shell.bead('graph save all.web')
     assert (shell.cwd / 'all.web').exists()
 
-    shell.bead('web dot all.dot')
+    shell.bead('graph dot all.dot')
     orig_web_dot = read_file(shell.cwd / 'all.dot')
 
     assert 'web_bead_a' in orig_web_dot
@@ -78,7 +78,7 @@ def test_meta_save_load(shell, box, check, times, tmp_path_factory):
     shell.bead('box', 'forget', box.name)
     rmtree(box.directory)
 
-    shell.bead('web load all.web dot all.dot')
+    shell.bead('graph load all.web dot all.dot')
     meta_web_dot = read_file(shell.cwd / 'all.dot')
 
     assert orig_web_dot == meta_web_dot
@@ -87,7 +87,7 @@ def test_meta_save_load(shell, box, check, times, tmp_path_factory):
 def test_heads_only(shell, box, check, times, tmp_path_factory):
     create_bead_family(box, 'web_history_bead', [times.TS1, times.TS2, times.TS3, times.TS4, times.TS5], tmp_path_factory)
 
-    shell.bead('web dot all.dot heads dot heads-only.dot')
+    shell.bead('graph dot all.dot heads dot heads-only.dot')
     full_web = read_file(shell.cwd / 'all.dot')
     heads_only_web = read_file(shell.cwd / 'heads-only.dot')
 
@@ -95,7 +95,7 @@ def test_heads_only(shell, box, check, times, tmp_path_factory):
 
 
 def test_invalid_command_reported(shell):
-    shell.bead('web load x this-command-does-not-exist c', expect_failure=True)
+    shell.bead('graph load x this-command-does-not-exist c', expect_failure=True)
     assert 'ERROR' in shell.stderr
     assert re.search('.ould not .*parse', shell.stderr)
     assert str(['this-command-does-not-exist', 'c']) in shell.stderr
@@ -132,13 +132,13 @@ def indirect_links_sketch(shell):
 
 
 def test_filter_no_args_no_filtering(shell, sketch):
-    shell.bead('web load computation.web / .. / save filtered.web')
+    shell.bead('graph load computation.web / .. / save filtered.web')
 
     assert shell.read_file('computation.web') == shell.read_file('filtered.web')
 
 
 def test_filter_sources_through_cluster_links(shell, indirect_links_sketch):
-    shell.bead('web load computation.web / b .. / save filtered.web')
+    shell.bead('graph load computation.web / b .. / save filtered.web')
 
     sketch = Sketch.from_file(shell.cwd / 'filtered.web')
     assert sketch.cluster_by_name.keys() == set('bcd')
@@ -146,7 +146,7 @@ def test_filter_sources_through_cluster_links(shell, indirect_links_sketch):
 
 
 def test_filter_sinks_through_cluster_links(shell, indirect_links_sketch):
-    shell.bead('web load computation.web / .. c / save filtered.web')
+    shell.bead('graph load computation.web / .. c / save filtered.web')
 
     sketch = Sketch.from_file(shell.cwd / 'filtered.web')
     assert sketch.cluster_by_name.keys() == set('abc')
@@ -154,14 +154,14 @@ def test_filter_sinks_through_cluster_links(shell, indirect_links_sketch):
 
 
 def test_filter(shell, sketch):
-    shell.bead('web load computation.web / b c .. c f / save filtered.web')
+    shell.bead('graph load computation.web / b c .. c f / save filtered.web')
     sketch = Sketch.from_file(shell.cwd / 'filtered.web')
     assert sketch.cluster_by_name.keys() == set('bcef')
 
 
 def test_filter_filtered_out_sink(shell, indirect_links_sketch):
     # f1 is unreachable from sources {b, c}, so it will be not a reachable sink
-    shell.bead('web load computation.web / b c .. c f / save filtered.web')
+    shell.bead('graph load computation.web / b c .. c f / save filtered.web')
 
     sketch = Sketch.from_file(shell.cwd / 'filtered.web')
     assert sketch.cluster_by_name.keys() == set('bc')

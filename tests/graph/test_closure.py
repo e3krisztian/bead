@@ -1,8 +1,8 @@
-from bead_cli.web.graph import Ref
-from bead_cli.web.graph import closure
-from bead_cli.web.graph import group_by_src
-from bead_cli.web.graph import reverse
-from bead_cli.web.sketch import Sketch
+from bead_cli.graph.graph import Ref
+from bead_cli.graph.graph import closure
+from bead_cli.graph.graph import group_by_src
+from bead_cli.graph.graph import reverse
+from bead_cli.graph.sketch import Sketch
 from tests.sketcher import Sketcher
 
 

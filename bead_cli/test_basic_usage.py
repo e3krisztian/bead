@@ -54,7 +54,7 @@ def test_basic_command_line(shell, bead, cd, ls, box_dir):
     assert 'Inputs' in shell.stdout
     assert 'older-self' in shell.stdout
 
-    bead('web')
+    bead('graph')
 
     # this might leave behind the empty directory on windows
     bead('discard')
