@@ -42,10 +42,13 @@ class Sketch:
     @classmethod
     def from_beads(cls, beads: Sequence[Dummy]):
         bead_index = Ref.index_for(beads)
+        # Use list() to snapshot beads before generate_input_edges modifies bead_index
+        deduplicated_beads = list(bead_index.values())
         edges = tuple(
             itertools.chain.from_iterable(
                 generate_input_edges(bead_index, bead)
-                for bead in beads))
+                for bead in deduplicated_beads))
+        # bead_index may now contain phantom beads added during edge generation
         return cls(tuple(bead_index.values()), edges)
 
     @classmethod
