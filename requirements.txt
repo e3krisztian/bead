@@ -1,5 +1,4 @@
 platformdirs>=4.4.0
 attrs==19.3.0
-cached-property==1.5.1
 argcomplete==3.6.2
 tqdm==4.67.1

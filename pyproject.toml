@@ -30,7 +30,6 @@ dependencies = [
     "platformdirs>=4.4.0",
     "argcomplete>=3.6.2",
     "attrs",
-    "cached-property",
     "tqdm",
 ]
 

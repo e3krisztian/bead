@@ -7,7 +7,7 @@ from typing import Set
 from typing import Tuple
 
 import attr
-from cached_property import cached_property
+from functools import cached_property
 
 from bead.infra.timestamp import EPOCH_STR
 

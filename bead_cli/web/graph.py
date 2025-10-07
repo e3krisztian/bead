@@ -7,7 +7,7 @@ from typing import Sequence
 from typing import Set
 
 import attr
-from cached_property import cached_property
+from functools import cached_property
 
 from .dummy import Dummy
 from .dummy import Ref
