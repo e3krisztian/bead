@@ -1,13 +1,13 @@
 import itertools
+from dataclasses import dataclass
+from dataclasses import replace as dataclass_replace
+from functools import cached_property
 from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Sequence
 from typing import Set
 from typing import Tuple
-
-import attr
-from functools import cached_property
 
 from bead.infra.timestamp import EPOCH_STR
 
@@ -31,12 +31,12 @@ from .io import read_beads
 from .io import write_beads
 
 
-@attr.s(frozen=True, auto_attribs=True)
+@dataclass(frozen=True)
 class Sketch:
     beads: Tuple[Dummy, ...]
     edges: Tuple[Edge, ...]
 
-    def __attrs_post_init__(self):
+    def __post_init__(self):
         assert refs_from_edges(self.edges) - refs_from_beads(self.beads) == set()
 
     @classmethod
@@ -292,5 +292,5 @@ def drop_deleted_inputs(sketch: Sketch) -> Sketch:
             input_ref = Ref.from_bead(input)
             if (input_ref, bead.ref) in edges_as_refs:
                 inputs_to_keep.append(input)
-        beads.append(attr.evolve(bead, inputs=inputs_to_keep))
+        beads.append(dataclass_replace(bead, inputs=inputs_to_keep))
     return Sketch.from_beads(beads)

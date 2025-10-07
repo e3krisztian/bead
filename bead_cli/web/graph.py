@@ -1,4 +1,6 @@
 from collections import defaultdict
+from dataclasses import dataclass
+from functools import cached_property
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -6,16 +8,13 @@ from typing import List
 from typing import Sequence
 from typing import Set
 
-import attr
-from functools import cached_property
-
 from .dummy import Dummy
 from .dummy import Ref
 
 Node = Dummy
 
 
-@attr.s(auto_attribs=True, frozen=True)
+@dataclass(frozen=True)
 class Edge:
     src: Node
     dest: Node

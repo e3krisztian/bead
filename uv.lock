@@ -40,7 +40,6 @@ version = "0.9.1.dev1"
 source = { editable = "." }
 dependencies = [
     { name = "argcomplete" },
-    { name = "attrs" },
     { name = "platformdirs" },
     { name = "tqdm" },
 ]
@@ -63,7 +62,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "argcomplete", specifier = ">=3.6.2" },
-    { name = "attrs" },
     { name = "platformdirs", specifier = ">=4.4.0" },
     { name = "tqdm" },
 ]

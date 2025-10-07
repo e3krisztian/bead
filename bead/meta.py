@@ -25,7 +25,7 @@ with the following minimum structure:
 }
 '''
 
-import attr
+from dataclasses import dataclass
 
 from .infra.timestamp import time_from_timestamp
 
@@ -73,12 +73,17 @@ class InputName(BeadName):
 assert isinstance(InputName('asd'), BeadName)
 
 
-@attr.s(auto_attribs=True, frozen=True)
+@dataclass(frozen=True, order=True)
 class InputSpec:
-    name: InputName = attr.ib(converter=InputName)
+    name: InputName
     kind: str
     content_id: str
     freeze_time_str: str
+
+    def __post_init__(self):
+        # Convert name to InputName if it's a string
+        if not isinstance(self.name, InputName):
+            object.__setattr__(self, 'name', InputName(self.name))
 
     def as_dict(self):
         return {

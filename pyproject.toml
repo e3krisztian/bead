@@ -29,7 +29,6 @@ keywords = ["computation", "reproducible", "data", "pipeline", "freeze"]
 dependencies = [
     "platformdirs>=4.4.0",
     "argcomplete>=3.6.2",
-    "attrs",
     "tqdm",
 ]
 

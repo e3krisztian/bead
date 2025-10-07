@@ -1,8 +1,7 @@
+from dataclasses import fields, is_dataclass
 from enum import Enum
 from functools import partial
 import json
-
-import attr
 
 from .dummy import Dummy
 from .dummy import Freshness
@@ -20,11 +19,27 @@ CLASSES = (Dummy, Ref, InputSpec, Freshness)
 
 
 def encoder(obj):
-    if attr.has(obj.__class__):
+    if is_dataclass(obj) and not isinstance(obj, type):
+        # Manually extract field values WITHOUT recursive conversion.
+        #
+        # The stdlib dataclasses.asdict() recursively converts ALL nested dataclasses
+        # to plain dicts:
+        #   asdict(Dummy(...)) produces:
+        #   {'inputs': [{'name': 'foo', 'kind': 'bar', ...}]}  # Plain dicts!
+        #
+        # But we need nested dataclasses (like InputSpec objects in Dummy.inputs)
+        # to go through this encoder so they get @class and @encoding markers:
+        #   {'inputs': [InputSpec(...)]}  # Still objects
+        #   → JSON encoder calls encoder(InputSpec(...))
+        #   → {'@class': 'InputSpec', '@encoding': 'attrs', 'name': 'foo', ...}
+        #
+        # Manual field extraction keeps nested dataclasses as objects, ensuring
+        # proper serialization with metadata needed for deserialization.
+        field_dict = {field.name: getattr(obj, field.name) for field in fields(obj)}
         return {
             ENCODING: ENCODING_ATTRS,
             CLASS_NAME: obj.__class__.__name__,
-            **attr.asdict(obj, recurse=False),
+            **field_dict,
         }
     if isinstance(obj, Enum):
         return {

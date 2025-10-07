@@ -1,10 +1,9 @@
+from dataclasses import dataclass, field
+from functools import cached_property
 from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import TypeVar
-
-import attr
-from functools import cached_property
 
 from bead.meta import InputSpec
 from bead.infra.timestamp import time_from_timestamp
@@ -12,7 +11,7 @@ from bead.infra.timestamp import time_from_timestamp
 from .freshness import Freshness
 
 
-@attr.s(auto_attribs=True, repr=False, str=False)
+@dataclass(repr=False)
 class Dummy:
     """
     A bead.Bead look-alike when looking only at the metadata.
@@ -20,15 +19,22 @@ class Dummy:
     Also has metadata for coloring (freshness).
     """
     # these are considered immutable once the object is created
-    name: str = attr.ib(kw_only=True, default="UNKNOWN")
-    content_id: str = attr.ib(kw_only=True)
-    kind: str = attr.ib(kw_only=True)
-    freeze_time_str: str = attr.ib(kw_only=True)
-    inputs: List[InputSpec] = attr.ib(kw_only=True, factory=list, converter=list)
+    name: str = field(kw_only=True, default="UNKNOWN")
+    content_id: str = field(kw_only=True)
+    kind: str = field(kw_only=True)
+    freeze_time_str: str = field(kw_only=True)
+    inputs: List[InputSpec] = field(kw_only=True, default_factory=list)
 
     # these can be modified after the object is created
-    freshness: Freshness = attr.ib(kw_only=True, default=Freshness.SUPERSEDED, converter=Freshness)
-    box_name: str = attr.ib(kw_only=True, default='')
+    freshness: Freshness = field(kw_only=True, default=Freshness.SUPERSEDED)
+    box_name: str = field(kw_only=True, default='')
+
+    def __post_init__(self):
+        # Convert inputs to list and freshness to Freshness enum
+        if not isinstance(self.inputs, list):
+            self.inputs = list(self.inputs)
+        if not isinstance(self.freshness, Freshness):
+            self.freshness = Freshness(self.freshness)
 
     @cached_property
     def freeze_time(self):
@@ -86,7 +92,7 @@ class Dummy:
 Bead = TypeVar('Bead')
 
 
-@attr.s(frozen=True, slots=True, auto_attribs=True)
+@dataclass(frozen=True, slots=True)
 class Ref:
     """
     Unique reference for Dummy-s.
