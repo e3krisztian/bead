@@ -263,7 +263,7 @@ class _ZipCreator:
 
     def create(self, zip_file_name: Path, workspace, freeze_timestamp, comment: str):
         assert workspace.is_valid
-        user_compression_preference = os.environ.get('BEAD_ZIP_COMPRESSION')
+        user_compression_preference = os.environ.get('BEAD_ZIP_COMPRESSION', 'deflated')
         compression = {
             'off': zipfile.ZIP_STORED,
             'stored': zipfile.ZIP_STORED,

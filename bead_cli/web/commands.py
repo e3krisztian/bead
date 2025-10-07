@@ -85,7 +85,7 @@ class CmdWeb(Command):
     def run(self, args, env: 'Environment'):
         if not args.words:
             print('No sub-commands given, see usage below:')
-            print(textwrap.dedent(self.__doc__))
+            print(textwrap.dedent(self.__doc__ or ''))
             return
 
         commands, remaining_words = parse_commands(env, args.words)
