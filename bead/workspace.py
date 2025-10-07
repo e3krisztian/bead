@@ -59,17 +59,17 @@ class Workspace(Computation):
     def meta(self, meta):
         persistence.file_dump(meta, self._meta_filename)
 
-    # Bead properties
+    # Computation properties
     @property
-    def kind(self):
+    def kind(self):  # type: ignore[override]
         return self.meta[meta.KIND]
 
     @property
-    def name(self):
+    def name(self):  # type: ignore[override]
         return self.directory.name
 
     @property
-    def inputs(self):
+    def inputs(self):  # type: ignore[override]
         return tuple(meta.parse_inputs(self.meta))
 
     # workspace constructors

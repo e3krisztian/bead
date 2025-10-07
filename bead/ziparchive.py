@@ -109,7 +109,7 @@ class ZipArchive(Archive):
         return self.zip_load(layouts.Archive.MANIFEST)
 
     @property
-    def content_id(self):
+    def content_id(self):  # type: ignore[override]
         if self._content_id is None:
             self._content_id = self.calculate_content_id()
         return self._content_id
@@ -127,11 +127,11 @@ class ZipArchive(Archive):
         return self._meta[meta.META_VERSION]
 
     @property
-    def kind(self):
+    def kind(self):  # type: ignore[override]
         return self._meta[meta.KIND]
 
     @property
-    def freeze_time_str(self):
+    def freeze_time_str(self):  # type: ignore[override]
         return self._meta[meta.FREEZE_TIME]
 
     @property
@@ -151,7 +151,7 @@ class ZipArchive(Archive):
             return {}
 
     @property
-    def inputs(self):
+    def inputs(self):  # type: ignore[override]
         return tuple(meta.parse_inputs(self.meta))
 
     # -

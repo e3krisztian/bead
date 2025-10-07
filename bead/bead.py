@@ -19,9 +19,8 @@ class Computation:
     '''
 
     # high level view of computation
+    # Subclasses may implement these as properties or plain attributes
     kind: str
-    # kind is deprecated. Humans naturally agree on domain specific names instead.
-    # The price is living with bad, undescriptive names, that are hard to improve upon later.
     name: BeadName
     inputs: Sequence[InputSpec]
 
@@ -49,6 +48,7 @@ class Bead(Computation):
     '''
 
     # frozen beads only details
+    # Subclasses may implement these as properties or plain attributes
     content_id: str
     freeze_time_str: str
     box_name: str
