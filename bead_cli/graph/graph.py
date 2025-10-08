@@ -30,20 +30,20 @@ class Edge:
         return self.dest.ref
 
 
-def generate_input_edges(bead_index: Dict[Ref, Node], bead: Node) -> Iterator[Edge]:
+def generate_input_edges(node_index: Dict[Ref, Node], bead: Node) -> Iterator[Edge]:
     """
     Generate all the 'Edge's leading from the bead to its inputs.
 
-    Modifies bead_index - adds referenced, but missing beads as phantom beads.
+    Modifies node_index - adds referenced, but missing beads as phantom nodes.
 
     An edge is a triple of (src, dest, label), where both 'src' and 'dest' are Nodes.
     """
     for input in bead.inputs:
         src_ref = Ref.from_bead(input)
         try:
-            src = bead_index[src_ref]
+            src = node_index[src_ref]
         except LookupError:
-            src = bead_index[src_ref] = Node.phantom_from_input(bead, input)
+            src = node_index[src_ref] = Node.phantom_from_input(bead, input)
 
         yield Edge(src, bead, input.name)
 
