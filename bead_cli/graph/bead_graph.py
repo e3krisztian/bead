@@ -2,12 +2,8 @@ import itertools
 from dataclasses import dataclass
 from dataclasses import replace as dataclass_replace
 from functools import cached_property
-from typing import Dict
-from typing import Iterable
-from typing import List
-from typing import Sequence
-from typing import Set
-from typing import Tuple
+from collections.abc import Iterable
+from collections.abc import Sequence
 
 from bead.infra.timestamp import EPOCH_STR
 
@@ -33,8 +29,8 @@ from .io import write_beads
 
 @dataclass(frozen=True)
 class BeadGraph:
-    beads: Tuple[Node, ...]
-    edges: Tuple[Edge, ...]
+    beads: tuple[Node, ...]
+    edges: tuple[Edge, ...]
 
     def __post_init__(self):
         assert refs_from_edges(self.edges) - refs_from_beads(self.beads) == set()
@@ -65,7 +61,7 @@ class BeadGraph:
         write_beads(file_name, self.beads)
 
     @cached_property
-    def cluster_by_name(self) -> Dict[str, Cluster]:
+    def cluster_by_name(self) -> dict[str, Cluster]:
         return create_cluster_index(self.beads)
 
     @cached_property
@@ -104,7 +100,7 @@ def heads_of(graph: BeadGraph) -> BeadGraph:
     return BeadGraph(beads=tuple(heads), edges=head_edges)
 
 
-def add_final_sink_to(graph: BeadGraph) -> Tuple[BeadGraph, Node]:
+def add_final_sink_to(graph: BeadGraph) -> tuple[BeadGraph, Node]:
     """
     Add a new node, and edges from all nodes.
 
@@ -187,7 +183,7 @@ class ClusterFilter:
             for src, dest in src_dest_pairs
         ]
 
-    def get_encoded_refs(self, bead_names: Iterable[str]) -> List[Ref]:
+    def get_encoded_refs(self, bead_names: Iterable[str]) -> list[Ref]:
         return [
             self.node_by_name[name].ref
             for name in sorted(set(bead_names))
@@ -219,7 +215,7 @@ class ClusterFilter:
         edges = tuple(e for e in self.graph.edges if (e.src.name, e.dest.name) in src_dest_pairs)
         return BeadGraph(beads, edges).drop_deleted_inputs()
 
-    def convert_to_name_pairs(self, edges: Iterable[Edge]) -> Set[Tuple[str, str]]:
+    def convert_to_name_pairs(self, edges: Iterable[Edge]) -> set[tuple[str, str]]:
         return {(e.src.name, e.dest.name) for e in edges}
 
 

@@ -1,8 +1,6 @@
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Dict
-from typing import Iterable
-from typing import List
+from collections.abc import Iterable
 from typing import TypeVar
 
 from bead.meta import InputSpec
@@ -23,7 +21,7 @@ class Node:
     content_id: str = field(kw_only=True)
     kind: str = field(kw_only=True)
     freeze_time_str: str = field(kw_only=True)
-    inputs: List[InputSpec] = field(kw_only=True, default_factory=list)
+    inputs: list[InputSpec] = field(kw_only=True, default_factory=list)
 
     # these can be modified after the object is created
     freshness: Freshness = field(kw_only=True, default=Freshness.SUPERSEDED)
@@ -108,7 +106,7 @@ class Ref:
         return cls(bead.name, bead.content_id)
 
     @classmethod
-    def index_for(cls, beads: Iterable[Node]) -> Dict['Ref', Node]:
+    def index_for(cls, beads: Iterable[Node]) -> dict['Ref', Node]:
         bead_by_ref = {}
         for bead in beads:
             bead_by_ref[cls.from_bead(bead)] = bead

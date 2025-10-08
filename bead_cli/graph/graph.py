@@ -1,12 +1,9 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Dict
-from typing import Iterable
-from typing import Iterator
-from typing import List
-from typing import Sequence
-from typing import Set
+from collections.abc import Iterable
+from collections.abc import Iterator
+from collections.abc import Sequence
 
 from .node import Node
 from .node import Ref
@@ -30,7 +27,7 @@ class Edge:
         return self.dest.ref
 
 
-def generate_input_edges(node_index: Dict[Ref, Node], bead: Node) -> Iterator[Edge]:
+def generate_input_edges(node_index: dict[Ref, Node], bead: Node) -> Iterator[Edge]:
     """
     Generate all the 'Edge's leading from the bead to its inputs.
 
@@ -48,33 +45,33 @@ def generate_input_edges(node_index: Dict[Ref, Node], bead: Node) -> Iterator[Ed
         yield Edge(src, bead, input.name)
 
 
-def group_by_src(edges) -> Dict[Ref, List[Edge]]:
+def group_by_src(edges) -> dict[Ref, list[Edge]]:
     """
     Make a dictionary of 'Edge's, which maps a src node to a list of 'Edge's rooted there.
     """
-    edges_by_src: Dict[Ref, List[Edge]] = defaultdict(list)
+    edges_by_src: dict[Ref, list[Edge]] = defaultdict(list)
     for edge in edges:
         edges_by_src[edge.src_ref].append(edge)
     return edges_by_src
 
 
-def group_by_dest(edges) -> Dict[Ref, List[Edge]]:
+def group_by_dest(edges) -> dict[Ref, list[Edge]]:
     """
     Make a dictionary of 'Edge's, which maps a node to a list of 'Edge's going there.
     """
-    edges_by_dest: Dict[Ref, List[Edge]] = defaultdict(list)
+    edges_by_dest: dict[Ref, list[Edge]] = defaultdict(list)
     for edge in edges:
         edges_by_dest[edge.dest_ref].append(edge)
     return edges_by_dest
 
 
-def closure(roots: List[Ref], edges_by_src: Dict[Ref, List[Edge]]) -> Set[Ref]:
+def closure(roots: list[Ref], edges_by_src: dict[Ref, list[Edge]]) -> set[Ref]:
     """
     Return the set of reachable nodes from roots.
     edges_by_src is edges grouped by their `src`.
     """
-    reachable: Set[Ref] = set()
-    todo: Set[Ref] = set(roots)
+    reachable: set[Ref] = set()
+    todo: set[Ref] = set(roots)
     while todo:
         src = todo.pop()
         reachable.add(src)
@@ -92,8 +89,8 @@ def reverse(edges: Iterable[Edge]) -> Iterator[Edge]:
     return (edge.reversed() for edge in edges)
 
 
-def node_index_from_edges(edges: Iterable[Edge]) -> Dict[Ref, Node]:
-    node_by_ref: Dict[Ref, Node] = {}
+def node_index_from_edges(edges: Iterable[Edge]) -> dict[Ref, Node]:
+    node_by_ref: dict[Ref, Node] = {}
 
     def register_map(ref, node):
         value = node_by_ref.setdefault(ref, node)
@@ -105,7 +102,7 @@ def node_index_from_edges(edges: Iterable[Edge]) -> Dict[Ref, Node]:
     return node_by_ref
 
 
-def refs_from_nodes(nodes: Iterable[Node]) -> Set[Ref]:
+def refs_from_nodes(nodes: Iterable[Node]) -> set[Ref]:
     return {node.ref for node in nodes}
 
 
@@ -113,11 +110,11 @@ bead_index_from_edges = node_index_from_edges
 refs_from_beads = refs_from_nodes
 
 
-def refs_from_edges(edges: Iterable[Edge]) -> Set[Ref]:
+def refs_from_edges(edges: Iterable[Edge]) -> set[Ref]:
     return set(node_index_from_edges(edges))
 
 
-def toposort(edges: Sequence[Edge]) -> List[Node]:
+def toposort(edges: Sequence[Edge]) -> list[Node]:
     """
     Topological sort.
     """
@@ -125,8 +122,8 @@ def toposort(edges: Sequence[Edge]) -> List[Node]:
     node_by_ref = node_index_from_edges(edges)
 
     todo = set(node_by_ref.keys())
-    path: List[Ref] = []
-    output: List[Node] = []
+    path: list[Ref] = []
+    output: list[Node] = []
 
     def dfs(ref: Ref):
         if ref in path:

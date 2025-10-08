@@ -3,7 +3,6 @@ import os
 import subprocess
 import textwrap
 from typing import TYPE_CHECKING
-from typing import Set
 import webbrowser
 
 from bead.box import search
@@ -228,8 +227,8 @@ class Filter(GraphProcessor):
         self.sinks = self._pop_names(args, sentinel='/')
         super().__init__(args)
 
-    def _pop_names(self, args, sentinel) -> Set[str]:
-        names: Set[str] = set()
+    def _pop_names(self, args, sentinel) -> set[str]:
+        names: set[str] = set()
         while args:
             name = args.pop()
             if name == sentinel:

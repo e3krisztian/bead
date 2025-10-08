@@ -1,5 +1,4 @@
-from typing import Dict
-from typing import Iterable
+from collections.abc import Iterable
 
 from bead.infra.timestamp import EPOCH_STR
 
@@ -66,8 +65,8 @@ class Cluster:
         return len(self.beads_by_content_id)
 
 
-def create_cluster_index(beads: Iterable[Node]) -> Dict[str, Cluster]:
-    cluster_by_name: Dict[str, Cluster] = {}
+def create_cluster_index(beads: Iterable[Node]) -> dict[str, Cluster]:
+    cluster_by_name: dict[str, Cluster] = {}
     for bead in beads:
         if bead.name not in cluster_by_name:
             cluster_by_name[bead.name] = Cluster(bead.name)

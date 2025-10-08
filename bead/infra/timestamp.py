@@ -165,7 +165,7 @@ _TIME_UNITS = {
 }
 
 _DELTA = r'([+-]?\d+)([{units}])'.format(units='wdHMS')
-_DELTAS = '(?:{})*$'.format(_DELTA)
+_DELTAS = f'(?:{_DELTA})*$'
 
 
 def parse_timedelta(delta_str):
