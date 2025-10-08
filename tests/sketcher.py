@@ -5,7 +5,7 @@ from typing import Dict
 from bead.meta import InputSpec
 from bead_cli.graph.node import Node
 from bead_cli.graph.graph import Ref
-from bead_cli.graph.sketch import BeadGraph
+from bead_cli.graph.bead_graph import BeadGraph
 
 TS_BASE = datetime.datetime(
     year=2000, month=1, day=1, tzinfo=datetime.timezone.utc

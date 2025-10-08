@@ -2,7 +2,7 @@ from bead_cli.graph.graph import Ref
 from bead_cli.graph.graph import closure
 from bead_cli.graph.graph import group_by_src
 from bead_cli.graph.graph import reverse
-from bead_cli.graph.sketch import BeadGraph
+from bead_cli.graph.bead_graph import BeadGraph
 from tests.sketcher import Sketcher
 
 

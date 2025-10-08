@@ -10,13 +10,13 @@ from bead.box import search
 from bead.infra.fs import Path
 from bead.infra.fs import write_file
 
-from . import sketch as graph_sketch
+from . import bead_graph
 from ..cmdparse import Command
 from ..common import die
 from .node import Node
 from .io import read_beads
 from .io import write_beads
-from .sketch import BeadGraph
+from .bead_graph import BeadGraph
 
 if TYPE_CHECKING:
     from ..environment import Environment
@@ -243,9 +243,9 @@ class Filter(GraphProcessor):
 
     def __call__(self, graph):
         if self.sources:
-            graph = graph_sketch.set_sources(graph, self.sources)
+            graph = bead_graph.set_sources(graph, self.sources)
         if self.sinks:
-            graph = graph_sketch.set_sinks(graph, self.sinks)
+            graph = bead_graph.set_sinks(graph, self.sinks)
         return graph
 
 
@@ -261,7 +261,7 @@ class SetFreshness(GraphProcessor):
 
 class KeepOnlyHeads(GraphProcessor):
     def __call__(self, graph):
-        return graph_sketch.heads_of(graph).drop_deleted_inputs()
+        return bead_graph.heads_of(graph).drop_deleted_inputs()
 
 
 SUBCOMMANDS = {

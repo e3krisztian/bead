@@ -7,7 +7,7 @@ without crashing. Since beads are content-addressed, duplicates should be dedupl
 from bead.meta import InputName
 from bead.meta import InputSpec
 from bead_cli.graph.node import Node
-from bead_cli.graph.sketch import BeadGraph
+from bead_cli.graph.bead_graph import BeadGraph
 
 
 def test_duplicate_bead_same_name_different_boxes():

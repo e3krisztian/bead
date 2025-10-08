@@ -6,7 +6,7 @@ from bead.infra.fs import read_file
 from bead.infra.fs import rmtree
 from bead.infra.fs import write_file
 from bead.workspace import Workspace
-from bead_cli.graph.sketch import BeadGraph
+from bead_cli.graph.bead_graph import BeadGraph
 from tests.sketcher import Sketcher
 from tests.graph.test_graphviz import needs_dot
 from .test_helpers import create_bead_family
