@@ -32,7 +32,7 @@ from .io import write_beads
 
 
 @dataclass(frozen=True)
-class Sketch:
+class BeadGraph:
     beads: Tuple[Node, ...]
     edges: Tuple[Edge, ...]
 
@@ -78,11 +78,11 @@ class Sketch:
     def as_dot(self):
         return plot_clusters_as_dot(self)
 
-    def drop_deleted_inputs(self) -> "Sketch":
+    def drop_deleted_inputs(self) -> "BeadGraph":
         return drop_deleted_inputs(self)
 
 
-def simplify(sketch: Sketch) -> Sketch:
+def simplify(graph: BeadGraph) -> BeadGraph:
     """
     Remove unreferenced clusters and beads.
 
@@ -91,30 +91,30 @@ def simplify(sketch: Sketch) -> Sketch:
     raise NotImplementedError
 
 
-def heads_of(sketch: Sketch) -> Sketch:
+def heads_of(graph: BeadGraph) -> BeadGraph:
     """
     Keep only cluster heads and their inputs.
 
     Makes a new instance
     """
-    head_by_ref = {c.head.ref: c.head for c in sketch.clusters}
-    head_edges = tuple(e for e in sketch.edges if e.dest_ref in head_by_ref)
+    head_by_ref = {c.head.ref: c.head for c in graph.clusters}
+    head_edges = tuple(e for e in graph.edges if e.dest_ref in head_by_ref)
     src_by_ref = {e.src_ref: e.src for e in head_edges}
     heads = {**head_by_ref, **src_by_ref}.values()
-    return Sketch(beads=tuple(heads), edges=head_edges)
+    return BeadGraph(beads=tuple(heads), edges=head_edges)
 
 
-def add_final_sink_to(sketch: Sketch) -> Tuple[Sketch, Node]:
+def add_final_sink_to(graph: BeadGraph) -> Tuple[BeadGraph, Node]:
     """
     Add a new node, and edges from all nodes.
 
     This makes a DAG fully connected and the new node a sink node.
     The added sink node is special (guaranteed to have a unique name, freshness is UP_TO_DATE).
-    Returns the extended Sketch and the new sink node.
+    Returns the extended BeadGraph and the new sink node.
 
     Makes a new instance
     """
-    sink_name = '*' * (1 + max((len(bead.name) for bead in sketch.beads), default=0))
+    sink_name = '*' * (1 + max((len(bead.name) for bead in graph.beads), default=0))
     sink = Node(
         name=sink_name,
         content_id=sink_name,
@@ -122,23 +122,23 @@ def add_final_sink_to(sketch: Sketch) -> Tuple[Sketch, Node]:
         freeze_time_str='SINK',
         freshness=UP_TO_DATE
     )
-    sink_edges = (Edge(src, sink) for src in sketch.beads)
+    sink_edges = (Edge(src, sink) for src in graph.beads)
     return (
-        Sketch(
-            beads=sketch.beads + tuple([sink]),
-            edges=sketch.edges + tuple(sink_edges)
+        BeadGraph(
+            beads=graph.beads + tuple([sink]),
+            edges=graph.edges + tuple(sink_edges)
         ),
         sink
     )
 
 
-def set_sources(sketch: Sketch, cluster_names: Iterable[str]) -> Sketch:
+def set_sources(graph: BeadGraph, cluster_names: Iterable[str]) -> BeadGraph:
     """
     Drop all clusters, that are not reachable from the named clusters.
 
     Makes a new instance
     """
-    cluster_filter = ClusterFilter(sketch)
+    cluster_filter = ClusterFilter(graph)
 
     edges = cluster_filter.get_encoded_edges()
     root_refs = cluster_filter.get_encoded_refs(cluster_names)
@@ -148,13 +148,13 @@ def set_sources(sketch: Sketch, cluster_names: Iterable[str]) -> Sketch:
     return cluster_filter.get_filtered_by_refs(cluster_refs_to_keep)
 
 
-def set_sinks(sketch: Sketch, cluster_names: Iterable[str]) -> Sketch:
+def set_sinks(graph: BeadGraph, cluster_names: Iterable[str]) -> BeadGraph:
     """
     Drop all clusters, that do not lead to any of the named clusters.
 
     Makes a new instance
     """
-    cluster_filter = ClusterFilter(sketch)
+    cluster_filter = ClusterFilter(graph)
 
     edges = cluster_filter.get_encoded_edges()
     edges = [e.reversed() for e in edges]
@@ -166,8 +166,8 @@ def set_sinks(sketch: Sketch, cluster_names: Iterable[str]) -> Sketch:
 
 
 class ClusterFilter:
-    def __init__(self, sketch):
-        self.sketch = sketch
+    def __init__(self, graph):
+        self.graph = graph
         self.node_by_name = {
             name: Node(
                 name=name,
@@ -175,11 +175,11 @@ class ClusterFilter:
                 kind=name,
                 freeze_time_str=EPOCH_STR,
             )
-            for name in sketch.cluster_by_name
+            for name in graph.cluster_by_name
         }
 
     def get_encoded_edges(self) -> Sequence[Edge]:
-        src_dest_pairs = self.convert_to_name_pairs(self.sketch.edges)
+        src_dest_pairs = self.convert_to_name_pairs(self.graph.edges)
         return [
             Edge(
                 self.node_by_name[src],
@@ -194,8 +194,8 @@ class ClusterFilter:
             if name in self.node_by_name
         ]
 
-    def get_filtered_by_refs(self, encoded_refs) -> Sketch:
-        src_dest_pairs = self.convert_to_name_pairs(self.sketch.edges)
+    def get_filtered_by_refs(self, encoded_refs) -> BeadGraph:
+        src_dest_pairs = self.convert_to_name_pairs(self.graph.edges)
         clusters_to_keep = {r.name for r in encoded_refs}
         cluster_edges_to_keep = {
             (src, dest)
@@ -211,19 +211,19 @@ class ClusterFilter:
         ]
         return self.get_filtered_by_edges(encoded_edges)
 
-    def get_filtered_by_edges(self, encoded_edges: Iterable[Edge]) -> Sketch:
+    def get_filtered_by_edges(self, encoded_edges: Iterable[Edge]) -> BeadGraph:
         src_dest_pairs = self.convert_to_name_pairs(encoded_edges)
         bead_names = {src for src, _ in src_dest_pairs} | {dest for _, dest in src_dest_pairs}
         assert bead_names - set(self.node_by_name) == set()
-        beads = tuple(b for b in self.sketch.beads if b.name in bead_names)
-        edges = tuple(e for e in self.sketch.edges if (e.src.name, e.dest.name) in src_dest_pairs)
-        return Sketch(beads, edges).drop_deleted_inputs()
+        beads = tuple(b for b in self.graph.beads if b.name in bead_names)
+        edges = tuple(e for e in self.graph.edges if (e.src.name, e.dest.name) in src_dest_pairs)
+        return BeadGraph(beads, edges).drop_deleted_inputs()
 
     def convert_to_name_pairs(self, edges: Iterable[Edge]) -> Set[Tuple[str, str]]:
         return {(e.src.name, e.dest.name) for e in edges}
 
 
-def drop_before(sketch: Sketch, timestamp) -> Sketch:
+def drop_before(graph: BeadGraph, timestamp) -> BeadGraph:
     """
     Keep only beads, that are after the given timestamp.
 
@@ -232,7 +232,7 @@ def drop_before(sketch: Sketch, timestamp) -> Sketch:
     raise NotImplementedError
 
 
-def drop_after(sketch: Sketch, timestamp) -> Sketch:
+def drop_after(graph: BeadGraph, timestamp) -> BeadGraph:
     """
     Keep only beads, that are before the timestamp.
 
@@ -241,17 +241,17 @@ def drop_after(sketch: Sketch, timestamp) -> Sketch:
     raise NotImplementedError
 
 
-def plot_clusters_as_dot(sketch: Sketch):
+def plot_clusters_as_dot(graph: BeadGraph):
     """
     Generate GraphViz .dot file content, which describe the connections between beads
     and their up-to-date status.
     """
-    formatted_bead_clusters = '\n\n'.join(c.as_dot for c in sketch.clusters)
+    formatted_bead_clusters = '\n\n'.join(c.as_dot for c in graph.clusters)
     graphviz_context = graphviz.Context()
 
     def format_inputs():
         def edges_as_dot():
-            for edge in sketch.edges:
+            for edge in graph.edges:
                 is_auxiliary_edge = (
                     edge.dest.freshness not in (OUT_OF_DATE, UP_TO_DATE))
 
@@ -263,17 +263,17 @@ def plot_clusters_as_dot(sketch: Sketch):
         bead_inputs=format_inputs())
 
 
-def color_beads(sketch: Sketch) -> bool:
+def color_beads(graph: BeadGraph) -> bool:
     """
     Assign up-to-dateness status (freshness) to beads.
     """
-    heads, sink = add_final_sink_to(heads_of(sketch))
+    heads, sink = add_final_sink_to(heads_of(graph))
     head_eval_order = toposort(heads.edges)
     if not head_eval_order:  # empty
         return True
     assert head_eval_order[-1] == sink
 
-    for cluster in sketch.clusters:
+    for cluster in graph.clusters:
         cluster.reset_freshness()
 
     # downgrade UP_TO_DATE freshness if has a non UP_TO_DATE input
@@ -286,14 +286,14 @@ def color_beads(sketch: Sketch) -> bool:
     return sink.freshness is UP_TO_DATE
 
 
-def drop_deleted_inputs(sketch: Sketch) -> Sketch:
-    edges_as_refs = {(edge.src_ref, edge.dest_ref) for edge in sketch.edges}
+def drop_deleted_inputs(graph: BeadGraph) -> BeadGraph:
+    edges_as_refs = {(edge.src_ref, edge.dest_ref) for edge in graph.edges}
     beads = []
-    for bead in sketch.beads:
+    for bead in graph.beads:
         inputs_to_keep = []
         for input in bead.inputs:
             input_ref = Ref.from_bead(input)
             if (input_ref, bead.ref) in edges_as_refs:
                 inputs_to_keep.append(input)
         beads.append(dataclass_replace(bead, inputs=inputs_to_keep))
-    return Sketch.from_beads(beads)
+    return BeadGraph.from_beads(beads)

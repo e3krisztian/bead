@@ -6,7 +6,7 @@ from bead.infra.fs import read_file
 from bead.infra.fs import rmtree
 from bead.infra.fs import write_file
 from bead.workspace import Workspace
-from bead_cli.graph.sketch import Sketch
+from bead_cli.graph.sketch import BeadGraph
 from tests.sketcher import Sketcher
 from tests.graph.test_graphviz import needs_dot
 from .test_helpers import create_bead_family
@@ -114,7 +114,7 @@ def sketch(shell):
               b1 ------------> e1 -> f1
         """
     )
-    sketcher.sketch.to_file(shell.cwd / 'computation.web')
+    sketcher.graph.to_file(shell.cwd / 'computation.web')
 
 
 @pytest.fixture
@@ -128,7 +128,7 @@ def indirect_links_sketch(shell):
                     c2 -> d3
         """
     )
-    sketcher.sketch.to_file(shell.cwd / 'computation.web')
+    sketcher.graph.to_file(shell.cwd / 'computation.web')
 
 
 def test_filter_no_args_no_filtering(shell, sketch):
@@ -140,28 +140,28 @@ def test_filter_no_args_no_filtering(shell, sketch):
 def test_filter_sources_through_cluster_links(shell, indirect_links_sketch):
     shell.bead('graph load computation.web / b .. / save filtered.web')
 
-    sketch = Sketch.from_file(shell.cwd / 'filtered.web')
-    assert sketch.cluster_by_name.keys() == set('bcd')
-    assert len(sketch.cluster_by_name['c']) == 2
+    graph = BeadGraph.from_file(shell.cwd / 'filtered.web')
+    assert graph.cluster_by_name.keys() == set('bcd')
+    assert len(graph.cluster_by_name['c']) == 2
 
 
 def test_filter_sinks_through_cluster_links(shell, indirect_links_sketch):
     shell.bead('graph load computation.web / .. c / save filtered.web')
 
-    sketch = Sketch.from_file(shell.cwd / 'filtered.web')
-    assert sketch.cluster_by_name.keys() == set('abc')
-    assert len(sketch.cluster_by_name['c']) == 2
+    graph = BeadGraph.from_file(shell.cwd / 'filtered.web')
+    assert graph.cluster_by_name.keys() == set('abc')
+    assert len(graph.cluster_by_name['c']) == 2
 
 
 def test_filter(shell, sketch):
     shell.bead('graph load computation.web / b c .. c f / save filtered.web')
-    sketch = Sketch.from_file(shell.cwd / 'filtered.web')
-    assert sketch.cluster_by_name.keys() == set('bcef')
+    graph = BeadGraph.from_file(shell.cwd / 'filtered.web')
+    assert graph.cluster_by_name.keys() == set('bcef')
 
 
 def test_filter_filtered_out_sink(shell, indirect_links_sketch):
     # f1 is unreachable from sources {b, c}, so it will be not a reachable sink
     shell.bead('graph load computation.web / b c .. c f / save filtered.web')
 
-    sketch = Sketch.from_file(shell.cwd / 'filtered.web')
-    assert sketch.cluster_by_name.keys() == set('bc')
+    graph = BeadGraph.from_file(shell.cwd / 'filtered.web')
+    assert graph.cluster_by_name.keys() == set('bc')

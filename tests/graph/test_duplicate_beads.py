@@ -7,7 +7,7 @@ without crashing. Since beads are content-addressed, duplicates should be dedupl
 from bead.meta import InputName
 from bead.meta import InputSpec
 from bead_cli.graph.node import Node
-from bead_cli.graph.sketch import Sketch
+from bead_cli.graph.sketch import BeadGraph
 
 
 def test_duplicate_bead_same_name_different_boxes():
@@ -48,13 +48,13 @@ def test_duplicate_bead_same_name_different_boxes():
     beads = [bead_from_box_a, bead_from_box_b]
 
     # This should not crash (used to crash with AssertionError in node_index_from_edges)
-    sketch = Sketch.from_beads(beads)
+    graph = BeadGraph.from_beads(beads)
 
     # Should have deduplicated to single bead
-    assert len(sketch.beads) == 1
+    assert len(graph.beads) == 1
 
     # The deduplicated bead should have one of the box names
-    assert sketch.beads[0].box_name in ('box_a', 'box_b')
+    assert graph.beads[0].box_name in ('box_a', 'box_b')
 
 
 def test_duplicate_bead_with_inputs():
@@ -124,11 +124,11 @@ def test_duplicate_bead_with_inputs():
     # The bug: generate_input_edges is called for BOTH analysis beads,
     # creating edges: (data -> analysis_from_box_a) and (data -> analysis_from_box_b)
     # Both edges have dest_ref=("analysis", "analysis_content_id") but different dest objects
-    sketch = Sketch.from_beads(beads)
+    graph = BeadGraph.from_beads(beads)
 
     # Should have deduplicated analysis bead
-    assert len(sketch.beads) == 2  # data + analysis
+    assert len(graph.beads) == 2  # data + analysis
 
     # Should have one edge from data to analysis
-    assert len(sketch.edges) == 1
-    assert sketch.edges[0].label == 'data'
+    assert len(graph.edges) == 1
+    assert graph.edges[0].label == 'data'

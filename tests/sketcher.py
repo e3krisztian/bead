@@ -5,7 +5,7 @@ from typing import Dict
 from bead.meta import InputSpec
 from bead_cli.graph.node import Node
 from bead_cli.graph.graph import Ref
-from bead_cli.graph.sketch import Sketch
+from bead_cli.graph.sketch import BeadGraph
 
 TS_BASE = datetime.datetime(
     year=2000, month=1, day=1, tzinfo=datetime.timezone.utc
@@ -102,12 +102,12 @@ class Sketcher:
         return tuple(bead_gen())
 
     @property
-    def sketch(self) -> Sketch:
-        return Sketch.from_beads(self.beads)
+    def graph(self) -> BeadGraph:
+        return BeadGraph.from_beads(self.beads)
 
 
-def bead(sketch: Sketch, name_version: str) -> Node:
-    for bead in sketch.beads:
+def bead(graph: BeadGraph, name_version: str) -> Node:
+    for bead in graph.beads:
         if bead.content_id == f'content_id_{name_version}':
             return bead
     raise ValueError('Node by name-version not found', name_version)

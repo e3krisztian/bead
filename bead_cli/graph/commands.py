@@ -16,7 +16,7 @@ from ..common import die
 from .node import Node
 from .io import read_beads
 from .io import write_beads
-from .sketch import Sketch
+from .sketch import BeadGraph
 
 if TYPE_CHECKING:
     from ..environment import Environment
@@ -123,9 +123,9 @@ class CmdGraph(Command):
             msg += '\nRun "bead graph --help" for examples and documentation.'
             die(msg)
 
-        sketch = Sketch.from_beads([])
+        graph = BeadGraph.from_beads([])
         for command in commands:
-            sketch = command(sketch)
+            graph = command(graph)
 
 
 def parse_commands(env, words):
@@ -148,80 +148,81 @@ def parse_commands(env, words):
     return commands, remaining_words[::-1]
 
 
-class SketchProcessor:
+class GraphProcessor:
     def __init__(self, _args):
         pass
 
-    def __call__(self, sketch):
-        return sketch
+    def __call__(self, graph):
+        return graph
 
     def __str__(self):
         cls = self.__class__.__name__
         args = vars(self)
         return f'{cls}({args})'
 
-    def sketch_from_beads(self, beads):
-        return Sketch.from_beads([Node.from_bead(bead) for bead in beads])
+    def graph_from_beads(self, beads):
+        return BeadGraph.from_beads([Node.from_bead(bead) for bead in beads])
 
 
-class ProcessorWithFileName(SketchProcessor):
+class ProcessorWithFileName(GraphProcessor):
     def __init__(self, args):
         self.file_name = Path(args.pop())
 
 
-class LoadAll(SketchProcessor):
+class LoadAll(GraphProcessor):
     def __init__(self, boxes):
         super().__init__([])
         self.boxes = boxes
 
-    def __call__(self, _sketch):
+    def __call__(self, _graph):
         beads = load_all_beads(self.boxes)
         print(f"Loaded {len(beads)} beads")
-        return self.sketch_from_beads(beads)
+        return self.graph_from_beads(beads)
 
 
 class Load(ProcessorWithFileName):
-    def __call__(self, _sketch):
+    def __call__(self, _graph):
         beads = read_beads(self.file_name)
-        return self.sketch_from_beads(beads)
+        return self.graph_from_beads(beads)
 
 
 class Save(ProcessorWithFileName):
-    def __call__(self, sketch):
-        write_beads(self.file_name, sketch.beads)
-        return sketch
+    def __call__(self, graph):
+        write_beads(self.file_name, graph.beads)
+        return graph
 
 
 class WriteDot(ProcessorWithFileName):
-    def __call__(self, sketch):
-        dot_str = sketch.as_dot()
+    def __call__(self, graph):
+        dot_str = graph.as_dot()
         write_file(self.file_name, dot_str)
-        return sketch
+        return graph
 
 
 class WritePng(ProcessorWithFileName):
-    def __call__(self, sketch):
-        dot_str = sketch.as_dot()
+    def __call__(self, graph):
+        dot_str = graph.as_dot()
         print(f"Creating PNG: {self.file_name}")
         graphviz_dot(dot_str, self.file_name, format='png')
-        return sketch
+        return graph
 
 
 class WriteSvg(ProcessorWithFileName):
-    def __call__(self, sketch):
-        dot_str = sketch.as_dot()
+    def __call__(self, graph):
+        dot_str = graph.as_dot()
         print(f"Creating SVG: {self.file_name}")
         graphviz_dot(dot_str, self.file_name, format='svg')
-        return sketch
+        return graph
 
 
 class View(ProcessorWithFileName):
-    def __call__(self, sketch):
+    def __call__(self, graph):
         print(f"Viewing {self.file_name}")
         webbrowser.open(self.file_name.as_posix())
+        return graph
 
 
-class Filter(SketchProcessor):
+class Filter(GraphProcessor):
     def __init__(self, args):
         self.sources = self._pop_names(args, sentinel='..')
         self.sinks = self._pop_names(args, sentinel='/')
@@ -240,27 +241,27 @@ class Filter(SketchProcessor):
             names.add(name)
         raise ValueError(f'Delimiter not found: {repr(sentinel)}.')
 
-    def __call__(self, sketch):
+    def __call__(self, graph):
         if self.sources:
-            sketch = graph_sketch.set_sources(sketch, self.sources)
+            graph = graph_sketch.set_sources(graph, self.sources)
         if self.sinks:
-            sketch = graph_sketch.set_sinks(sketch, self.sinks)
-        return sketch
+            graph = graph_sketch.set_sinks(graph, self.sinks)
+        return graph
 
 
 def is_valid_name(name):
     return name not in ('..', '/')
 
 
-class SetFreshness(SketchProcessor):
-    def __call__(self, sketch):
-        sketch.color_beads()
-        return sketch
+class SetFreshness(GraphProcessor):
+    def __call__(self, graph):
+        graph.color_beads()
+        return graph
 
 
-class KeepOnlyHeads(SketchProcessor):
-    def __call__(self, sketch):
-        return graph_sketch.heads_of(sketch).drop_deleted_inputs()
+class KeepOnlyHeads(GraphProcessor):
+    def __call__(self, graph):
+        return graph_sketch.heads_of(graph).drop_deleted_inputs()
 
 
 SUBCOMMANDS = {
