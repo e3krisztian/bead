@@ -12,7 +12,7 @@ from .freshness import Freshness
 
 
 @dataclass(repr=False)
-class Dummy:
+class Node:
     """
     A bead.Bead look-alike when looking only at the metadata.
 
@@ -56,7 +56,7 @@ class Dummy:
             box_name=bead.box_name)
 
     @classmethod
-    def phantom_from_input(cls, bead: 'Dummy', inputspec: InputSpec):
+    def phantom_from_input(cls, bead: 'Node', inputspec: InputSpec):
         """
         Create phantom beads from inputs.
 
@@ -95,7 +95,7 @@ Bead = TypeVar('Bead')
 @dataclass(frozen=True, slots=True)
 class Ref:
     """
-    Unique reference for Dummy-s.
+    Unique reference for Nodes.
 
     NOTE: Using multiple boxes can make resolution of references non-unique, as it is possible to
     have beads with same name and content.
@@ -104,11 +104,11 @@ class Ref:
     content_id: str
 
     @classmethod
-    def from_bead(cls, bead: Dummy | InputSpec) -> 'Ref':
+    def from_bead(cls, bead: Node | InputSpec) -> 'Ref':
         return cls(bead.name, bead.content_id)
 
     @classmethod
-    def index_for(cls, beads: Iterable[Dummy]) -> Dict['Ref', Dummy]:
+    def index_for(cls, beads: Iterable[Node]) -> Dict['Ref', Node]:
         bead_by_ref = {}
         for bead in beads:
             bead_by_ref[cls.from_bead(bead)] = bead

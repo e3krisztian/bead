@@ -4,7 +4,7 @@ from typing import Iterable
 from bead.infra.timestamp import EPOCH_STR
 
 from . import graphviz
-from .dummy import Dummy
+from .node import Node
 from .freshness import Freshness
 
 
@@ -20,7 +20,7 @@ class Cluster:
 
         # use a phantom bead instead of None for default value
         phantom_head = (
-            Dummy(
+            Node(
                 name=name,
                 freeze_time_str=EPOCH_STR,
                 content_id='PhantomBead',
@@ -66,7 +66,7 @@ class Cluster:
         return len(self.beads_by_content_id)
 
 
-def create_cluster_index(beads: Iterable[Dummy]) -> Dict[str, Cluster]:
+def create_cluster_index(beads: Iterable[Node]) -> Dict[str, Cluster]:
     cluster_by_name: Dict[str, Cluster] = {}
     for bead in beads:
         if bead.name not in cluster_by_name:

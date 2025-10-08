@@ -3,10 +3,10 @@ from enum import Enum
 from functools import partial
 import json
 
-from .dummy import Dummy
-from .dummy import Freshness
-from .dummy import InputSpec
-from .dummy import Ref
+from .node import Node
+from .node import Freshness
+from .node import InputSpec
+from .node import Ref
 
 ENCODING = '@encoding'
 ENCODING_ATTRS = 'attrs'
@@ -15,7 +15,7 @@ CLASS_NAME = '@class'
 ENUM_VALUE = 'value'
 
 
-CLASSES = (Dummy, Ref, InputSpec, Freshness)
+CLASSES = (Node, Ref, InputSpec, Freshness)
 
 
 def encoder(obj):
@@ -24,10 +24,10 @@ def encoder(obj):
         #
         # The stdlib dataclasses.asdict() recursively converts ALL nested dataclasses
         # to plain dicts:
-        #   asdict(Dummy(...)) produces:
+        #   asdict(Node(...)) produces:
         #   {'inputs': [{'name': 'foo', 'kind': 'bar', ...}]}  # Plain dicts!
         #
-        # But we need nested dataclasses (like InputSpec objects in Dummy.inputs)
+        # But we need nested dataclasses (like InputSpec objects in Node.inputs)
         # to go through this encoder so they get @class and @encoding markers:
         #   {'inputs': [InputSpec(...)]}  # Still objects
         #   → JSON encoder calls encoder(InputSpec(...))

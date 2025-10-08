@@ -6,7 +6,7 @@ without crashing. Since beads are content-addressed, duplicates should be dedupl
 """
 from bead.meta import InputName
 from bead.meta import InputSpec
-from bead_cli.graph.dummy import Dummy
+from bead_cli.graph.node import Node
 from bead_cli.graph.sketch import Sketch
 
 
@@ -24,11 +24,11 @@ def test_duplicate_bead_same_name_different_boxes():
     - Should not crash during validation
 
     This reproduces the crash from error_20250818T184948419411+0200.txt:
-    AssertionError in node_index_from_edges when same Ref maps to different Dummy instances.
+    AssertionError in node_index_from_edges when same Ref maps to different Node instances.
     """
-    # Create two separate Dummy instances with same name and content_id but different box_name
+    # Create two separate Node instances with same name and content_id but different box_name
     # (simulating loading the same bead from different boxes)
-    bead_from_box_a = Dummy(
+    bead_from_box_a = Node(
         name="analysis",
         content_id="abc123",
         kind="computation",
@@ -36,7 +36,7 @@ def test_duplicate_bead_same_name_different_boxes():
         box_name='box_a',
     )
 
-    bead_from_box_b = Dummy(
+    bead_from_box_b = Node(
         name="analysis",
         content_id="abc123",
         kind="computation",
@@ -72,11 +72,11 @@ def test_duplicate_bead_with_inputs():
 
     This is the critical test case that triggers the AssertionError:
     When generate_input_edges processes both analysis_from_box_a and analysis_from_box_b,
-    it creates edges with DIFFERENT Dummy instances as destinations (both with same Ref).
+    it creates edges with DIFFERENT Node instances as destinations (both with same Ref).
     The assertion in node_index_from_edges fails because the same Ref maps to different objects.
     """
     # Create input bead
-    data_bead = Dummy(
+    data_bead = Node(
         name="data",
         content_id="data_content_id",
         kind="raw",
@@ -85,7 +85,7 @@ def test_duplicate_bead_with_inputs():
     )
 
     # Create analysis bead that exists in two boxes
-    analysis_from_box_a = Dummy(
+    analysis_from_box_a = Node(
         name="analysis",
         content_id="analysis_content_id",
         kind="computation",
@@ -101,7 +101,7 @@ def test_duplicate_bead_with_inputs():
         box_name='box_a',
     )
 
-    analysis_from_box_b = Dummy(
+    analysis_from_box_b = Node(
         name="analysis",
         content_id="analysis_content_id",
         kind="computation",

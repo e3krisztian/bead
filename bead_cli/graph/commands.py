@@ -13,7 +13,7 @@ from bead.infra.fs import write_file
 from . import sketch as graph_sketch
 from ..cmdparse import Command
 from ..common import die
-from .dummy import Dummy
+from .node import Node
 from .io import read_beads
 from .io import write_beads
 from .sketch import Sketch
@@ -161,7 +161,7 @@ class SketchProcessor:
         return f'{cls}({args})'
 
     def sketch_from_beads(self, beads):
-        return Sketch.from_beads([Dummy.from_bead(bead) for bead in beads])
+        return Sketch.from_beads([Node.from_bead(bead) for bead in beads])
 
 
 class ProcessorWithFileName(SketchProcessor):

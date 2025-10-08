@@ -3,7 +3,7 @@ import string
 from typing import Dict
 
 from bead.meta import InputSpec
-from bead_cli.graph.dummy import Dummy
+from bead_cli.graph.node import Node
 from bead_cli.graph.graph import Ref
 from bead_cli.graph.sketch import Sketch
 
@@ -16,13 +16,13 @@ DEFAULT_BOX_NAME = 'main'
 
 class Sketcher:
     """
-    Factory properly connected Dummy-s.
+    Factory properly connected Nodes.
 
     For use in test fixtures and to create coherent bead graphs for docs.
     a1 is older than a2, a9 is older than b1
     """
     def __init__(self):
-        self._by_name: Dict[str, Dummy] = {}
+        self._by_name: Dict[str, Node] = {}
         self._phantoms = set()
 
     def __getitem__(self, name):
@@ -43,7 +43,7 @@ class Sketcher:
     def compile(self, dag: str):
         # 'a1 -a-> b2 -> c4 a2 -another-a-> b2'
         label = None
-        src: Dummy | None = None
+        src: Node | None = None
         for fragment in dag.split():
             if fragment.startswith("-"):
                 label = fragment.rstrip(">").strip("-").strip(":")
@@ -71,7 +71,7 @@ class Sketcher:
                 days=string.ascii_lowercase.index(proto_name)))
         delta_from_version = datetime.timedelta(hours=int(proto_version))
         timestamp = TS_BASE + delta_from_name + delta_from_version
-        bead = Dummy(
+        bead = Node(
             name=name.rstrip(string.digits),
             kind=kind,
             content_id=f"content_id_{proto}",
@@ -106,11 +106,11 @@ class Sketcher:
         return Sketch.from_beads(self.beads)
 
 
-def bead(sketch: Sketch, name_version: str) -> Dummy:
+def bead(sketch: Sketch, name_version: str) -> Node:
     for bead in sketch.beads:
         if bead.content_id == f'content_id_{name_version}':
             return bead
-    raise ValueError('Dummy by name-version not found', name_version)
+    raise ValueError('Node by name-version not found', name_version)
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ from bead_cli.graph.io import write_beads
 META_JSON = """\
 [
     {
-        "@class": "Dummy",
+        "@class": "Node",
         "@encoding": "attrs",
         "box_name": "box",
         "content_id": "id_ood2",
@@ -40,7 +40,7 @@ META_JSON = """\
         "name": "ood2"
     },
     {
-        "@class": "Dummy",
+        "@class": "Node",
         "@encoding": "attrs",
         "box_name": "box",
         "content_id": "id_ood1",
@@ -64,7 +64,7 @@ META_JSON = """\
         "name": "ood1"
     },
     {
-        "@class": "Dummy",
+        "@class": "Node",
         "@encoding": "attrs",
         "box_name": "",
         "content_id": "id_root2_utd",
@@ -79,7 +79,7 @@ META_JSON = """\
         "name": "root2"
     },
     {
-        "@class": "Dummy",
+        "@class": "Node",
         "@encoding": "attrs",
         "box_name": "",
         "content_id": "id_root1_utd",
@@ -94,7 +94,7 @@ META_JSON = """\
         "name": "root1"
     },
     {
-        "@class": "Dummy",
+        "@class": "Node",
         "@encoding": "attrs",
         "box_name": "",
         "content_id": "id_root1_ood",
@@ -109,7 +109,7 @@ META_JSON = """\
         "name": "root1"
     },
     {
-        "@class": "Dummy",
+        "@class": "Node",
         "@encoding": "attrs",
         "box_name": "",
         "content_id": "id_ood3",

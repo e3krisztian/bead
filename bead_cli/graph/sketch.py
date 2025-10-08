@@ -14,7 +14,7 @@ from bead.infra.timestamp import EPOCH_STR
 from . import graphviz
 from .cluster import Cluster
 from .cluster import create_cluster_index
-from .dummy import Dummy
+from .node import Node
 from .freshness import OUT_OF_DATE
 from .freshness import UP_TO_DATE
 from .graph import Edge
@@ -33,14 +33,14 @@ from .io import write_beads
 
 @dataclass(frozen=True)
 class Sketch:
-    beads: Tuple[Dummy, ...]
+    beads: Tuple[Node, ...]
     edges: Tuple[Edge, ...]
 
     def __post_init__(self):
         assert refs_from_edges(self.edges) - refs_from_beads(self.beads) == set()
 
     @classmethod
-    def from_beads(cls, beads: Sequence[Dummy]):
+    def from_beads(cls, beads: Sequence[Node]):
         bead_index = Ref.index_for(beads)
         # Use list() to snapshot beads before generate_input_edges modifies bead_index
         deduplicated_beads = list(bead_index.values())
@@ -104,7 +104,7 @@ def heads_of(sketch: Sketch) -> Sketch:
     return Sketch(beads=tuple(heads), edges=head_edges)
 
 
-def add_final_sink_to(sketch: Sketch) -> Tuple[Sketch, Dummy]:
+def add_final_sink_to(sketch: Sketch) -> Tuple[Sketch, Node]:
     """
     Add a new node, and edges from all nodes.
 
@@ -115,7 +115,7 @@ def add_final_sink_to(sketch: Sketch) -> Tuple[Sketch, Dummy]:
     Makes a new instance
     """
     sink_name = '*' * (1 + max((len(bead.name) for bead in sketch.beads), default=0))
-    sink = Dummy(
+    sink = Node(
         name=sink_name,
         content_id=sink_name,
         kind=sink_name,
@@ -168,8 +168,8 @@ def set_sinks(sketch: Sketch, cluster_names: Iterable[str]) -> Sketch:
 class ClusterFilter:
     def __init__(self, sketch):
         self.sketch = sketch
-        self.dummy_by_name = {
-            name: Dummy(
+        self.node_by_name = {
+            name: Node(
                 name=name,
                 content_id=name,
                 kind=name,
@@ -182,16 +182,16 @@ class ClusterFilter:
         src_dest_pairs = self.convert_to_name_pairs(self.sketch.edges)
         return [
             Edge(
-                self.dummy_by_name[src],
-                self.dummy_by_name[dest])
+                self.node_by_name[src],
+                self.node_by_name[dest])
             for src, dest in src_dest_pairs
         ]
 
     def get_encoded_refs(self, bead_names: Iterable[str]) -> List[Ref]:
         return [
-            self.dummy_by_name[name].ref
+            self.node_by_name[name].ref
             for name in sorted(set(bead_names))
-            if name in self.dummy_by_name
+            if name in self.node_by_name
         ]
 
     def get_filtered_by_refs(self, encoded_refs) -> Sketch:
@@ -204,8 +204,8 @@ class ClusterFilter:
         }
         encoded_edges = [
             Edge(
-                self.dummy_by_name[src],
-                self.dummy_by_name[dest],
+                self.node_by_name[src],
+                self.node_by_name[dest],
             )
             for src, dest in cluster_edges_to_keep
         ]
@@ -214,7 +214,7 @@ class ClusterFilter:
     def get_filtered_by_edges(self, encoded_edges: Iterable[Edge]) -> Sketch:
         src_dest_pairs = self.convert_to_name_pairs(encoded_edges)
         bead_names = {src for src, _ in src_dest_pairs} | {dest for _, dest in src_dest_pairs}
-        assert bead_names - set(self.dummy_by_name) == set()
+        assert bead_names - set(self.node_by_name) == set()
         beads = tuple(b for b in self.sketch.beads if b.name in bead_names)
         edges = tuple(e for e in self.sketch.edges if (e.src.name, e.dest.name) in src_dest_pairs)
         return Sketch(beads, edges).drop_deleted_inputs()
