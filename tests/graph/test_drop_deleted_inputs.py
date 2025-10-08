@@ -1,19 +1,19 @@
 from bead_cli.graph.bead_graph import BeadGraph
-from tests.sketcher import Sketcher
-from tests.sketcher import bead
+from tests.graph_builder import GraphBuilder
+from tests.graph_builder import bead
 
 
 def test_new_version_marks_older_superseded():
-    sketcher = Sketcher()
-    sketcher.define('a1 b1 c1')
-    sketcher.compile(
+    builder = GraphBuilder()
+    builder.define('a1 b1 c1')
+    builder.compile(
         """
         a1 -> b1
         a1 -:survivor:-> c1
         """
     )
 
-    graph = sketcher.graph
+    graph = builder.graph
     orig_beads = graph.beads
     graph = BeadGraph(
         beads=orig_beads,

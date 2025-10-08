@@ -7,7 +7,7 @@ from bead.infra.fs import rmtree
 from bead.infra.fs import write_file
 from bead.workspace import Workspace
 from bead_cli.graph.bead_graph import BeadGraph
-from tests.sketcher import Sketcher
+from tests.graph_builder import GraphBuilder
 from tests.graph.test_graphviz import needs_dot
 from .test_helpers import create_bead_family
 
@@ -105,30 +105,30 @@ def test_invalid_command_reported(shell):
 
 @pytest.fixture
 def graph(shell):
-    sketcher = Sketcher()
-    sketcher.define('a1 b1 c1 d1 e1 f1')
-    sketcher.compile(
+    builder = GraphBuilder()
+    builder.define('a1 b1 c1 d1 e1 f1')
+    builder.compile(
         """
         a1 -> b1 -> c1 -> d1
 
               b1 ------------> e1 -> f1
         """
     )
-    sketcher.graph.to_file(shell.cwd / 'computation.web')
+    builder.graph.to_file(shell.cwd / 'computation.web')
 
 
 @pytest.fixture
 def indirect_links_graph(shell):
-    sketcher = Sketcher()
-    sketcher.define('a1 b1 b2 c1 c2 d3 e1 f1')
-    sketcher.compile(
+    builder = GraphBuilder()
+    builder.define('a1 b1 b2 c1 c2 d3 e1 f1')
+    builder.compile(
         """
         a1 -> b1               e1 -> f1
               b2 -> c1
                     c2 -> d3
         """
     )
-    sketcher.graph.to_file(shell.cwd / 'computation.web')
+    builder.graph.to_file(shell.cwd / 'computation.web')
 
 
 def test_filter_no_args_no_filtering(shell, graph):

@@ -14,7 +14,7 @@ TS_BASE = datetime.datetime(
 DEFAULT_BOX_NAME = 'main'
 
 
-class Sketcher:
+class GraphBuilder:
     """
     Factory properly connected Nodes.
 
@@ -114,20 +114,20 @@ def bead(graph: BeadGraph, name_version: str) -> Node:
 
 
 if __name__ == '__main__':
-    sketcher = Sketcher()
-    sketcher.define('a1 a2', kind='kind1', box_name='secret')
-    sketcher.define('b2', kind='kind2')
-    sketcher.define('c4', kind='kind3')
-    sketcher.define('z9', kind='KK')
-    # sketcher.phantom('a1 a2')
-    sketcher.compile(
+    builder = GraphBuilder()
+    builder.define('a1 a2', kind='kind1', box_name='secret')
+    builder.define('b2', kind='kind2')
+    builder.define('c4', kind='kind3')
+    builder.define('z9', kind='KK')
+    # builder.phantom('a1 a2')
+    builder.compile(
         """
         a1 -:older:-> b2 -> c4
         a2 -:newer:-> b2
         """
     )
-    sketcher.clone('b2', 'clone123', 'clone-box')
+    builder.clone('b2', 'clone123', 'clone-box')
 
     from pprint import pprint
-    pprint(list(sketcher.beads))
-    pprint([o.__dict__ for o in sketcher.beads])
+    pprint(list(builder.beads))
+    pprint([o.__dict__ for o in builder.beads])
