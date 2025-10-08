@@ -104,7 +104,7 @@ def test_invalid_command_reported(shell):
 
 
 @pytest.fixture
-def sketch(shell):
+def graph(shell):
     sketcher = Sketcher()
     sketcher.define('a1 b1 c1 d1 e1 f1')
     sketcher.compile(
@@ -118,7 +118,7 @@ def sketch(shell):
 
 
 @pytest.fixture
-def indirect_links_sketch(shell):
+def indirect_links_graph(shell):
     sketcher = Sketcher()
     sketcher.define('a1 b1 b2 c1 c2 d3 e1 f1')
     sketcher.compile(
@@ -131,13 +131,13 @@ def indirect_links_sketch(shell):
     sketcher.graph.to_file(shell.cwd / 'computation.web')
 
 
-def test_filter_no_args_no_filtering(shell, sketch):
+def test_filter_no_args_no_filtering(shell, graph):
     shell.bead('graph load computation.web / .. / save filtered.web')
 
     assert shell.read_file('computation.web') == shell.read_file('filtered.web')
 
 
-def test_filter_sources_through_cluster_links(shell, indirect_links_sketch):
+def test_filter_sources_through_cluster_links(shell, indirect_links_graph):
     shell.bead('graph load computation.web / b .. / save filtered.web')
 
     graph = BeadGraph.from_file(shell.cwd / 'filtered.web')
@@ -145,7 +145,7 @@ def test_filter_sources_through_cluster_links(shell, indirect_links_sketch):
     assert len(graph.cluster_by_name['c']) == 2
 
 
-def test_filter_sinks_through_cluster_links(shell, indirect_links_sketch):
+def test_filter_sinks_through_cluster_links(shell, indirect_links_graph):
     shell.bead('graph load computation.web / .. c / save filtered.web')
 
     graph = BeadGraph.from_file(shell.cwd / 'filtered.web')
@@ -153,13 +153,13 @@ def test_filter_sinks_through_cluster_links(shell, indirect_links_sketch):
     assert len(graph.cluster_by_name['c']) == 2
 
 
-def test_filter(shell, sketch):
+def test_filter(shell, graph):
     shell.bead('graph load computation.web / b c .. c f / save filtered.web')
     graph = BeadGraph.from_file(shell.cwd / 'filtered.web')
     assert graph.cluster_by_name.keys() == set('bcef')
 
 
-def test_filter_filtered_out_sink(shell, indirect_links_sketch):
+def test_filter_filtered_out_sink(shell, indirect_links_graph):
     # f1 is unreachable from sources {b, c}, so it will be not a reachable sink
     shell.bead('graph load computation.web / b c .. c f / save filtered.web')
 
