@@ -12,9 +12,18 @@ from .freshness import Freshness
 @dataclass(repr=False)
 class Node:
     """
-    A bead.Bead look-alike when looking only at the metadata.
+    Graph node: Bead metadata with freshness tracking.
 
-    Also has metadata for coloring (freshness).
+    A dataclass representation of a Bead, extended with freshness state
+    for dependency graph analysis.
+
+    Freshness indicates the node's state in the dependency graph:
+    - UP_TO_DATE: all inputs are current
+    - OUT_OF_DATE: has outdated inputs, recomputation recommended
+    - SUPERSEDED: a newer version of this bead exists
+    - PHANTOM: referenced but missing bead (broken dependency)
+
+    Freshness is mutable and updated during graph coloring algorithms.
     """
     # these are considered immutable once the object is created
     name: str = field(kw_only=True, default="UNKNOWN")
@@ -26,6 +35,7 @@ class Node:
     # these can be modified after the object is created
     freshness: Freshness = field(kw_only=True, default=Freshness.SUPERSEDED)
     box_name: str = field(kw_only=True, default='')
+    input_map: dict[str, str] = field(kw_only=True, default_factory=dict)
 
     def __post_init__(self):
         # Convert inputs to list and freshness to Freshness enum
@@ -51,19 +61,22 @@ class Node:
             freeze_time_str=bead.freeze_time_str,
             inputs=bead.inputs,
             freshness=getattr(bead, 'freshness', Freshness.SUPERSEDED),
-            box_name=bead.box_name)
+            box_name=bead.box_name,
+            input_map=bead.input_map)
 
     @classmethod
-    def phantom_from_input(cls, bead: 'Node', inputspec: InputSpec):
+    def phantom_from_input(cls, inputspec: InputSpec, phantom_name: str):
         """
         Create phantom beads from inputs.
 
         The returned bead is referenced as input from another bead,
         but we do not have the referenced bead.
+
+        Uses phantom_name as the node name.
         """
         phantom = (
             cls(
-                name=inputspec.name,
+                name=phantom_name,
                 content_id=inputspec.content_id,
                 kind=inputspec.kind,
                 freeze_time_str=inputspec.freeze_time_str))

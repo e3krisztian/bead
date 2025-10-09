@@ -34,13 +34,16 @@ def generate_input_edges(node_index: dict[Ref, Node], bead: Node) -> Iterator[Ed
     Modifies node_index - adds referenced, but missing beads as phantom nodes.
 
     An edge is a triple of (src, dest, label), where both 'src' and 'dest' are Nodes.
+    Uses input_map to translate input nicks to actual bead names.
     """
     for input in bead.inputs:
-        src_ref = Ref.from_bead(input)
+        # Translate input nick to actual bead name via input_map
+        mapped_name = bead.input_map.get(input.name, input.name)
+        src_ref = Ref(mapped_name, input.content_id)
         try:
             src = node_index[src_ref]
         except LookupError:
-            src = node_index[src_ref] = Node.phantom_from_input(bead, input)
+            src = node_index[src_ref] = Node.phantom_from_input(input, mapped_name)
 
         yield Edge(src, bead, input.name)
 

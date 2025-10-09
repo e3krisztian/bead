@@ -83,6 +83,11 @@ class GraphBuilder:
         bead.inputs = inputs
         return bead
 
+    def map_input(self, bead_name: str, input_nick: str, actual_bead_name: str):
+        """Map an input nick to the actual bead name via input_map."""
+        bead = self._by_name[bead_name]
+        bead.input_map[input_nick] = actual_bead_name
+
     def _add_input(self, bead, input_name, input_bead):
         assert input_name not in [i.name for i in bead.inputs]
         input_spec = InputSpec(

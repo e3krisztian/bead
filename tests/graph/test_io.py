@@ -18,6 +18,7 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "SUPERSEDED"
         },
+        "input_map": {},
         "inputs": [
             {
                 "@class": "InputSpec",
@@ -50,6 +51,9 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "UP_TO_DATE"
         },
+        "input_map": {
+            "root": "actual_root_bead"
+        },
         "inputs": [
             {
                 "@class": "InputSpec",
@@ -74,6 +78,7 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "OUT_OF_DATE"
         },
+        "input_map": {},
         "inputs": [],
         "kind": "kind_root_2",
         "name": "root2"
@@ -89,6 +94,7 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "SUPERSEDED"
         },
+        "input_map": {},
         "inputs": [],
         "kind": "kind_root_1",
         "name": "root1"
@@ -104,6 +110,7 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "SUPERSEDED"
         },
+        "input_map": {},
         "inputs": [],
         "kind": "kind_root_1",
         "name": "root1"
@@ -119,6 +126,7 @@ META_JSON = """\
             "@encoding": "enum",
             "value": "UP_TO_DATE"
         },
+        "input_map": {},
         "inputs": [
             {
                 "@class": "InputSpec",
