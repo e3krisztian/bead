@@ -68,14 +68,60 @@ class BeadGraph:
     def clusters(self):
         return tuple(self.cluster_by_name.values())
 
-    def color_beads(self):
-        color_beads(self)
+    def color_beads(self) -> bool:
+        """
+        Assign up-to-dateness status (freshness) to beads.
+        """
+        heads, sink = add_final_sink_to(heads_of(self))
+        head_eval_order = toposort(heads.edges)
+        if not head_eval_order:  # empty
+            return True
+        assert head_eval_order[-1] == sink
+
+        for cluster in self.clusters:
+            cluster.reset_freshness()
+
+        # downgrade UP_TO_DATE freshness if has a non UP_TO_DATE input
+        edges_by_dest = group_by_dest(heads.edges)
+        for cluster_head in head_eval_order:
+            if cluster_head.freshness is UP_TO_DATE:
+                if any(e.src.freshness is not UP_TO_DATE for e in edges_by_dest[cluster_head.ref]):
+                    cluster_head.set_freshness(OUT_OF_DATE)
+
+        return sink.freshness is UP_TO_DATE
 
     def as_dot(self):
-        return plot_clusters_as_dot(self)
+        """
+        Generate GraphViz .dot file content, which describe the connections between beads
+        and their up-to-date status.
+        """
+        formatted_bead_clusters = '\n\n'.join(c.as_dot for c in self.clusters)
+        graphviz_context = graphviz.Context()
+
+        def format_inputs():
+            def edges_as_dot():
+                for edge in self.edges:
+                    is_auxiliary_edge = (
+                        edge.dest.freshness not in (OUT_OF_DATE, UP_TO_DATE))
+
+                    yield graphviz_context.dot_edge(edge.src, edge.dest, edge.label, is_auxiliary_edge)
+            return '\n'.join(edges_as_dot())
+
+        return graphviz.DOT_GRAPH_TEMPLATE.format(
+            bead_clusters=formatted_bead_clusters,
+            bead_inputs=format_inputs())
 
     def drop_deleted_inputs(self) -> "BeadGraph":
-        return drop_deleted_inputs(self)
+        edges_as_refs = {(edge.src_ref, edge.dest_ref) for edge in self.edges}
+        beads = []
+        for bead in self.beads:
+            inputs_to_keep = []
+            for input in bead.inputs:
+                input_ref = Ref.from_bead(input)
+                if (input_ref, bead.ref) in edges_as_refs:
+                    inputs_to_keep.append(input)
+            beads.append(dataclass_replace(bead, inputs=inputs_to_keep))
+        return BeadGraph.from_beads(beads)
 
 
 def simplify(graph: BeadGraph) -> BeadGraph:
@@ -237,59 +283,7 @@ def drop_after(graph: BeadGraph, timestamp) -> BeadGraph:
     raise NotImplementedError
 
 
-def plot_clusters_as_dot(graph: BeadGraph):
-    """
-    Generate GraphViz .dot file content, which describe the connections between beads
-    and their up-to-date status.
-    """
-    formatted_bead_clusters = '\n\n'.join(c.as_dot for c in graph.clusters)
-    graphviz_context = graphviz.Context()
-
-    def format_inputs():
-        def edges_as_dot():
-            for edge in graph.edges:
-                is_auxiliary_edge = (
-                    edge.dest.freshness not in (OUT_OF_DATE, UP_TO_DATE))
-
-                yield graphviz_context.dot_edge(edge.src, edge.dest, edge.label, is_auxiliary_edge)
-        return '\n'.join(edges_as_dot())
-
-    return graphviz.DOT_GRAPH_TEMPLATE.format(
-        bead_clusters=formatted_bead_clusters,
-        bead_inputs=format_inputs())
 
 
-def color_beads(graph: BeadGraph) -> bool:
-    """
-    Assign up-to-dateness status (freshness) to beads.
-    """
-    heads, sink = add_final_sink_to(heads_of(graph))
-    head_eval_order = toposort(heads.edges)
-    if not head_eval_order:  # empty
-        return True
-    assert head_eval_order[-1] == sink
-
-    for cluster in graph.clusters:
-        cluster.reset_freshness()
-
-    # downgrade UP_TO_DATE freshness if has a non UP_TO_DATE input
-    edges_by_dest = group_by_dest(heads.edges)
-    for cluster_head in head_eval_order:
-        if cluster_head.freshness is UP_TO_DATE:
-            if any(e.src.freshness is not UP_TO_DATE for e in edges_by_dest[cluster_head.ref]):
-                cluster_head.set_freshness(OUT_OF_DATE)
-
-    return sink.freshness is UP_TO_DATE
 
 
-def drop_deleted_inputs(graph: BeadGraph) -> BeadGraph:
-    edges_as_refs = {(edge.src_ref, edge.dest_ref) for edge in graph.edges}
-    beads = []
-    for bead in graph.beads:
-        inputs_to_keep = []
-        for input in bead.inputs:
-            input_ref = Ref.from_bead(input)
-            if (input_ref, bead.ref) in edges_as_refs:
-                inputs_to_keep.append(input)
-        beads.append(dataclass_replace(bead, inputs=inputs_to_keep))
-    return BeadGraph.from_beads(beads)
