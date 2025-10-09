@@ -144,7 +144,7 @@ class ZipArchive(Archive):
         return persistence.zip_load(self.zipfile, filename)
 
     @property
-    def input_map(self):
+    def input_map(self):  # type: ignore[override]
         try:
             return self.zip_load(layouts.Archive.INPUT_MAP)
         except KeyError:  # zipfile.open() raises KeyError when file doesn't exist in archive

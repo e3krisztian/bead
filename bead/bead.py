@@ -52,6 +52,7 @@ class Bead(Computation):
     content_id: str
     freeze_time_str: str
     box_name: str
+    input_map: dict[str, str]
 
     @property
     def freeze_time(self):

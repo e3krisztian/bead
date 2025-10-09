@@ -16,7 +16,7 @@ from .infra import sqlite
 from .ziparchive import ZipArchive
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 @dataclass(frozen=True)
@@ -55,6 +55,7 @@ def create_schema(conn):
             freeze_time_unix INTEGER NOT NULL,
             file_path TEXT NOT NULL,
             inputs TEXT, -- JSON encoded list of inputs
+            input_map TEXT, -- JSON encoded dict mapping input nicks to bead names
             PRIMARY KEY (name, content_id)
         )
     ''')
@@ -92,13 +93,14 @@ def insert_bead_record(conn, archive, relative_path):
     '''Insert bead record into database.'''
     freeze_time_unix = timestamp_to_unix_utc_microseconds(archive.freeze_time_str)
     inputs_json = json.dumps([i.as_dict() for i in archive.inputs])
+    input_map_json = json.dumps(archive.input_map)
     conn.execute('''
-        INSERT OR REPLACE INTO beads
-        (name, content_id, kind, freeze_time_str, freeze_time_unix, file_path, inputs)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO beads
+        (name, content_id, kind, freeze_time_str, freeze_time_unix, file_path, inputs, input_map)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ''', (archive.name, archive.content_id, archive.kind,
           archive.freeze_time_str, freeze_time_unix, str(relative_path),
-          inputs_json))
+          inputs_json, input_map_json))
 
 
 def delete_bead_record(conn, file_path):
@@ -168,7 +170,7 @@ def query_beads(conn, conditions, box_name):
     '''Execute query and return list of Bead instances.'''
     where_parts, parameters = build_where_clause(conditions)
 
-    sql = 'SELECT name, content_id, kind, freeze_time_str, file_path, inputs FROM beads'
+    sql = 'SELECT name, content_id, kind, freeze_time_str, file_path, inputs, input_map FROM beads'
     if where_parts:
         sql += ' WHERE ' + ' AND '.join(where_parts)
     sql += ' ORDER BY freeze_time_unix'
@@ -177,7 +179,7 @@ def query_beads(conn, conditions, box_name):
 
     beads = []
     for row in cursor.fetchall():
-        name, content_id, kind, freeze_time_str, file_path, inputs_json = row
+        name, content_id, kind, freeze_time_str, file_path, inputs_json, input_map_json = row
 
         bead = Bead()
         bead.name = name
@@ -187,6 +189,7 @@ def query_beads(conn, conditions, box_name):
         bead.box_name = box_name
 
         bead.inputs = [InputSpec.from_dict(d) for d in json.loads(inputs_json)]
+        bead.input_map = json.loads(input_map_json) if input_map_json else {}
         beads.append(bead)
 
     return beads
