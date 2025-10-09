@@ -31,24 +31,16 @@ class Computation:
         raise LookupError(f'Input "{name}" not found')
 
 
-class Bead(Computation):
+class FrozenComputation(Computation):
     '''
     Frozen snapshot of a computation with provenance.
 
     Like a finished dish with a timestamp and location tracking.
     Immutable record of running a computation (code + inputs → output)
     with content_id for verification and freeze_time for history.
-
-    The tuple (box_name, name, content_id) uniquely identifies a bead
-    and is sufficient to resolve it to an Archive.
-
-    Note: content_id guarantees same data content, but beads with same
-    content_id can have different metadata (box_name, name) or reference
-    inputs differently.
     '''
 
-    # frozen beads only details
-    # Subclasses may implement these as properties or plain attributes
+    # Frozen computation provenance
     content_id: str
     freeze_time_str: str
     box_name: str
@@ -59,7 +51,30 @@ class Bead(Computation):
         return time_from_timestamp(self.freeze_time_str)
 
 
-class Archive(Bead, metaclass=ABCMeta):
+class Bead(FrozenComputation):
+    '''
+    Concrete frozen computation.
+
+    The tuple (box_name, name, content_id) uniquely identifies a bead
+    and is sufficient to resolve it to an Archive.
+
+    Note: content_id guarantees same data content, but beads with same
+    content_id can have different metadata (box_name, name) or reference
+    inputs differently.
+    '''
+
+    def __init__(self, *, name, kind, content_id, freeze_time_str,
+                 box_name='', inputs=None, input_map=None):
+        self.name = name
+        self.kind = kind
+        self.content_id = content_id
+        self.freeze_time_str = freeze_time_str
+        self.box_name = box_name
+        self.inputs = inputs if inputs is not None else []
+        self.input_map = input_map if input_map is not None else {}
+
+
+class Archive(FrozenComputation, metaclass=ABCMeta):
     '''
     Provide high-level access to content of a bead.
     '''

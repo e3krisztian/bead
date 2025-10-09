@@ -181,15 +181,15 @@ def query_beads(conn, conditions, box_name):
     for row in cursor.fetchall():
         name, content_id, kind, freeze_time_str, file_path, inputs_json, input_map_json = row
 
-        bead = Bead()
-        bead.name = name
-        bead.content_id = content_id
-        bead.kind = kind
-        bead.freeze_time_str = freeze_time_str
-        bead.box_name = box_name
-
-        bead.inputs = [InputSpec.from_dict(d) for d in json.loads(inputs_json)]
-        bead.input_map = json.loads(input_map_json) if input_map_json else {}
+        bead = Bead(
+            name=name,
+            content_id=content_id,
+            kind=kind,
+            freeze_time_str=freeze_time_str,
+            box_name=box_name,
+            inputs=[InputSpec.from_dict(d) for d in json.loads(inputs_json)],
+            input_map=json.loads(input_map_json) if input_map_json else {}
+        )
         beads.append(bead)
 
     return beads
