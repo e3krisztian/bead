@@ -29,7 +29,7 @@ class Node:
     name: str = field(kw_only=True, default="UNKNOWN")
     content_id: str = field(kw_only=True)
     kind: str = field(kw_only=True)
-    freeze_time_str: str = field(kw_only=True)
+    freeze_time_iso: str = field(kw_only=True)
     inputs: list[InputSpec] = field(kw_only=True, default_factory=list)
 
     # these can be modified after the object is created
@@ -46,7 +46,7 @@ class Node:
 
     @cached_property
     def freeze_time(self):
-        return time_from_timestamp(self.freeze_time_str)
+        return time_from_timestamp(self.freeze_time_iso)
 
     @cached_property
     def ref(self) -> 'Ref':
@@ -58,7 +58,7 @@ class Node:
             name=bead.name,
             content_id=bead.content_id,
             kind=bead.kind,
-            freeze_time_str=bead.freeze_time_str,
+            freeze_time_iso=bead.freeze_time_iso,
             inputs=bead.inputs,
             freshness=getattr(bead, 'freshness', Freshness.SUPERSEDED),
             box_name=bead.box_name,
@@ -79,7 +79,7 @@ class Node:
                 name=phantom_name,
                 content_id=inputspec.content_id,
                 kind=inputspec.kind,
-                freeze_time_str=inputspec.freeze_time_str))
+                freeze_time_iso=inputspec.freeze_time_iso))
         phantom.freshness = Freshness.PHANTOM
         return phantom
 

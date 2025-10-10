@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from bead.infra.timestamp import EPOCH_STR
+from bead.infra.timestamp import EPOCH_ISO
 
 from . import graphviz
 from .node import Node
@@ -21,7 +21,7 @@ class Cluster:
         phantom_head = (
             Node(
                 name=name,
-                freeze_time_str=EPOCH_STR,
+                freeze_time_iso=EPOCH_ISO,
                 content_id='PhantomBead',
                 kind='EMPTY CLUSTER'))
         phantom_head.set_freshness(Freshness.PHANTOM)

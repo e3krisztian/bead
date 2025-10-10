@@ -5,7 +5,7 @@ from functools import cached_property
 from collections.abc import Iterable
 from collections.abc import Sequence
 
-from bead.infra.timestamp import EPOCH_STR
+from bead.infra.timestamp import EPOCH_ISO
 
 from . import graphviz
 from .cluster import Cluster
@@ -161,7 +161,7 @@ def add_final_sink_to(graph: BeadGraph) -> tuple[BeadGraph, Node]:
         name=sink_name,
         content_id=sink_name,
         kind=sink_name,
-        freeze_time_str='SINK',
+        freeze_time_iso='SINK',
         freshness=UP_TO_DATE
     )
     sink_edges = (Edge(src, sink) for src in graph.beads)
@@ -215,7 +215,7 @@ class ClusterFilter:
                 name=name,
                 content_id=name,
                 kind=name,
-                freeze_time_str=EPOCH_STR,
+                freeze_time_iso=EPOCH_ISO,
             )
             for name in graph.cluster_by_name
         }

@@ -199,21 +199,21 @@ def timestamp():
 
 
 # a not so forgiving parser
-def time_from_timestamp(timestamp_str):
+def time_from_timestamp(timestamp: str):
     '''
         Parse a datetime from a timestamp string - strict!
     '''
-    parsed = _parse_default_timestamp(timestamp_str)
+    parsed = _parse_default_timestamp(timestamp)
     if parsed is None:
         raise ValueError(
             'Not a full, basic timestamp (%s)' % _DEFAULT_FULL_TIMESTAMP,
-            timestamp_str)
+            timestamp)
     return parsed
 
 
 # The earliest time, beads could be created (actually it could be 10+ years later)
-EPOCH_STR = '20000101T000000000000+0000'
-assert time_from_timestamp(EPOCH_STR) == datetime(2000, 1, 1, 0, 0, 0, 0, FixedOffset(0, 'epoch'))
+EPOCH_ISO = '20000101T000000000000+0000'
+assert time_from_timestamp(EPOCH_ISO) == datetime(2000, 1, 1, 0, 0, 0, 0, FixedOffset(0, 'epoch'))
 
 
 def time_from_user(timeish):

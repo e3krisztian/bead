@@ -12,7 +12,7 @@ META_JSON = """\
         "@encoding": "attrs",
         "box_name": "box",
         "content_id": "id_ood2",
-        "freeze_time_str": "20190321T191922693711+0100",
+        "freeze_time_iso": "20190321T191922693711+0100",
         "freshness": {
             "@class": "Freshness",
             "@encoding": "enum",
@@ -24,7 +24,7 @@ META_JSON = """\
                 "@class": "InputSpec",
                 "@encoding": "attrs",
                 "content_id": "id_ood1",
-                "freeze_time_str": "20190321T191922693711+0100",
+                "freeze_time_iso": "20190321T191922693711+0100",
                 "kind": "kind_ood1",
                 "name": "ood1"
             },
@@ -32,7 +32,7 @@ META_JSON = """\
                 "@class": "InputSpec",
                 "@encoding": "attrs",
                 "content_id": "id_root2_utd",
-                "freeze_time_str": "20190321T191922693711+0100",
+                "freeze_time_iso": "20190321T191922693711+0100",
                 "kind": "kind_root_2",
                 "name": "root2"
             }
@@ -45,7 +45,7 @@ META_JSON = """\
         "@encoding": "attrs",
         "box_name": "box",
         "content_id": "id_ood1",
-        "freeze_time_str": "20190321T191922693711+0100",
+        "freeze_time_iso": "20190321T191922693711+0100",
         "freshness": {
             "@class": "Freshness",
             "@encoding": "enum",
@@ -59,7 +59,7 @@ META_JSON = """\
                 "@class": "InputSpec",
                 "@encoding": "attrs",
                 "content_id": "id_root1_ood",
-                "freeze_time_str": "20180321T191922693711+0100",
+                "freeze_time_iso": "20180321T191922693711+0100",
                 "kind": "kind_root_1",
                 "name": "root"
             }
@@ -72,7 +72,7 @@ META_JSON = """\
         "@encoding": "attrs",
         "box_name": "",
         "content_id": "id_root2_utd",
-        "freeze_time_str": "20190321T191922693711+0100",
+        "freeze_time_iso": "20190321T191922693711+0100",
         "freshness": {
             "@class": "Freshness",
             "@encoding": "enum",
@@ -88,7 +88,7 @@ META_JSON = """\
         "@encoding": "attrs",
         "box_name": "",
         "content_id": "id_root1_utd",
-        "freeze_time_str": "20190321T191922693711+0100",
+        "freeze_time_iso": "20190321T191922693711+0100",
         "freshness": {
             "@class": "Freshness",
             "@encoding": "enum",
@@ -104,7 +104,7 @@ META_JSON = """\
         "@encoding": "attrs",
         "box_name": "",
         "content_id": "id_root1_ood",
-        "freeze_time_str": "20180321T191922693711+0100",
+        "freeze_time_iso": "20180321T191922693711+0100",
         "freshness": {
             "@class": "Freshness",
             "@encoding": "enum",
@@ -120,7 +120,7 @@ META_JSON = """\
         "@encoding": "attrs",
         "box_name": "",
         "content_id": "id_ood3",
-        "freeze_time_str": "20190321T191922693711+0100",
+        "freeze_time_iso": "20190321T191922693711+0100",
         "freshness": {
             "@class": "Freshness",
             "@encoding": "enum",
@@ -132,7 +132,7 @@ META_JSON = """\
                 "@class": "InputSpec",
                 "@encoding": "attrs",
                 "content_id": "id_ood2",
-                "freeze_time_str": "20190321T191922693711+0100",
+                "freeze_time_iso": "20190321T191922693711+0100",
                 "kind": "kind_ood2",
                 "name": "ood2"
             },
@@ -140,7 +140,7 @@ META_JSON = """\
                 "@class": "InputSpec",
                 "@encoding": "attrs",
                 "content_id": "id_phantom",
-                "freeze_time_str": "20140321T191922693711+0100",
+                "freeze_time_iso": "20140321T191922693711+0100",
                 "kind": "kind_ood2",
                 "name": "phantom"
             }

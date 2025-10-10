@@ -46,7 +46,7 @@ def test_verbose(shell, box, check, times, tmp_path_factory):
 
     assert verbose_archive.kind in shell.stdout
     assert bead_a_archive.kind in shell.stdout
-    assert bead_a_archive.freeze_time_str in shell.stdout
+    assert bead_a_archive.freeze_time_iso in shell.stdout
     assert bead_a_archive.content_id in shell.stdout
 
 
@@ -96,7 +96,7 @@ def test_verbose_inputs_not_in_known_boxes(shell, box, check, times, tmp_path_fa
 
     assert verbose_missing_archive.kind in shell.stdout
     assert missing_a_archive.kind in shell.stdout
-    assert missing_a_archive.freeze_time_str in shell.stdout
+    assert missing_a_archive.freeze_time_iso in shell.stdout
     assert missing_a_archive.content_id in shell.stdout
 
 

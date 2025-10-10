@@ -78,7 +78,7 @@ class InputSpec:
     name: InputName
     kind: str
     content_id: str
-    freeze_time_str: str
+    freeze_time_iso: str
 
     def __post_init__(self):
         # Convert name to InputName if it's a string
@@ -90,7 +90,7 @@ class InputSpec:
             'name': self.name,
             'kind': self.kind,
             'content_id': self.content_id,
-            'freeze_time_str': self.freeze_time_str,
+            'freeze_time_iso': self.freeze_time_iso,
         }
 
     @classmethod
@@ -99,12 +99,12 @@ class InputSpec:
             name=data['name'],
             kind=data['kind'],
             content_id=data['content_id'],
-            freeze_time_str=data['freeze_time_str'],
+            freeze_time_iso=data['freeze_time_iso'],
         )
 
     @property
     def freeze_time(self):
-        return time_from_timestamp(self.freeze_time_str)
+        return time_from_timestamp(self.freeze_time_iso)
 
 
 def parse_inputs(meta):

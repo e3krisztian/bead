@@ -75,7 +75,7 @@ class GraphBuilder:
             name=name.rstrip(string.digits),
             kind=kind,
             content_id=f"content_id_{proto}",
-            freeze_time_str=timestamp.strftime('%Y%m%dT%H%M%S%f%z'),
+            freeze_time_iso=timestamp.strftime('%Y%m%dT%H%M%S%f%z'),
             box_name=box_name,
         )
         # clones share inputs, thus if a new input is added to any of them
@@ -94,7 +94,7 @@ class GraphBuilder:
             name=input_name,
             kind=input_bead.kind,
             content_id=input_bead.content_id,
-            freeze_time_str=input_bead.freeze_time_str,
+            freeze_time_iso=input_bead.freeze_time_iso,
         )
         bead.inputs.append(input_spec)
 

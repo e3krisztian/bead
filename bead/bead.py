@@ -42,13 +42,13 @@ class FrozenComputation(Computation):
 
     # Frozen computation provenance
     content_id: str
-    freeze_time_str: str
+    freeze_time_iso: str
     box_name: str
     input_map: dict[str, str]
 
     @property
     def freeze_time(self):
-        return time_from_timestamp(self.freeze_time_str)
+        return time_from_timestamp(self.freeze_time_iso)
 
 
 class Bead(FrozenComputation):
@@ -63,12 +63,12 @@ class Bead(FrozenComputation):
     inputs differently.
     '''
 
-    def __init__(self, *, name, kind, content_id, freeze_time_str,
+    def __init__(self, *, name, kind, content_id, freeze_time_iso,
                  box_name='', inputs=None, input_map=None):
         self.name = name
         self.kind = kind
         self.content_id = content_id
-        self.freeze_time_str = freeze_time_str
+        self.freeze_time_iso = freeze_time_iso
         self.box_name = box_name
         self.inputs = inputs if inputs is not None else []
         self.input_map = input_map if input_map is not None else {}

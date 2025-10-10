@@ -131,7 +131,7 @@ class ZipArchive(Archive):
         return self._meta[meta.KIND]
 
     @property
-    def freeze_time_str(self):  # type: ignore[override]
+    def freeze_time_iso(self):  # type: ignore[override]
         return self._meta[meta.FREEZE_TIME]
 
     @property

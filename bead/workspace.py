@@ -126,12 +126,12 @@ class Workspace(Computation):
     def is_loaded(self, input_name):
         return (self.directory / layouts.Workspace.INPUT / input_name).is_dir()
 
-    def add_input(self, input_name, kind, content_id, freeze_time_str):
+    def add_input(self, input_name, kind, content_id, freeze_time_iso):
         m = self.meta
         m[meta.INPUTS][input_name] = {
             meta.INPUT_KIND: kind,
             meta.INPUT_CONTENT_ID: content_id,
-            meta.INPUT_FREEZE_TIME: freeze_time_str}
+            meta.INPUT_FREEZE_TIME: freeze_time_iso}
         self.meta = m
 
     def delete_input(self, input_name):
@@ -151,7 +151,7 @@ class Workspace(Computation):
         try:
             self.add_input(
                 input_name,
-                archive.kind, archive.content_id, archive.freeze_time_str)
+                archive.kind, archive.content_id, archive.freeze_time_iso)
             destination_dir = input_dir / input_name
             archive.unpack_data_to(destination_dir)
             for f in all_subpaths(destination_dir):
@@ -316,7 +316,7 @@ class _ZipCreator:
                 input.name: {
                     meta.INPUT_KIND: input.kind,
                     meta.INPUT_CONTENT_ID: input.content_id,
-                    meta.INPUT_FREEZE_TIME: input.freeze_time_str}
+                    meta.INPUT_FREEZE_TIME: input.freeze_time_iso}
                 for input in workspace.inputs},
             meta.FREEZE_NAME: workspace.name}
 

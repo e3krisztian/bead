@@ -192,7 +192,7 @@ D: Computation base class with Workspace and Bead subclasses
 
    Bead(Computation):
      - Immutable frozen snapshot
-     - Adds: content_id, freeze_time_str, box_name for provenance
+     - Adds: content_id, freeze_time_iso, box_name for provenance
    ```
 
    "Is-a" test validation:

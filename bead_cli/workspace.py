@@ -206,9 +206,9 @@ def print_inputs(env, workspace, verbose):
                     continue
 
             if bead_name:
-                print(f'\tBead:        {bead_name} # {input.freeze_time_str}')
+                print(f'\tBead:        {bead_name} # {input.freeze_time_iso}')
             else:
-                print(f'\tBead:        **MISSING** # {input.freeze_time_str}')
+                print(f'\tBead:        **MISSING** # {input.freeze_time_iso}')
 
             if verbose:
                 print(f'\tKind:        {input.kind}')
@@ -223,9 +223,9 @@ def print_inputs(env, workspace, verbose):
                     has_box = True
                     # Check if the best match is also an exact content_id match
                     if best_bead.content_id == input.content_id:
-                        print(f'\t * -r {box.name} # {best_bead.freeze_time_str}')
+                        print(f'\t * -r {box.name} # {best_bead.freeze_time_iso}')
                     else:
-                        print(f'\t ~ -r {box.name} # {best_bead.freeze_time_str} (kind match)')
+                        print(f'\t ~ -r {box.name} # {best_bead.freeze_time_iso} (kind match)')
                 except LookupError:
                     pass
             if not has_box:

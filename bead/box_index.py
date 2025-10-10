@@ -51,11 +51,11 @@ def create_schema(conn):
             name TEXT NOT NULL,
             content_id TEXT NOT NULL,
             kind TEXT NOT NULL,
-            freeze_time_str TEXT NOT NULL,
+            freeze_time_iso TEXT NOT NULL,
             freeze_time_unix INTEGER NOT NULL,
             file_path TEXT NOT NULL,
             inputs TEXT, -- JSON encoded list of inputs
-            input_map TEXT, -- JSON encoded dict mapping input nicks to bead names
+            input_map TEXT, -- JSON encoded dict mapping input names to bead names
             PRIMARY KEY (name, content_id)
         )
     ''')
@@ -91,15 +91,15 @@ def get_indexed_files(conn):
 
 def insert_bead_record(conn, archive, relative_path):
     '''Insert bead record into database.'''
-    freeze_time_unix = timestamp_to_unix_utc_microseconds(archive.freeze_time_str)
+    freeze_time_unix = iso_timestamp_to_unix_utc_microseconds(archive.freeze_time_iso)
     inputs_json = json.dumps([i.as_dict() for i in archive.inputs])
     input_map_json = json.dumps(archive.input_map)
     conn.execute('''
         INSERT INTO beads
-        (name, content_id, kind, freeze_time_str, freeze_time_unix, file_path, inputs, input_map)
+        (name, content_id, kind, freeze_time_iso, freeze_time_unix, file_path, inputs, input_map)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ''', (archive.name, archive.content_id, archive.kind,
-          archive.freeze_time_str, freeze_time_unix, str(relative_path),
+          archive.freeze_time_iso, freeze_time_unix, str(relative_path),
           inputs_json, input_map_json))
 
 
@@ -118,7 +118,7 @@ def find_file_path(conn, name, content_id):
     return row[0] if row else None
 
 
-def timestamp_to_unix_utc_microseconds(timestamp):
+def iso_timestamp_to_unix_utc_microseconds(timestamp):
     """Convert timestamp to UTC unix microseconds for database storage."""
     if hasattr(timestamp, 'timestamp'):
         return int(timestamp.timestamp() * 1_000_000)
@@ -129,8 +129,8 @@ def timestamp_to_unix_utc_microseconds(timestamp):
     return timestamp
 
 
-def unix_microseconds_to_timestamp_str(unix_microseconds):
-    """Convert unix microseconds back to ISO string for Bead objects."""
+def unix_microseconds_to_iso_timestamp(unix_microseconds):
+    """Convert unix microseconds back to ISO timestamp for Bead objects."""
     import datetime
     dt = datetime.datetime.fromtimestamp(unix_microseconds / 1_000_000, tz=datetime.timezone.utc)
     return dt.isoformat().replace('+00:00', '+0000')
@@ -138,7 +138,7 @@ def unix_microseconds_to_timestamp_str(unix_microseconds):
 
 def normalize_timestamp_value(value):
     '''Convert timestamp value to unix microseconds for database queries.'''
-    return timestamp_to_unix_utc_microseconds(value)
+    return iso_timestamp_to_unix_utc_microseconds(value)
 
 
 def build_where_clause(conditions):
@@ -170,7 +170,7 @@ def query_beads(conn, conditions, box_name):
     '''Execute query and return list of Bead instances.'''
     where_parts, parameters = build_where_clause(conditions)
 
-    sql = 'SELECT name, content_id, kind, freeze_time_str, file_path, inputs, input_map FROM beads'
+    sql = 'SELECT name, content_id, kind, freeze_time_iso, file_path, inputs, input_map FROM beads'
     if where_parts:
         sql += ' WHERE ' + ' AND '.join(where_parts)
     sql += ' ORDER BY freeze_time_unix'
@@ -179,13 +179,13 @@ def query_beads(conn, conditions, box_name):
 
     beads = []
     for row in cursor.fetchall():
-        name, content_id, kind, freeze_time_str, file_path, inputs_json, input_map_json = row
+        name, content_id, kind, freeze_time_iso, file_path, inputs_json, input_map_json = row
 
         bead = Bead(
             name=name,
             content_id=content_id,
             kind=kind,
-            freeze_time_str=freeze_time_str,
+            freeze_time_iso=freeze_time_iso,
             box_name=box_name,
             inputs=[InputSpec.from_dict(d) for d in json.loads(inputs_json)],
             input_map=json.loads(input_map_json) if input_map_json else {}

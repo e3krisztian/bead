@@ -32,7 +32,7 @@ def test_duplicate_bead_same_name_different_boxes():
         name="analysis",
         content_id="abc123",
         kind="computation",
-        freeze_time_str="20200101T120000000000+0000",
+        freeze_time_iso="20200101T120000000000+0000",
         box_name='box_a',
     )
 
@@ -40,7 +40,7 @@ def test_duplicate_bead_same_name_different_boxes():
         name="analysis",
         content_id="abc123",
         kind="computation",
-        freeze_time_str="20200101T120000000000+0000",
+        freeze_time_iso="20200101T120000000000+0000",
         box_name='box_b',
     )
 
@@ -80,7 +80,7 @@ def test_duplicate_bead_with_inputs():
         name="data",
         content_id="data_content_id",
         kind="raw",
-        freeze_time_str="20200101T100000000000+0000",
+        freeze_time_iso="20200101T100000000000+0000",
         box_name='box_shared',
     )
 
@@ -89,13 +89,13 @@ def test_duplicate_bead_with_inputs():
         name="analysis",
         content_id="analysis_content_id",
         kind="computation",
-        freeze_time_str="20200101T120000000000+0000",
+        freeze_time_iso="20200101T120000000000+0000",
         inputs=[
             InputSpec(
                 name=InputName("data"),
                 content_id="data_content_id",
                 kind="raw",
-                freeze_time_str="20200101T100000000000+0000",
+                freeze_time_iso="20200101T100000000000+0000",
             )
         ],
         box_name='box_a',
@@ -105,13 +105,13 @@ def test_duplicate_bead_with_inputs():
         name="analysis",
         content_id="analysis_content_id",
         kind="computation",
-        freeze_time_str="20200101T120000000000+0000",
+        freeze_time_iso="20200101T120000000000+0000",
         inputs=[
             InputSpec(
                 name=InputName("data"),
                 content_id="data_content_id",
                 kind="raw",
-                freeze_time_str="20200101T100000000000+0000",
+                freeze_time_iso="20200101T100000000000+0000",
             )
         ],
         box_name='box_b',

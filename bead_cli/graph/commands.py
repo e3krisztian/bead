@@ -280,7 +280,7 @@ def load_all_beads(boxes):
     columns = int(os.environ.get('COLUMNS', 80))
     all_beads = []
     for n, bead in enumerate(search(boxes).all()):
-        msg = f"\rLoaded bead {n + 1} ({bead.box_name} : {bead.name} @ {bead.freeze_time_str})"[:columns]
+        msg = f"\rLoaded bead {n + 1} ({bead.box_name} : {bead.name} @ {bead.freeze_time_iso})"[:columns]
         msg = msg + ' ' * (columns - len(msg))
         print(msg, end="", flush=True)
         all_beads.append(bead)
