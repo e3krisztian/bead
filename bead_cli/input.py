@@ -17,7 +17,7 @@ from .common import BEAD_OFFSET
 from .common import BEAD_TIME
 from .common import OPTIONAL_WORKSPACE
 from .common import TIME_LATEST
-from .common import BEAD_REF_BASE_defaulting_to
+from .common import BEAD_SPEC_defaulting_to
 from .common import DefaultArgSentinel
 from .common import assert_valid_workspace
 from .common import die
@@ -72,7 +72,7 @@ def INPUT_NICK(parser):
         metavar=arg_metavar.INPUT_NICK, help=arg_help.INPUT_NICK)
 
 
-# bead_ref
+# bead_spec sentinels
 SAME_BEAD_NEWEST_VERSION = DefaultArgSentinel('same bead, newest version')
 USE_INPUT_NICK = DefaultArgSentinel(f'use {arg_metavar.INPUT_NICK}')
 
@@ -84,28 +84,28 @@ class CmdAdd(Command):
 
     def declare(self, arg):
         arg(INPUT_NICK)
-        arg(BEAD_REF_BASE_defaulting_to(USE_INPUT_NICK))
+        arg(BEAD_SPEC_defaulting_to(USE_INPUT_NICK))
         arg(BEAD_TIME)
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
         input_nick = args.input_nick
-        bead_ref_base = args.bead_ref_base
+        bead_spec = args.bead_spec
         workspace = get_workspace(args)
 
         if os.path.dirname(input_nick):
             die(f'Invalid input name: {input_nick}')
 
-        if bead_ref_base is USE_INPUT_NICK:
-            bead_ref_base = input_nick
+        if bead_spec is USE_INPUT_NICK:
+            bead_spec = input_nick
 
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
 
         try:
-            bead = resolve_bead(env, bead_ref_base, args.bead_time)
+            bead = resolve_bead(env, bead_spec, args.bead_time)
         except LookupError:
-            die(f'Not a known bead name: {bead_ref_base}')
+            die(f'Not a known bead name: {bead_spec}')
 
         _check_load_with_feedback(workspace, args.input_nick, bead)
         workspace.set_input_bead_name(args.input_nick, bead.name)
@@ -137,22 +137,22 @@ class CmdMap(Command):
 
     def declare(self, arg):
         arg(INPUT_NICK)
-        arg(BEAD_REF_BASE_defaulting_to(USE_INPUT_NICK))
+        arg(BEAD_SPEC_defaulting_to(USE_INPUT_NICK))
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
         input_nick = args.input_nick
-        bead_ref_base = args.bead_ref_base
+        bead_spec = args.bead_spec
         workspace = get_workspace(args)
 
         if input_nick not in [input_spec.name for input_spec in workspace.inputs]:
             die(f'Unknown input name: {input_nick}')
 
-        if bead_ref_base is USE_INPUT_NICK:
-            bead_ref_base = input_nick
+        if bead_spec is USE_INPUT_NICK:
+            bead_spec = input_nick
 
-        workspace.set_input_bead_name(input_nick, bead_ref_base)
-        print(f'Input "{input_nick}" mapped to bead "{bead_ref_base}"')
+        workspace.set_input_bead_name(input_nick, bead_spec)
+        print(f'Input "{input_nick}" mapped to bead "{bead_spec}"')
 
 
 class CmdUpdate(Command):
@@ -165,7 +165,7 @@ class CmdUpdate(Command):
 
     def declare(self, arg):
         arg(OPTIONAL_INPUT_NICK)
-        arg(BEAD_REF_BASE_defaulting_to(SAME_BEAD_NEWEST_VERSION))
+        arg(BEAD_SPEC_defaulting_to(SAME_BEAD_NEWEST_VERSION))
         arg(BEAD_TIME)
         arg(BEAD_OFFSET)
         arg(OPTIONAL_WORKSPACE)
@@ -200,7 +200,7 @@ class CmdUpdate(Command):
             self.update_one_input(args, env)
 
     def update_all_inputs(self, args, env):
-        if args.bead_ref_base is not SAME_BEAD_NEWEST_VERSION:
+        if args.bead_spec is not SAME_BEAD_NEWEST_VERSION:
             die('Too many arguments')
         if args.bead_offset:
             die("--next, --prev can not be specified when updating all inputs")
@@ -228,7 +228,7 @@ class CmdUpdate(Command):
 
     def update_one_input(self, args, env):
         input_nick = args.input_nick
-        bead_ref_base = args.bead_ref_base
+        bead_spec = args.bead_spec
         workspace = get_workspace(args)
         try:
             input = workspace.get_input(input_nick)
@@ -241,21 +241,21 @@ class CmdUpdate(Command):
 
         # Acquire archive using appropriate strategy
         boxes = env.get_boxes()
-        explicit_bead_name_given = (bead_ref_base is not SAME_BEAD_NEWEST_VERSION)
+        explicit_bead_name_given = (bead_spec is not SAME_BEAD_NEWEST_VERSION)
 
-        if bead_ref_base is SAME_BEAD_NEWEST_VERSION:
+        if bead_spec is SAME_BEAD_NEWEST_VERSION:
             archive = self._acquire_archive_for_existing_input(boxes, input, args, workspace)
-        elif os.path.isfile(bead_ref_base):
-            archive = self._acquire_archive_from_file(bead_ref_base, args)
+        elif os.path.isfile(bead_spec):
+            archive = self._acquire_archive_from_file(bead_spec, args)
         else:
-            archive = self._acquire_archive_by_name(boxes, input, bead_ref_base, args, workspace)
+            archive = self._acquire_archive_by_name(boxes, input, bead_spec, args, workspace)
 
         # Verify constraints before updating
         self._verify_archive_constraints(input, archive, args, workspace, explicit_bead_name_given)
 
         _update_input(workspace, input, archive)
         # Update mapping when user specifies explicit bead (not when using existing mapping)
-        if bead_ref_base is not SAME_BEAD_NEWEST_VERSION:
+        if bead_spec is not SAME_BEAD_NEWEST_VERSION:
             workspace.set_input_bead_name(input_nick, archive.name)
 
     def _acquire_archive_for_existing_input(
@@ -273,16 +273,16 @@ class CmdUpdate(Command):
         except LookupError:
             self._no_match_found(input, args, fatal=True)
 
-    def _acquire_archive_from_file(self, bead_ref_base, args) -> Archive:
+    def _acquire_archive_from_file(self, bead_spec, args) -> Archive:
         """Acquire archive directly from file path."""
         if args.bead_offset:
             die('--prev/--next is not supported when an input is replaced with another bead')
 
         from bead.ziparchive import ZipArchive
-        return ZipArchive(bead_ref_base)
+        return ZipArchive(bead_spec)
 
     def _acquire_archive_by_name(
-        self, boxes: list[Box], input: InputSpec, bead_ref_base, args, workspace: Workspace
+        self, boxes: list[Box], input: InputSpec, bead_spec, args, workspace: Workspace
     ) -> Archive:
         """Acquire archive by searching for explicitly named bead."""
         if args.bead_offset:
@@ -292,10 +292,10 @@ class CmdUpdate(Command):
             return self._find_archive_for_update(
                 boxes, input, args.bead_time, offset=None,
                 match_strategy=args.match_strategy, workspace=workspace,
-                bead_name_override=bead_ref_base
+                bead_name_override=bead_spec
             )
         except LookupError:
-            die(f'Not a known bead name: {bead_ref_base}')
+            die(f'Not a known bead name: {bead_spec}')
 
     def _find_archive_for_update(
         self,

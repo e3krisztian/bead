@@ -1,8 +1,9 @@
 ENV       = 'directory that defines e.g. the boxes'
 WORKSPACE = 'workspace directory'
-BEAD_REF  = '''
-    bead to load data from
-    - either an archive file name or a bead name
+BEAD      = '''
+    which bead to use
+    - a bead name (e.g., "hotel-dataset")
+    - an archive file path (e.g., "/path/to/bead.zip")
 '''
 INPUT_NICK = (
     'name of input,'

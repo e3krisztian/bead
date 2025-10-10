@@ -83,32 +83,32 @@ def BEAD_OFFSET(parser):
     parser.arg('-P', '--prev', '--previous', dest='bead_offset', action='store_const', const=-1)
 
 
-def arg_bead_ref_base(nargs, default):
+def arg_bead_spec(nargs, default):
     '''
-    Declare bead_ref_base argument - either a name or a file or something special
+    Declare bead_spec argument - either a name or a file or something special
     '''
     def declare(parser):
         parser.arg(
-            'bead_ref_base', metavar=arg_metavar.BEAD_REF, help=arg_help.BEAD_REF,
+            'bead_spec', metavar=arg_metavar.BEAD, help=arg_help.BEAD,
             nargs=nargs, type=str, default=default)
     return declare
 
 
-def BEAD_REF_BASE_defaulting_to(name):
-    return arg_bead_ref_base(nargs='?', default=name)
+def BEAD_SPEC_defaulting_to(name):
+    return arg_bead_spec(nargs='?', default=name)
 
 
-BEAD_REF_BASE = arg_bead_ref_base(nargs=None, default=None)
+BEAD_SPEC = arg_bead_spec(nargs=None, default=None)
 
 
-def resolve_bead(env, bead_ref_base, time) -> Archive:
+def resolve_bead(env, bead_spec, time) -> Archive:
     # prefer exact file name over box search
-    if os.path.isfile(bead_ref_base):
-        return ZipArchive(bead_ref_base)
+    if os.path.isfile(bead_spec):
+        return ZipArchive(bead_spec)
 
     # not a file - try box search
     boxes = env.get_boxes()
-    bead = bead_box.search(boxes).by_name(bead_ref_base).at_or_older(time).newest()
+    bead = bead_box.search(boxes).by_name(bead_spec).at_or_older(time).newest()
     return bead_box.resolve(boxes, bead)
 
 

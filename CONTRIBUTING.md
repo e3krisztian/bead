@@ -133,4 +133,4 @@ Before submitting your contribution, please ensure it passes all checks.
 ### Bead-Specific Knowledge
 - `content_id` and `kind` are internal, technical identifiers (long strings). They are not supplied directly by the user.
 - Users specify beads and files by their names.
-- `bead_ref_base` refers to a user-provided name or filename.
+- `bead_spec` (internally) / `BEAD` (user-facing) refers to a user-provided bead name or archive file path. This will evolve into a mini-language supporting syntax like `box::name~offset`.

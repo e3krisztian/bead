@@ -14,7 +14,7 @@ from bead.workspace import Workspace
 from . import arg_help
 from . import arg_metavar
 from .cmdparse import Command
-from .common import BEAD_REF_BASE
+from .common import BEAD_SPEC
 from .common import BEAD_TIME
 from .common import OPTIONAL_WORKSPACE
 from .common import DefaultArgSentinel
@@ -135,7 +135,7 @@ class CmdEdit(Command):
     '''
 
     def declare(self, arg):
-        arg(BEAD_REF_BASE)
+        arg(BEAD_SPEC)
         arg(BEAD_TIME)
         arg(WORKSPACE_defaulting_to(DERIVE_FROM_BEAD_NAME))
         arg('--review', dest='review',
@@ -144,12 +144,12 @@ class CmdEdit(Command):
 
     def run(self, args, env: 'Environment'):
         review = args.review
-        
+
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
-        
+
         try:
-            bead = resolve_bead(env, args.bead_ref_base, args.bead_time)
+            bead = resolve_bead(env, args.bead_spec, args.bead_time)
         except LookupError:
             die('Bead not found!')
         try:
