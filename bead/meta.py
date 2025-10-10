@@ -7,12 +7,12 @@ with the following minimum structure:
 {
     meta_version: ...,
     inputs: {
-        'nick1' : {
+        'name1' : {
             kind: ...,
             content_id: ...,
             freeze_time: ...,
         },
-        'nick2' : {
+        'name2' : {
             kind: ...,
             content_id: ...,
             freeze_time: ...,

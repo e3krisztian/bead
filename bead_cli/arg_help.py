@@ -5,7 +5,7 @@ BEAD      = '''
     - a bead name (e.g., "hotel-dataset")
     - an archive file path (e.g., "/path/to/bead.zip")
 '''
-INPUT_NICK = (
+INPUT_NAME = (
     'name of input,'
     + ' its workspace relative location is "input/%(metavar)s"')
 BOX = 'Name of box to store bead'

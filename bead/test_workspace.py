@@ -192,19 +192,19 @@ def load_workspace(tmp_path_factory):
     return ws
 
 
-def _load_a_bead(workspace, input_nick, tmp_path_factory):
+def _load_a_bead(workspace, input_name, tmp_path_factory):
     """Helper function to load a bead into workspace."""
-    temp_dir = tmp_path_factory.mktemp(f"load_{input_nick}")
-    path_of_bead_to_load = temp_dir / f'{input_nick}.zip'
+    temp_dir = tmp_path_factory.mktemp(f"load_{input_name}")
+    path_of_bead_to_load = temp_dir / f'{input_name}.zip'
     make_bead(
         path_of_bead_to_load,
         {
             'output/output1':
-            f'data for {input_nick}'.encode()
+            f'data for {input_name}'.encode()
         },
         tmp_path_factory
     )
-    workspace.load(input_nick, ZipArchive(path_of_bead_to_load))
+    workspace.load(input_name, ZipArchive(path_of_bead_to_load))
 
 
 def test_load_makes_bead_files_available_under_input(load_workspace, tmp_path_factory):
@@ -248,55 +248,55 @@ def test_load_loading_more_than_one_bead(load_workspace, tmp_path_factory):
 
 
 @pytest.fixture
-def input_nick():
-    """Provide a test input nickname."""
-    return 'input_nick'
+def input_name():
+    """Provide a test input name."""
+    return 'input_name'
 
 
 @pytest.fixture
-def workspace_with_input(tmp_path_factory, input_nick):
+def workspace_with_input(tmp_path_factory, input_name):
     """Create a workspace with an input."""
     workspace_dir = tmp_path_factory.mktemp('workspaces') / 'workspace'
     ws = m.Workspace(workspace_dir)
     ws.create(A_KIND)
-    ws.add_input(input_nick, A_KIND, 'content_id', timestamp())
+    ws.add_input(input_name, A_KIND, 'content_id', timestamp())
     return ws
 
 
-def test_input_map_default_value(workspace_with_input, input_nick):
+def test_input_map_default_value(workspace_with_input, input_name):
     """Test that input map returns default value."""
-    assert input_nick == workspace_with_input.get_input_bead_name(input_nick)
+    assert input_name == workspace_with_input.get_input_bead_name(input_name)
 
 
-def test_input_map_define(workspace_with_input, input_nick):
+def test_input_map_define(workspace_with_input, input_name):
     """Test defining input bead name."""
-    bead_name = f'{input_nick}2'
-    workspace_with_input.set_input_bead_name(input_nick, bead_name)
-    assert bead_name == workspace_with_input.get_input_bead_name(input_nick)
+    bead_name = f'{input_name}2'
+    workspace_with_input.set_input_bead_name(input_name, bead_name)
+    assert bead_name == workspace_with_input.get_input_bead_name(input_name)
 
 
-def test_input_map_update(workspace_with_input, input_nick):
+def test_input_map_update(workspace_with_input, input_name):
     """Test updating input bead name."""
-    workspace_with_input.set_input_bead_name(input_nick, f'{input_nick}2')
-    bead_name = f'{input_nick}42'
-    workspace_with_input.set_input_bead_name(input_nick, bead_name)
-    assert bead_name == workspace_with_input.get_input_bead_name(input_nick)
+    workspace_with_input.set_input_bead_name(input_name, f'{input_name}2')
+    bead_name = f'{input_name}42'
+    workspace_with_input.set_input_bead_name(input_name, bead_name)
+    assert bead_name == workspace_with_input.get_input_bead_name(input_name)
 
 
-def test_input_map_independent_update(workspace_with_input, input_nick):
+def test_input_map_independent_update(workspace_with_input, input_name):
     """Test that input updates are independent."""
-    input_nick2 = f'{input_nick}2'
-    add_input(workspace_with_input, input_nick2)
+    input_name2 = f'{input_name}2'
+    add_input(workspace_with_input, input_name2)
 
-    workspace_with_input.set_input_bead_name(input_nick, f'{input_nick}1111')
-    workspace_with_input.set_input_bead_name(input_nick2, f'{input_nick2}222')
-    assert f'{input_nick}1111' == workspace_with_input.get_input_bead_name(input_nick)
-    assert f'{input_nick2}222' == workspace_with_input.get_input_bead_name(input_nick2)
+    workspace_with_input.set_input_bead_name(input_name, f'{input_name}1111')
+    workspace_with_input.set_input_bead_name(input_name2, f'{input_name2}222')
+    assert f'{input_name}1111' == workspace_with_input.get_input_bead_name(input_name)
+    assert f'{input_name2}222' == workspace_with_input.get_input_bead_name(input_name2)
 
 
-def add_input(workspace, input_nick):
+def add_input(workspace, input_name):
     """Helper function to add an input to workspace."""
-    workspace.add_input(input_nick, A_KIND, 'content_id', timestamp())
+    workspace.add_input(input_name, A_KIND, 'content_id', timestamp())
 
 
 def unzip(archive_path, directory):

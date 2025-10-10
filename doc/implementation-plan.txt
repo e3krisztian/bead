@@ -36,9 +36,9 @@ tools
 bead - v1.0 (workspace with file packages, without channels)
 	new name
 	develop package-file
-	mount package-file input_nick
-	update input_nick package-file
-	umount input_nick
+	mount package-file input_name
+	update input_name package-file
+	umount input_name
 	pack
 
 repo - data store
@@ -51,8 +51,8 @@ repo - data store
 bead - v2.0 (workspace with repo packages and channels)
 	new name [channel]
 	develop repo package [channel] [version]
-	mount [repo] name channel [version] input_nick
-	update input_nick [repo] [channel]
-	umount input_nick
+	mount [repo] name channel [version] input_name
+	update input_name [repo] [channel]
+	umount input_name
 	pack
 	release [repo] [channel]

@@ -101,7 +101,7 @@ def test_reverse():
 
 def test_input_map_translates_names():
     """
-    Test that input_map correctly translates input nicks to actual bead names.
+    Test that input_map correctly translates input names to actual bead names.
 
     Scenario:
     - Bead 'data_raw' exists
@@ -117,7 +117,7 @@ def test_input_map_translates_names():
     builder.define('d1 p1')  # data_raw and processor
     builder.compile('d1 -:input_data:-> p1')
 
-    # Simulate renaming: input refers to "d1" by nick "input_data", but actual bead is named "d"
+    # Simulate renaming: input refers to "d1" by name "input_data", but actual bead is named "d"
     builder.map_input('p1', 'input_data', 'd')
 
     graph = BeadGraph.from_beads(tuple(builder.beads))
@@ -147,7 +147,7 @@ def test_phantom_node_gets_mapped_name():
 
     Expected:
     - Phantom node is created with name "raw_data" (mapped name)
-    - Edge label is "data_input" (original input nick)
+    - Edge label is "data_input" (original input name)
     - This allows the phantom to be resolved when "raw_data" bead appears
     """
     builder = GraphBuilder()
@@ -155,7 +155,7 @@ def test_phantom_node_gets_mapped_name():
     builder.compile('x9 -:data_input:-> p1')
     builder.phantom('x9')  # mark as phantom so it's not included in beads
 
-    # Map the input nick to the actual bead name
+    # Map the input name to the actual bead name
     builder.map_input('p1', 'data_input', 'raw_data')
 
     graph = BeadGraph.from_beads(tuple(builder.beads))
@@ -166,7 +166,7 @@ def test_phantom_node_gets_mapped_name():
     # Find the phantom node
     phantom = [b for b in graph.beads if b.content_id == 'content_id_x9'][0]
 
-    # Phantom should have the MAPPED name, not the input nick
+    # Phantom should have the MAPPED name, not the input name
     assert phantom.name == 'raw_data'
 
     # Edge should still use the original input name as label

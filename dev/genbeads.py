@@ -398,19 +398,19 @@ def execute_plan(plan: List[BeadSpec], archive_output_dir: Path, workspaces_dir:
             for input_index in spec.input_indices:
                 input_path = generated_archive_paths[input_index]
                 input_name = plan[input_index].name
-                
+
                 # Count how many times this name has been used as input already
-                existing_count = sum(1 for existing_nick in ws.meta.get('inputs', {}).keys() 
-                                    if existing_nick == input_name or existing_nick.startswith(f"{input_name}_"))
-                
+                existing_count = sum(1 for existing_name in ws.meta.get('inputs', {}).keys()
+                                    if existing_name == input_name or existing_name.startswith(f"{input_name}_"))
+
                 # First occurrence gets the plain name, subsequent ones get indexed
                 if existing_count == 0:
-                    input_nick = input_name
+                    local_input_name = input_name
                 else:
-                    input_nick = f"{input_name}_{existing_count}"
-                
+                    local_input_name = f"{input_name}_{existing_count}"
+
                 archive = ZipArchive(str(input_path))
-                ws.load(input_nick, archive)
+                ws.load(local_input_name, archive)
 
             # Save the bead
             freeze_time = timestamp.timestamp()

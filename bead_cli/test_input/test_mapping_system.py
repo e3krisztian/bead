@@ -464,7 +464,7 @@ def test_input_map_edge_cases(shell, box, check, times, tmp_path_factory):
     shell.bead('input', 'update', 'test_input')
     check.loaded('test_input', times.TS2)  # Should find newer edge_case_v
 
-    # Test mapping to self (input_nick -> input_nick)
+    # Test mapping to self (input_name -> input_name)
     shell.bead('input', 'map', 'test_input', 'test_input')
     # This should fail because there's no bead named "test_input"
     shell.bead('input', 'update', 'test_input', expect_failure=True)

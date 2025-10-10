@@ -50,31 +50,31 @@ class MatchStrategy(Enum):
         self.display_name = display_name
 
 
-# input_nick
+# input_name
 ALL_INPUTS = DefaultArgSentinel('all inputs')
 
 
-def OPTIONAL_INPUT_NICK(parser):
+def OPTIONAL_INPUT_NAME(parser):
     '''
-    Declare `input_nick` as optional parameter
-    '''
-    parser.arg(
-        'input_nick', type=str, nargs='?', default=ALL_INPUTS,
-        metavar=arg_metavar.INPUT_NICK, help=arg_help.INPUT_NICK)
-
-
-def INPUT_NICK(parser):
-    '''
-    Declare `input_nick` as mandatory parameter
+    Declare `input_name` as optional parameter
     '''
     parser.arg(
-        'input_nick',
-        metavar=arg_metavar.INPUT_NICK, help=arg_help.INPUT_NICK)
+        'input_name', type=str, nargs='?', default=ALL_INPUTS,
+        metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
+
+
+def INPUT_NAME(parser):
+    '''
+    Declare `input_name` as mandatory parameter
+    '''
+    parser.arg(
+        'input_name',
+        metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
 
 
 # bead_spec sentinels
 SAME_BEAD_NEWEST_VERSION = DefaultArgSentinel('same bead, newest version')
-USE_INPUT_NICK = DefaultArgSentinel(f'use {arg_metavar.INPUT_NICK}')
+USE_INPUT_NAME = DefaultArgSentinel(f'use {arg_metavar.INPUT_NAME}')
 
 
 class CmdAdd(Command):
@@ -83,21 +83,21 @@ class CmdAdd(Command):
     '''
 
     def declare(self, arg):
-        arg(INPUT_NICK)
-        arg(BEAD_SPEC_defaulting_to(USE_INPUT_NICK))
+        arg(INPUT_NAME)
+        arg(BEAD_SPEC_defaulting_to(USE_INPUT_NAME))
         arg(BEAD_TIME)
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
-        input_nick = args.input_nick
+        input_name = args.input_name
         bead_spec = args.bead_spec
         workspace = get_workspace(args)
 
-        if os.path.dirname(input_nick):
-            die(f'Invalid input name: {input_nick}')
+        if os.path.dirname(input_name):
+            die(f'Invalid input name: {input_name}')
 
-        if bead_spec is USE_INPUT_NICK:
-            bead_spec = input_nick
+        if bead_spec is USE_INPUT_NAME:
+            bead_spec = input_name
 
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
@@ -107,8 +107,8 @@ class CmdAdd(Command):
         except LookupError:
             die(f'Not a known bead name: {bead_spec}')
 
-        _check_load_with_feedback(workspace, args.input_nick, bead)
-        workspace.set_input_bead_name(args.input_nick, bead.name)
+        _check_load_with_feedback(workspace, args.input_name, bead)
+        workspace.set_input_bead_name(args.input_name, bead.name)
 
 
 class CmdDelete(Command):
@@ -117,17 +117,17 @@ class CmdDelete(Command):
     '''
 
     def declare(self, arg):
-        arg(INPUT_NICK)
+        arg(INPUT_NAME)
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
-        input_nick = args.input_nick
+        input_name = args.input_name
         workspace = get_workspace(args)
-        if workspace.has_input(input_nick):
-            workspace.delete_input(input_nick)
-            print(f'Input {input_nick} is deleted.')
+        if workspace.has_input(input_name):
+            workspace.delete_input(input_name)
+            print(f'Input {input_name} is deleted.')
         else:
-            die(f'Input {input_nick} does not exist')
+            die(f'Input {input_name} does not exist')
 
 
 class CmdMap(Command):
@@ -136,23 +136,23 @@ class CmdMap(Command):
     '''
 
     def declare(self, arg):
-        arg(INPUT_NICK)
-        arg(BEAD_SPEC_defaulting_to(USE_INPUT_NICK))
+        arg(INPUT_NAME)
+        arg(BEAD_SPEC_defaulting_to(USE_INPUT_NAME))
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
-        input_nick = args.input_nick
+        input_name = args.input_name
         bead_spec = args.bead_spec
         workspace = get_workspace(args)
 
-        if input_nick not in [input_spec.name for input_spec in workspace.inputs]:
-            die(f'Unknown input name: {input_nick}')
+        if input_name not in [input_spec.name for input_spec in workspace.inputs]:
+            die(f'Unknown input name: {input_name}')
 
-        if bead_spec is USE_INPUT_NICK:
-            bead_spec = input_nick
+        if bead_spec is USE_INPUT_NAME:
+            bead_spec = input_name
 
-        workspace.set_input_bead_name(input_nick, bead_spec)
-        print(f'Input "{input_nick}" mapped to bead "{bead_spec}"')
+        workspace.set_input_bead_name(input_name, bead_spec)
+        print(f'Input "{input_name}" mapped to bead "{bead_spec}"')
 
 
 class CmdUpdate(Command):
@@ -164,7 +164,7 @@ class CmdUpdate(Command):
     '''
 
     def declare(self, arg):
-        arg(OPTIONAL_INPUT_NICK)
+        arg(OPTIONAL_INPUT_NAME)
         arg(BEAD_SPEC_defaulting_to(SAME_BEAD_NEWEST_VERSION))
         arg(BEAD_TIME)
         arg(BEAD_OFFSET)
@@ -194,7 +194,7 @@ class CmdUpdate(Command):
         arg(add_safety_options)
 
     def run(self, args, env: 'Environment'):
-        if args.input_nick is ALL_INPUTS:
+        if args.input_name is ALL_INPUTS:
             self.update_all_inputs(args, env)
         else:
             self.update_one_input(args, env)
@@ -227,13 +227,13 @@ class CmdUpdate(Command):
         print('All inputs are up to date.')
 
     def update_one_input(self, args, env):
-        input_nick = args.input_nick
+        input_name = args.input_name
         bead_spec = args.bead_spec
         workspace = get_workspace(args)
         try:
-            input = workspace.get_input(input_nick)
+            input = workspace.get_input(input_name)
         except LookupError:
-            die(f'Workspace does not have input "{input_nick}"'
+            die(f'Workspace does not have input "{input_name}"'
                 ' - did you want to add it as a new one?')
 
         # Refresh indexes to ensure we have the latest beads
@@ -256,7 +256,7 @@ class CmdUpdate(Command):
         _update_input(workspace, input, archive)
         # Update mapping when user specifies explicit bead (not when using existing mapping)
         if bead_spec is not SAME_BEAD_NEWEST_VERSION:
-            workspace.set_input_bead_name(input_nick, archive.name)
+            workspace.set_input_bead_name(input_name, archive.name)
 
     def _acquire_archive_for_existing_input(
         self, boxes: list[Box], input: InputSpec, args, workspace: Workspace
@@ -439,17 +439,17 @@ class CmdLoad(Command):
     '''
 
     def declare(self, arg):
-        arg(OPTIONAL_INPUT_NICK)
+        arg(OPTIONAL_INPUT_NAME)
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
-        input_nick = args.input_nick
+        input_name = args.input_name
         workspace = get_workspace(args)
-        
+
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
-        
-        if input_nick is ALL_INPUTS:
+
+        if input_name is ALL_INPUTS:
             inputs = workspace.inputs
             if inputs:
                 for input in inputs:
@@ -458,9 +458,9 @@ class CmdLoad(Command):
                 warning('No inputs defined to load.')
         else:
             try:
-                input = workspace.get_input(input_nick)
+                input = workspace.get_input(input_name)
             except LookupError:
-                die(f'No input with name {input_nick}')
+                die(f'No input with name {input_name}')
             _load(env, workspace, input)
 
 
@@ -495,17 +495,17 @@ def _load(env: 'Environment', workspace: Workspace, input: InputSpec) -> None:
         print(f'"{input.name}" is already loaded - skipping')
 
 
-def _check_load_with_feedback(workspace: Workspace, input_nick: str, archive: Archive) -> None:
+def _check_load_with_feedback(workspace: Workspace, input_name: str, archive: Archive) -> None:
     try:
         verify_with_feedback(archive)
     except InvalidArchive:
-        warning(f'Bead for {input_nick} is found but damaged - not loading.')
+        warning(f'Bead for {input_name} is found but damaged - not loading.')
     else:
-        if workspace.is_loaded(input_nick):
-            print(f'Removing current data from {input_nick}')
-            workspace.unload(input_nick)
-        print(f'Loading new data to {input_nick} ...', end='', flush=True)
-        workspace.load(input_nick, archive)
+        if workspace.is_loaded(input_name):
+            print(f'Removing current data from {input_name}')
+            workspace.unload(input_name)
+        print(f'Loading new data to {input_name} ...', end='', flush=True)
+        workspace.load(input_name, archive)
         print(' Done')
 
 
@@ -515,26 +515,26 @@ class CmdUnload(Command):
     '''
 
     def declare(self, arg):
-        arg(OPTIONAL_INPUT_NICK)
+        arg(OPTIONAL_INPUT_NAME)
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
-        input_nick = args.input_nick
+        input_name = args.input_name
         workspace = get_workspace(args)
-        if input_nick is ALL_INPUTS:
+        if input_name is ALL_INPUTS:
             for input in workspace.inputs:
                 _unload(workspace, input.name)
         else:
-            _unload(workspace, input_nick)
+            _unload(workspace, input_name)
 
 
-def _unload(workspace, input_nick):
-    if workspace.is_loaded(input_nick):
-        print('Unloading', input_nick, '...', end='', flush=True)
-        workspace.unload(input_nick)
+def _unload(workspace, input_name):
+    if workspace.is_loaded(input_name):
+        print('Unloading', input_name, '...', end='', flush=True)
+        workspace.unload(input_name)
         print(' Done', flush=True)
     else:
-        print(input_nick, 'was not loaded - skipping')
+        print(input_name, 'was not loaded - skipping')
 
 
 

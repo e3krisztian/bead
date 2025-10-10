@@ -115,34 +115,34 @@ class Workspace(Computation):
                 zipfilename.unlink()
             raise
 
-    def has_input(self, input_nick):
+    def has_input(self, input_name):
         '''
-        Is there an input defined for input_nick?
+        Is there an input defined for input_name?
 
         NOTE: it is not necessarily loaded!
         '''
-        return input_nick in self.meta[meta.INPUTS]
+        return input_name in self.meta[meta.INPUTS]
 
-    def is_loaded(self, input_nick):
-        return (self.directory / layouts.Workspace.INPUT / input_nick).is_dir()
+    def is_loaded(self, input_name):
+        return (self.directory / layouts.Workspace.INPUT / input_name).is_dir()
 
-    def add_input(self, input_nick, kind, content_id, freeze_time_str):
+    def add_input(self, input_name, kind, content_id, freeze_time_str):
         m = self.meta
-        m[meta.INPUTS][input_nick] = {
+        m[meta.INPUTS][input_name] = {
             meta.INPUT_KIND: kind,
             meta.INPUT_CONTENT_ID: content_id,
             meta.INPUT_FREEZE_TIME: freeze_time_str}
         self.meta = m
 
-    def delete_input(self, input_nick):
-        assert self.has_input(input_nick)
-        if self.is_loaded(input_nick):
-            self.unload(input_nick)
+    def delete_input(self, input_name):
+        assert self.has_input(input_name)
+        if self.is_loaded(input_name):
+            self.unload(input_name)
         m = self.meta
-        del m[meta.INPUTS][input_nick]
+        del m[meta.INPUTS][input_name]
         self.meta = m
 
-    def load(self, input_nick, archive: Archive):
+    def load(self, input_name, archive: Archive):
         '''
         Make output data files in archive available under input directory
         '''
@@ -150,24 +150,24 @@ class Workspace(Computation):
         make_writable(input_dir)
         try:
             self.add_input(
-                input_nick,
+                input_name,
                 archive.kind, archive.content_id, archive.freeze_time_str)
-            destination_dir = input_dir / input_nick
+            destination_dir = input_dir / input_name
             archive.unpack_data_to(destination_dir)
             for f in all_subpaths(destination_dir):
                 make_readonly(f)
         finally:
             make_readonly(input_dir)
 
-    def unload(self, input_nick):
+    def unload(self, input_name):
         '''
         Remove files for given input
         '''
-        assert self.has_input(input_nick)
+        assert self.has_input(input_name)
         input_dir = self.directory / layouts.Workspace.INPUT
         make_writable(input_dir)
         try:
-            rmtree(input_dir / input_nick)
+            rmtree(input_dir / input_name)
         finally:
             make_readonly(input_dir)
 
@@ -178,7 +178,7 @@ class Workspace(Computation):
     @property
     def input_map(self):
         """
-        Map from local (bead specific) input nicks to real (more widely recognised) bead names
+        Map from local (bead specific) input names to real (more widely recognised) bead names
         """
         try:
             return persistence.file_load(self._input_map_filename)
@@ -189,18 +189,18 @@ class Workspace(Computation):
     def input_map(self, input_map):
         persistence.file_dump(input_map, self._input_map_filename)
 
-    def get_input_bead_name(self, input_nick):
+    def get_input_bead_name(self, input_name):
         '''
         Returns the name on which update works.
         '''
-        return self.input_map.get(input_nick, input_nick)
+        return self.input_map.get(input_name, input_name)
 
-    def set_input_bead_name(self, input_nick, bead_name):
+    def set_input_bead_name(self, input_name, bead_name):
         '''
         Sets the name to be used for updates in the future.
         '''
         input_map = self.input_map
-        input_map[input_nick] = bead_name
+        input_map[input_name] = bead_name
         self.input_map = input_map
 
     def __repr__(self):

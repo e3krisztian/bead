@@ -34,10 +34,10 @@ def generate_input_edges(node_index: dict[Ref, Node], bead: Node) -> Iterator[Ed
     Modifies node_index - adds referenced, but missing beads as phantom nodes.
 
     An edge is a triple of (src, dest, label), where both 'src' and 'dest' are Nodes.
-    Uses input_map to translate input nicks to actual bead names.
+    Uses input_map to translate input names to actual bead names.
     """
     for input in bead.inputs:
-        # Translate input nick to actual bead name via input_map
+        # Translate input name to actual bead name via input_map
         mapped_name = bead.input_map.get(input.name, input.name)
         src_ref = Ref(mapped_name, input.content_id)
         try:

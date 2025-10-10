@@ -30,13 +30,13 @@
     + create new package layout - with directory structure
     + unpack existing pkg for development (w/ most recent input data)
     + manage input data
-        + mount input data (name, channel, version, input_nick)
-            * extract data under input/<input_nick>
-            * register (name-uuid, content-hash, input_nick) in metadata
-        + unmount input data (delete input_nick)
-        + rename input data (rename input_nick)
-        + set upgrade channel (input_nick, channel)
-        + upgrade input data (input_nick[, version-hash])
+        + mount input data (name, channel, version, input_name)
+            * extract data under input/<input_name>
+            * register (name-uuid, content-hash, input_name) in metadata
+        + unmount input data (delete input_name)
+        + rename input data (rename input_name)
+        + set upgrade channel (input_name, channel)
+        + upgrade input data (input_name[, version-hash])
     + create archive from directory
     + publish package as archive on a repository
     + make package available on a channel
@@ -74,9 +74,9 @@ The archive contains
     + ordering: time stamp
     + catalog:
         + package name (package-uuid)
-        + optional per-input_nick update channel information (channel-uuids)
+        + optional per-input_name update channel information (channel-uuids)
 	+ how to reproduce:
-	    + references to input data packages (name, version, input_nick)
+	    + references to input data packages (name, version, input_name)
 	    + how to run the code
 
 ## Directory
@@ -85,8 +85,8 @@ The directory contains
 
 - input directory
     + read only, mount points for input data packages:
-        * input_nick1/data...
-        * input_nick2/data...
+        * input_name1/data...
+        * input_name2/data...
         * ...
 - output directory
     + initially empty

@@ -41,20 +41,20 @@ class CheckAssertions:
     def __init__(self, shell):
         self.shell = shell
 
-    def loaded(self, input_nick, readme_content):
+    def loaded(self, input_name, readme_content):
         """
         Fail if an incorrect bead was loaded.
 
         Test beads are assumed to have different README-s, so the test goes by the expected value
         of the README.
         """
-        readme_path = self.shell.cwd / f'input/{input_nick}/README'
+        readme_path = self.shell.cwd / f'input/{input_name}/README'
         assert readme_path.exists(), f"README file not found at {readme_path}"
         content = readme_path.read_text()
         assert readme_content in content, f"Expected '{readme_content}' in README content: {content}"
 
-    def not_loaded(self, input_nick):
-        readme_path = self.shell.cwd / f'input/{input_nick}/README'
+    def not_loaded(self, input_name):
+        readme_path = self.shell.cwd / f'input/{input_name}/README'
         assert not readme_path.exists(), f"README file should not exist at {readme_path}"
 
 

@@ -70,8 +70,8 @@ D: strict (name, kind) matching by default with explicit relaxation options
 P: input names vs bead names create coupling and limit workflow flexibility during development
 D: input map system to decouple input names from source bead names
    Architecture:
-   - input_map: JSON file (meta/input.map) mapping input_nick → bead_name
-   - Default behavior: input_nick maps to itself when no explicit mapping exists
+   - input_map: JSON file (meta/input.map) mapping input_name → bead_name
+   - Default behavior: input_name maps to itself when no explicit mapping exists
    - Operational metadata: input maps are mutable and don't affect bead identity
    - Separate from immutable content: input maps excluded from manifest validation
 
