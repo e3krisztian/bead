@@ -41,29 +41,29 @@ class Fixture:
     def __init__(self):
         self.__cleanups = []
 
-    def setUp(self):
+    def set_up(self):
         pass
 
-    def cleanUp(self):
+    def clean_up(self):
         while self.__cleanups:
             cleanup, args, kwargs = self.__cleanups[-1]
             cleanup(*args, **kwargs)
             del self.__cleanups[-1]
 
-    def addCleanup(self, cleanup, *args, **kwargs):
+    def add_cleanup(self, cleanup, *args, **kwargs):
         self.__cleanups.append((cleanup, args, kwargs))
 
-    def useFixture(self, fixture):
-        fixture.setUp()
-        self.addCleanup(fixture.cleanUp)
+    def use_fixture(self, fixture):
+        fixture.set_up()
+        self.add_cleanup(fixture.clean_up)
         return fixture
 
     def __enter__(self):
-        self.setUp()
+        self.set_up()
         return self
 
     def __exit__(self, *_exc):
-        self.cleanUp()
+        self.clean_up()
 
 
 @contextlib.contextmanager
@@ -83,11 +83,11 @@ def environment(shell):
 class TempDir(Fixture):
     path: Path
 
-    def setUp(self):
-        super().setUp()
+    def set_up(self):
+        super().set_up()
         self.path = Path(tempfile.mkdtemp())
         # we need our own rmtree, that can remove read only files as well
-        self.addCleanup(rmtree, self.path, ignore_errors=True)
+        self.add_cleanup(rmtree, self.path, ignore_errors=True)
 
 
 class _CaptureStream(Fixture):
@@ -97,11 +97,11 @@ class _CaptureStream(Fixture):
         self.string_stream = io.StringIO()
         super().__init__()
 
-    def setUp(self):
-        super().setUp()
+    def set_up(self):
+        super().set_up()
         redirect = self.redirector(self.string_stream)
         redirect.__enter__()
-        self.addCleanup(lambda: redirect.__exit__(None, None, None))
+        self.add_cleanup(lambda: redirect.__exit__(None, None, None))
 
     @property
     def text(self):
@@ -128,15 +128,15 @@ class Shell(Fixture):
     cwd: Path
     base_dir: Path
 
-    def setUp(self):
-        super().setUp()
-        self.base_dir = self.useFixture(TempDir()).path
+    def set_up(self):
+        super().set_up()
+        self.base_dir = self.use_fixture(TempDir()).path
         log.debug('Test setup: makedirs %s', self.home)
         os.makedirs(self.home)
         self.cd(self.home)
 
-    def cleanUp(self):
-        super().cleanUp()
+    def clean_up(self):
+        super().clean_up()
 
     @property
     def config_dir(self):
