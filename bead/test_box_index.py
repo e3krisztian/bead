@@ -1,12 +1,21 @@
 from bead.infra.fs import Path
+from dataclasses import dataclass
 
 import pytest
 
 import bead.zipopener
-from .box_index import BoxIndex
+from .box import Box
+from .box_index import BoxIndex, SCHEMA_VERSION
 from .exceptions import BoxIndexError
 from .infra import sqlite
 from .workspace import Workspace
+
+
+@dataclass
+class BoxPaths:
+    """Container for box directory and index path."""
+    box_directory: Path
+    index_path: Path
 
 
 def count_beads_in_index(box_index: BoxIndex) -> int:
@@ -22,18 +31,18 @@ def get_bead_file_paths_in_index(box_index: BoxIndex) -> set[str]:
 
 
 @pytest.fixture
-def box_directory(tmp_path: Path) -> Path:
-    """Create a directory for a test box."""
+def box_paths(tmp_path: Path) -> BoxPaths:
+    """Create box directory and index path (index outside box)."""
     box_dir = tmp_path / "box"
     box_dir.mkdir()
-    return box_dir
+    index_path = tmp_path / "index.db"
+    return BoxPaths(box_dir, index_path)
 
 
 @pytest.fixture
-def box_index(box_directory: Path) -> BoxIndex:
+def box_index(box_paths: BoxPaths) -> BoxIndex:
     """Create a BoxIndex instance."""
-    index_file_path = box_directory / 'index.db'
-    return BoxIndex("test_box", box_directory, index_file_path)
+    return BoxIndex("test_box", box_paths.box_directory, box_paths.index_path)
 
 
 def create_unindexed_bead(box_directory: Path, name: str, kind: str = "test-kind"):
@@ -50,17 +59,13 @@ def create_unindexed_bead(box_directory: Path, name: str, kind: str = "test-kind
     return zipfilename
 
 
-def create_indexed_bead(box_directory: Path, name: str, kind: str = "test-kind"):
-    """Helper to create a valid bead archive in the box."""
-    ws_path = box_directory / f"ws_{name}"
+def create_indexed_bead(box_paths: BoxPaths, name: str, kind: str = "test-kind"):
+    """Helper to create a valid bead archive in the box with proper indexing."""
+    ws_path = box_paths.box_directory / f"ws_{name}"
     ws = Workspace(ws_path)
     ws.create(kind)
-    # A real Box object would be needed to properly store,
-    # but for testing the indexer, creating a dummy zip is sufficient
-    # if we mock the validation. For now, let's create a real one.
-    from .box import Box
-    index_file_path = box_directory / 'index.db'
-    box = Box("test", box_directory, index_file_path)
+    # Create a real bead archive for indexing tests using Box.store().
+    box = Box("test", box_paths.box_directory, box_paths.index_path)
     box.store(ws, "20230101T000000000000+0000")
 
 
@@ -70,13 +75,13 @@ def create_invalid_file(box_directory: Path, name: str):
 
 
 
-def test_sync_add_new_file(box_directory: Path, box_index: BoxIndex):
+def test_sync_add_new_file(box_paths: BoxPaths, box_index: BoxIndex):
     # Start with one bead in the index
-    create_unindexed_bead(box_directory, "bead1")
+    create_unindexed_bead(box_paths.box_directory, "bead1")
     list(box_index.sync())
 
     # Add a new bead (without indexing it)
-    create_unindexed_bead(box_directory, "bead2")
+    create_unindexed_bead(box_paths.box_directory, "bead2")
 
     # Run sync
     progress_updates = list(box_index.sync())
@@ -91,16 +96,16 @@ def test_sync_add_new_file(box_directory: Path, box_index: BoxIndex):
     assert count_beads_in_index(box_index) == 2
 
 
-def test_sync_remove_deleted_file(box_directory: Path, box_index: BoxIndex):
-    create_unindexed_bead(box_directory, "bead1")
-    create_unindexed_bead(box_directory, "bead2")
+def test_sync_remove_deleted_file(box_paths: BoxPaths, box_index: BoxIndex):
+    create_unindexed_bead(box_paths.box_directory, "bead1")
+    create_unindexed_bead(box_paths.box_directory, "bead2")
     list(box_index.sync())
 
     # Close zip cache before deleting files (Windows compatibility)
     bead.zipopener.close_all()
 
     # Delete one of the bead files
-    bead2_path = next(box_directory.glob("*bead2*.zip"))
+    bead2_path = next(box_paths.box_directory.glob("*bead2*.zip"))
     bead2_path.unlink()
 
     progress_updates = list(box_index.sync())
@@ -117,19 +122,19 @@ def test_sync_remove_deleted_file(box_directory: Path, box_index: BoxIndex):
     assert any("bead1" in path for path in file_paths)
 
 
-def test_sync_mixed_operations(box_directory: Path, box_index: BoxIndex):
+def test_sync_mixed_operations(box_paths: BoxPaths, box_index: BoxIndex):
     # Start with two beads
-    create_unindexed_bead(box_directory, "bead1")
-    create_unindexed_bead(box_directory, "bead2_to_delete")
+    create_unindexed_bead(box_paths.box_directory, "bead1")
+    create_unindexed_bead(box_paths.box_directory, "bead2_to_delete")
     list(box_index.sync())
 
     # Close zip cache before deleting files (Windows compatibility)
     bead.zipopener.close_all()
 
     # Delete one bead and add a new one
-    bead2_path = next(box_directory.glob("*bead2_to_delete*.zip"))
+    bead2_path = next(box_paths.box_directory.glob("*bead2_to_delete*.zip"))
     bead2_path.unlink()
-    create_unindexed_bead(box_directory, "bead3_new")
+    create_unindexed_bead(box_paths.box_directory, "bead3_new")
 
     progress_updates = list(box_index.sync())
 
@@ -147,39 +152,35 @@ def test_sync_mixed_operations(box_directory: Path, box_index: BoxIndex):
     assert not any("bead2_to_delete" in path for path in file_paths)
 
 
-def test_box_index_init_unversioned_db(box_directory: Path):
+def test_box_index_init_unversioned_db(box_paths: BoxPaths):
     """Verify that an unversioned DB raises the correct error."""
-    index_path = box_directory / "index.db"
     # Manually create an old-style, unversioned database (user_version == 0)
-    sqlite.execute(index_path, "CREATE TABLE beads (name TEXT)")
+    sqlite.execute(box_paths.index_path, "CREATE TABLE beads (name TEXT)")
 
     with pytest.raises(BoxIndexError, match="Index database is unversioned"):
-        BoxIndex("test_box", box_directory, index_path)
+        BoxIndex("test_box", box_paths.box_directory, box_paths.index_path)
 
 
-def test_box_index_init_outdated_db(box_directory: Path):
+def test_box_index_init_outdated_db(box_paths: BoxPaths):
     """Verify that an outdated DB raises the correct error."""
-    index_path = box_directory / "index.db"
     # Manually create a database with an old schema version
-    with sqlite.transaction(index_path) as conn:
+    with sqlite.transaction(box_paths.index_path) as conn:
         conn.execute("CREATE TABLE beads (name TEXT)")
         conn.execute("PRAGMA user_version = 1")
         conn.commit()
 
     # The code now expects SCHEMA_VERSION = 2
     with pytest.raises(BoxIndexError, match="Index schema is out of date"):
-        BoxIndex("test_box", box_directory, index_path)
+        BoxIndex("test_box", box_paths.box_directory, box_paths.index_path)
 
 
-def test_box_index_init_newer_db(box_directory: Path):
+def test_box_index_init_newer_db(box_paths: BoxPaths):
     """Verify that a newer DB raises the correct error."""
-    from bead.box_index import SCHEMA_VERSION
-    index_path = box_directory / "index.db"
     # Manually create a database with a future schema version
-    with sqlite.transaction(index_path) as conn:
+    with sqlite.transaction(box_paths.index_path) as conn:
         conn.execute("CREATE TABLE beads (name TEXT)")
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
         conn.commit()
 
     with pytest.raises(BoxIndexError, match="Index schema is from a newer version"):
-        BoxIndex("test_box", box_directory, index_path)
+        BoxIndex("test_box", box_paths.box_directory, box_paths.index_path)
