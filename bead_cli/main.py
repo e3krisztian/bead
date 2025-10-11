@@ -73,7 +73,7 @@ def make_argument_parser(defaults):
     (parser
         .group('input', 'Manage data loaded from other beads')
         .commands(
-            ('add', input.CmdAdd, 'Define dependency and load its data.'),
+            ('add', input.CmdInputAdd, 'Define dependency and load its data.'),
             ('delete', input.CmdDelete, 'Forget all about an input.'),
             ('rm', input.CmdDelete, 'Forget all about an input. (alias for delete)'),
             ('map', input.CmdMap, 'Change the name of the bead from which the input is loaded/updated.'),
@@ -84,7 +84,7 @@ def make_argument_parser(defaults):
 
     box_parser = parser.group('box', 'Manage bead boxes')
     box_parser.commands(
-        ('add', box.CmdAdd, 'Define a box.'),
+        ('add', box.CmdBoxAdd, 'Define a box.'),
         ('list', box.CmdList, 'Show known boxes.'),
         ('forget', box.CmdForget, 'Forget a known box.'),
         ('enable', box.CmdEnable, 'Enable a box.'),

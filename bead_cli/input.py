@@ -77,7 +77,7 @@ SAME_BEAD_NEWEST_VERSION = DefaultArgSentinel('same bead, newest version')
 USE_INPUT_NAME = DefaultArgSentinel(f'use {arg_metavar.INPUT_NAME}')
 
 
-class CmdAdd(Command):
+class CmdInputAdd(Command):
     '''
     Make data from another bead available in the input directory.
     '''

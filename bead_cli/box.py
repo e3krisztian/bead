@@ -22,7 +22,7 @@ def seed_box_index(box_directory: Path, new_index_path: Path):
             print(f'Warning: Failed to seed index: {e}')
 
 
-class CmdAdd(Command):
+class CmdBoxAdd(Command):
     '''
     Define a box.
     '''
