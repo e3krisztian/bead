@@ -38,6 +38,7 @@ from .infra.timestamp import time_from_timestamp
 META_VERSION = 'meta_version'
 KIND = 'kind'
 INPUTS = 'inputs'
+INPUT_NAME         = 'name'
 INPUT_KIND         = 'kind'
 INPUT_CONTENT_ID   = 'content_id'
 INPUT_FREEZE_TIME  = 'freeze_time'
@@ -87,19 +88,19 @@ class InputSpec:
 
     def as_dict(self):
         return {
-            'name': self.name,
-            'kind': self.kind,
-            'content_id': self.content_id,
-            'freeze_time_iso': self.freeze_time_iso,
+            INPUT_NAME: self.name,
+            INPUT_KIND: self.kind,
+            INPUT_CONTENT_ID: self.content_id,
+            INPUT_FREEZE_TIME: self.freeze_time_iso,
         }
 
     @classmethod
     def from_dict(cls, data):
         return cls(
-            name=data['name'],
-            kind=data['kind'],
-            content_id=data['content_id'],
-            freeze_time_iso=data['freeze_time_iso'],
+            name=data[INPUT_NAME],
+            kind=data[INPUT_KIND],
+            content_id=data[INPUT_CONTENT_ID],
+            freeze_time_iso=data[INPUT_FREEZE_TIME],
         )
 
     @property
