@@ -109,7 +109,7 @@ def test_load_finds_renamed_bead_by_content_id(
     check.loaded('b', times.TS1)
 
 
-def test_input_map_uses_mapped_name_not_just_newest_by_kind(shell, box, check, times, tmp_path_factory):
+def test_update_use_mapped_name_not_newest_by_kind(shell, box, check, times, tmp_path_factory):
     """
     Test that input update uses mapped bead name constraints, not just newest by timestamp.
     This proves that mapping enforces name-based matching constraints even when newer beads exist.
@@ -138,7 +138,7 @@ def test_input_map_uses_mapped_name_not_just_newest_by_kind(shell, box, check, t
     check.loaded('data_source', times.TS4)  # Should be newer mapping_target, not mapping_distractor
 
 
-def test_input_map_default_strategy_uses_mapping(shell, box, check, times, tmp_path_factory):
+def test_update_default_use_mapping(shell, box, check, times, tmp_path_factory):
     """
     Test that default NAME_AND_KIND strategy respects input mapping.
     """
@@ -162,7 +162,7 @@ def test_input_map_default_strategy_uses_mapping(shell, box, check, times, tmp_p
     check.loaded('test_input', times.TS4)  # Should find newer mapped_bead via mapping
 
 
-def test_input_map_name_only_strategy_uses_mapping(shell, box, check, times, tmp_path_factory):
+def test_update_no_kind_use_mapping(shell, box, check, times, tmp_path_factory):
     """
     Test that NAME_ONLY (--no-kind) strategy still respects input mapping.
     """
@@ -186,7 +186,7 @@ def test_input_map_name_only_strategy_uses_mapping(shell, box, check, times, tmp
     check.loaded('test_input', times.TS4)  # Should find newer mapped_bead via mapping
 
 
-def test_input_map_kind_only_strategy_ignores_mapping(shell, box, check, times, tmp_path_factory):
+def test_update_no_name_ignore_mapping(shell, box, check, times, tmp_path_factory):
     """
     Test that KIND_ONLY (--no-name) strategy ignores input mapping completely,
     searching across all bead names for the newest matching kind.
@@ -214,7 +214,7 @@ def test_input_map_kind_only_strategy_ignores_mapping(shell, box, check, times, 
     check.loaded('test_input', times.TS5)  # Should find newest_bead by kind, ignoring mapping and names
 
 
-def test_input_map_persists_across_save_edit_cycle(shell, box, check, times, tmp_path_factory):
+def test_map_persist_across_save_edit(shell, box, check, times, tmp_path_factory):
     """
     Test that input mappings are preserved when saving and editing a new version.
     """
@@ -300,7 +300,7 @@ def test_input_add_sets_initial_mapping(shell, box, check, times, tmp_path_facto
     check.loaded('test_input', times.TS3)  # Should update to newer initial_bead via mapping
 
 
-def test_input_map_command_changes_mapping(shell, box, check, times, tmp_path_factory):
+def test_map_command_update_mapping(shell, box, check, times, tmp_path_factory):
     """
     Test that input map command changes mapping to a different bead.
     """
@@ -380,7 +380,7 @@ def test_input_load_preserves_existing_mapping(shell, box, check, times, tmp_pat
     check.loaded('test_input', times.TS2)  # Should find strategy_beta
 
 
-def test_input_mapping_ignores_newer_different_kind_beads(shell, box, check, times, tmp_path_factory):
+def test_update_mapped_ignore_wrong_kind(shell, box, check, times, tmp_path_factory):
     """
     Test that input mapping constrains searches by kind, ignoring newer beads with different kinds.
     """
@@ -403,7 +403,7 @@ def test_input_mapping_ignores_newer_different_kind_beads(shell, box, check, tim
     check.loaded('data_source', times.TS3)  # Should be TS3 (same kind), not TS5 (different kind)
 
 
-def test_input_mapping_constrains_to_specific_name_family(shell, box, check, times, tmp_path_factory):
+def test_update_mapped_constrain_to_name(shell, box, check, times, tmp_path_factory):
     """
     Test that input mapping constrains searches by name, ignoring newer beads with different names.
     """

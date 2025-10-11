@@ -224,7 +224,7 @@ def test_status_displays_input_information_correctly(shell, box, check, times, t
     assert times.TS2 in shell.stdout
 
 
-def test_load_warns_when_bead_found_under_different_name(shell, box, check, times, tmp_path_factory):
+def test_load_different_name_warn(shell, box, check, times, tmp_path_factory):
     """
     Test that load warns when a bead is found by content_id but under a different name.
 

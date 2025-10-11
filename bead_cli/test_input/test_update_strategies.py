@@ -19,7 +19,7 @@ def get_archive_path(box, bead_name):
     return box.resolve(bead).location
 
 
-def test_update_unloaded_input_with_another_bead(shell, box, check, times, tmp_path_factory):
+def test_update_unloaded_input(shell, box, check, times, tmp_path_factory):
     # Create input beads
     create_bead_family(box, 'input_bead_a', [times.TS1], tmp_path_factory)
     create_bead_family(box, 'input_bead_b', [times.TS2], tmp_path_factory)
@@ -152,7 +152,7 @@ def test_update_default_name_and_kind_matching(shell, box, check, times, tmp_pat
     assert f'test_bead_{times.TS2}' in readme_content
 
 
-def test_update_explicit_bead_bypasses_matching_constraints(shell, box, check, times, tmp_path_factory):
+def test_update_explicit_bypasses_constraints(shell, box, check, times, tmp_path_factory):
     """Test that explicit bead name with --no-kind can bypass kind matching."""
     # Create initial bead
     create_bead_family(box, 'test_bead', [times.TS1], tmp_path_factory)
@@ -176,7 +176,7 @@ def test_update_explicit_bead_bypasses_matching_constraints(shell, box, check, t
     assert f'different_bead_{times.TS2}' in readme_content
 
 
-def test_strict_matching_shows_no_update_when_only_incompatible_beads_exist(shell, box, check, times, tmp_path_factory):
+def test_update_incompatible_beads_no_match(shell, box, check, times, tmp_path_factory):
     """Test that strict matching shows no update when only incompatible beads exist."""
     # Create original bead with KIND:test
     create_bead_family(box, 'test_bead', [times.TS1], tmp_path_factory, kind='KIND:test')
@@ -204,7 +204,7 @@ def test_strict_matching_shows_no_update_when_only_incompatible_beads_exist(shel
     assert current_content == original_content, "Content should remain unchanged when no compatible update exists"
 
 
-def test_strict_matching_blocks_wrong_name_but_no_name_allows_it(shell, box, check, times, tmp_path_factory):
+def test_update_wrong_name_blocked_unless_no_name(shell, box, check, times, tmp_path_factory):
     """Test that strict matching blocks wrong name but --no-name allows it."""
     # Create original bead with name 'original_bead'
     create_bead_family(box, 'original_bead', [times.TS1], tmp_path_factory, kind='KIND:test')
@@ -237,7 +237,7 @@ def test_strict_matching_blocks_wrong_name_but_no_name_allows_it(shell, box, che
     assert f'renamed_bead_{times.TS2}' in readme_content
 
 
-def test_strict_matching_ignores_wrong_kind_but_no_kind_allows_it(shell, box, check, times, tmp_path_factory):
+def test_update_wrong_kind_ignored_unless_no_kind(shell, box, check, times, tmp_path_factory):
     """Test that strict matching ignores wrong kind but --no-kind allows it."""
     # Create original bead with specific kind
     create_bead_family(box, 'same_name_bead', [times.TS1], tmp_path_factory, kind='KIND:original')
@@ -298,7 +298,7 @@ def test_update_finds_newest_by_kind_not_name(shell, box, check, times, tmp_path
     check.loaded('input2', times.TS5)  # updated to newest of kind
 
 
-def test_explicit_bead_update_with_new_reference(shell, box, check, times, tmp_path_factory):
+def test_update_explicit_changes_reference(shell, box, check, times, tmp_path_factory):
     """
     Test updating a specific input with an explicit bead reference.
     """
@@ -325,7 +325,7 @@ def test_explicit_bead_update_with_new_reference(shell, box, check, times, tmp_p
     check.loaded('test_input', times.TS5)  # finds newest of the kind (latest_by_kind)
 
 
-def test_input_mapping_preserved_during_navigation(shell, box, check, times, tmp_path_factory):
+def test_update_navigation_preserves_mapping(shell, box, check, times, tmp_path_factory):
     """
     Test that input mappings are preserved during --prev/--next navigation.
     """
@@ -397,7 +397,7 @@ def test_update_with_new_bead_name_respects_kind_matching(shell, box, check, tim
     check.loaded('myinput', times.TS3)
 
 
-def test_default_update_blocks_name_change(shell, box, check, times, tmp_path_factory):
+def test_update_default_blocks_name_change(shell, box, check, times, tmp_path_factory):
     """Test that default update (no explicit bead) blocks name changes unless --no-name is used."""
     create_bead_family(box, 'original_name', [times.TS1], tmp_path_factory, kind='KIND:test')
     create_bead_family(box, 'renamed', [times.TS3], tmp_path_factory, kind='KIND:test')
@@ -417,7 +417,7 @@ def test_default_update_blocks_name_change(shell, box, check, times, tmp_path_fa
     check.loaded('myinput', times.TS3)
 
 
-def test_file_path_skips_name_check_but_respects_time_check(shell, box, check, times, tmp_path_factory):
+def test_update_file_path_skips_name_only(shell, box, check, times, tmp_path_factory):
     """Test that file path with name mismatch skips name check but respects time check."""
     create_bead_family(box, 'original', [times.TS3], tmp_path_factory, kind='KIND:test')
     create_bead_family(box, 'renamed', [times.TS2], tmp_path_factory, kind='KIND:test')
@@ -437,7 +437,7 @@ def test_file_path_skips_name_check_but_respects_time_check(shell, box, check, t
     check.loaded('myinput', times.TS2)
 
 
-def test_explicit_bead_downgrade_blocked_without_flags(shell, box, check, times, tmp_path_factory):
+def test_update_downgrade_blocked_without_flag(shell, box, check, times, tmp_path_factory):
     """Test that explicit bead name with different bead that's older requires --allow-downgrade."""
     # Create two different bead families
     create_bead_family(box, 'newer_bead', [times.TS3], tmp_path_factory)
@@ -487,7 +487,7 @@ def test_downgrade_requires_allow_downgrade_or_force(shell, box, check, times, t
     check.loaded('myinput', times.TS1)
 
 
-def test_file_path_kind_mismatch_requires_force(shell, box, check, times, tmp_path_factory):
+def test_update_file_path_kind_mismatch_needs_force(shell, box, check, times, tmp_path_factory):
     """Test that file path with kind mismatch can use --force to bypass kind verification."""
     create_bead_family(box, 'original', [times.TS1], tmp_path_factory, kind='KIND:original')
     create_bead_family(box, 'different_kind_bead', [times.TS3], tmp_path_factory, kind='KIND:different')
@@ -537,7 +537,7 @@ def test_prev_implicitly_allows_downgrade(shell, box, check, times, tmp_path_fac
     check.loaded('myinput', times.TS2)
 
 
-def test_file_path_respects_kind_and_time_constraints(shell, box, check, times, tmp_path_factory):
+def test_update_file_path_verifies_kind_and_time(shell, box, check, times, tmp_path_factory):
     """Test that file path updates skip name check but respect kind/time constraints separately."""
     # Create beads with different kinds
     create_bead_family(box, 'original', [times.TS1], tmp_path_factory, kind='KIND:original')
