@@ -108,11 +108,11 @@ class _CaptureStream(Fixture):
         return self.string_stream.getvalue()
 
 
-def CaptureStdout():
+def capture_stdout():
     return _CaptureStream(contextlib.redirect_stdout)
 
 
-def CaptureStderr():
+def capture_stderr():
     return _CaptureStream(contextlib.redirect_stderr)
 
 
@@ -193,7 +193,7 @@ class Shell(Fixture):
             str_args = [(arg if isinstance(arg, str) else arg.as_posix()) for arg in args]
 
         with self.environment:
-            with CaptureStdout() as stdout, CaptureStderr() as stderr:
+            with capture_stdout() as stdout, capture_stderr() as stderr:
                 try:
                     self.exit_code = run(self.config_dir, self.state_dir, str_args)
                 except SystemExit as e:
