@@ -35,6 +35,21 @@ The `kind` and timestamp properties enable a meaningful `update` operation on in
 New computations get a new, universally unique `kind` (technically an uuid).
 
 
+## Terminology
+
+The BEAD system uses a limited craft metaphor alongside technical terms:
+
+**Craft metaphor** (storage):
+- **Bead** - A frozen computation (like a bead on a string of work)
+- **Box** - A collection where beads are stored
+
+**Technical terms**:
+- **Archive** - A packaged bead stored as a zip file
+- **Workspace** - The directory where you actively develop a computation that will become a bead
+
+The craft metaphor is intentionally limited to the core concepts (bead, box). Other terms remain technical where craft terminology would be forced or unclear.
+
+
 ## Status
 
 ### Used in production since 2015, there are hundreds of frozen computations
