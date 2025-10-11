@@ -100,7 +100,7 @@ def test_verbose_inputs_not_in_known_boxes(shell, box, check, times, tmp_path_fa
     assert missing_a_archive.content_id in shell.stdout
 
 
-def test_invalid_workspace(shell):
+def test_status_invalid_workspace_warns(shell):
     shell.bead('status')
     assert 'WARNING' in shell.stderr
 

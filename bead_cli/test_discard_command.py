@@ -22,7 +22,7 @@ def test_with_explicit_workspace(shell, box, times, tmp_path_factory):
     assert 'test_bead' in shell.stdout
 
 
-def test_invalid_workspace(shell):
+def test_discard_invalid_workspace_fails(shell):
     shell.bead('discard', expect_failure=True)
     assert 'ERROR' in shell.stderr
 

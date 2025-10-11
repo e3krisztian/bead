@@ -3,7 +3,7 @@ from tests.graph_builder import GraphBuilder
 from tests.graph_builder import bead
 
 
-def test_new_version_marks_older_superseded():
+def test_drop_deleted_inputs_removes_missing_edges():
     builder = GraphBuilder()
     builder.define('a1 b1 c1')
     builder.compile(
