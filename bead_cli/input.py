@@ -108,7 +108,7 @@ class CmdInputAdd(Command):
             die(f'Not a known bead name: {bead_spec}')
 
         _check_load_with_feedback(workspace, args.input_name, bead)
-        workspace.set_input_bead_name(args.input_name, bead.name)
+        workspace.set_source_name(args.input_name, bead.name)
 
 
 class CmdDelete(Command):
@@ -151,7 +151,7 @@ class CmdMap(Command):
         if bead_spec is USE_INPUT_NAME:
             bead_spec = input_name
 
-        workspace.set_input_bead_name(input_name, bead_spec)
+        workspace.set_source_name(input_name, bead_spec)
         print(f'Input "{input_name}" mapped to bead "{bead_spec}"')
 
 
@@ -256,7 +256,7 @@ class CmdUpdate(Command):
         _update_input(workspace, input, archive)
         # Update mapping when user specifies explicit bead (not when using existing mapping)
         if bead_spec is not SAME_BEAD_NEWEST_VERSION:
-            workspace.set_input_bead_name(input_name, archive.name)
+            workspace.set_source_name(input_name, archive.name)
 
     def _acquire_archive_for_existing_input(
         self, boxes: list[Box], input: InputSpec, args, workspace: Workspace
@@ -330,7 +330,7 @@ class CmdUpdate(Command):
         if bead_name_override:
             bead_name = bead_name_override
         elif workspace:
-            bead_name = workspace.get_input_bead_name(input.name)
+            bead_name = workspace.get_source_name(input.name)
         else:
             bead_name = input.name
 
@@ -389,7 +389,7 @@ class CmdUpdate(Command):
         if explicit_bead_name:
             return
 
-        mapped_name = workspace.get_input_bead_name(input.name)
+        mapped_name = workspace.get_source_name(input.name)
         if archive.name != mapped_name:
             # Allow if --no-name (KIND_ONLY strategy) or --force
             no_name_relaxed = (args.match_strategy == MatchStrategy.KIND_ONLY)
@@ -468,7 +468,7 @@ def _load(env: 'Environment', workspace: Workspace, input: InputSpec) -> None:
     assert input is not None
     if not workspace.is_loaded(input.name):
         content_id = input.content_id
-        expected_bead_name = workspace.get_input_bead_name(input.name)
+        expected_bead_name = workspace.get_source_name(input.name)
         boxes = env.get_boxes()
 
         # First attempt: search by both name and content_id

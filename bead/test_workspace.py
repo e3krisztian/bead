@@ -265,22 +265,22 @@ def workspace_with_input(tmp_path_factory, input_name):
 
 def test_input_map_default_value(workspace_with_input, input_name):
     """Test that input map returns default value."""
-    assert input_name == workspace_with_input.get_input_bead_name(input_name)
+    assert input_name == workspace_with_input.get_source_name(input_name)
 
 
 def test_input_map_define(workspace_with_input, input_name):
     """Test defining input bead name."""
     bead_name = f'{input_name}2'
-    workspace_with_input.set_input_bead_name(input_name, bead_name)
-    assert bead_name == workspace_with_input.get_input_bead_name(input_name)
+    workspace_with_input.set_source_name(input_name, bead_name)
+    assert bead_name == workspace_with_input.get_source_name(input_name)
 
 
 def test_input_map_update(workspace_with_input, input_name):
     """Test updating input bead name."""
-    workspace_with_input.set_input_bead_name(input_name, f'{input_name}2')
+    workspace_with_input.set_source_name(input_name, f'{input_name}2')
     bead_name = f'{input_name}42'
-    workspace_with_input.set_input_bead_name(input_name, bead_name)
-    assert bead_name == workspace_with_input.get_input_bead_name(input_name)
+    workspace_with_input.set_source_name(input_name, bead_name)
+    assert bead_name == workspace_with_input.get_source_name(input_name)
 
 
 def test_input_map_independent_update(workspace_with_input, input_name):
@@ -288,10 +288,10 @@ def test_input_map_independent_update(workspace_with_input, input_name):
     input_name2 = f'{input_name}2'
     add_input(workspace_with_input, input_name2)
 
-    workspace_with_input.set_input_bead_name(input_name, f'{input_name}1111')
-    workspace_with_input.set_input_bead_name(input_name2, f'{input_name2}222')
-    assert f'{input_name}1111' == workspace_with_input.get_input_bead_name(input_name)
-    assert f'{input_name2}222' == workspace_with_input.get_input_bead_name(input_name2)
+    workspace_with_input.set_source_name(input_name, f'{input_name}1111')
+    workspace_with_input.set_source_name(input_name2, f'{input_name2}222')
+    assert f'{input_name}1111' == workspace_with_input.get_source_name(input_name)
+    assert f'{input_name2}222' == workspace_with_input.get_source_name(input_name2)
 
 
 def add_input(workspace, input_name):

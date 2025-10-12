@@ -189,15 +189,21 @@ class Workspace(Computation):
     def input_map(self, input_map):
         persistence.file_dump(input_map, self._input_map_filename)
 
-    def get_input_bead_name(self, input_name):
+    def get_source_name(self, input_name):
         '''
-        Returns the name on which update works.
+        Get the source bead name for an input.
+
+        Returns the source bead name for the input, or the input name itself
+        if no source mapping exists. This is the name used for update operations.
         '''
         return self.input_map.get(input_name, input_name)
 
-    def set_input_bead_name(self, input_name, bead_name):
+    def set_source_name(self, input_name, bead_name):
         '''
-        Sets the name to be used for updates in the future.
+        Set the source bead name for an input.
+
+        Establishes or updates which bead is the source for this input.
+        This determines the bead name used for future update operations.
         '''
         input_map = self.input_map
         input_map[input_name] = bead_name

@@ -385,7 +385,7 @@ def test_update_with_new_bead_name_respects_kind_matching(shell, box, check, tim
 
     # Verify the mapping was updated to new_bead
     workspace = Workspace(shell.cwd)
-    assert workspace.get_input_bead_name('myinput') == 'new_bead'
+    assert workspace.get_source_name('myinput') == 'new_bead'
 
     # Reset to original state (downgrade, needs flag)
     shell.bead('input', 'update', 'myinput', 'original_bead', '--allow-downgrade')
