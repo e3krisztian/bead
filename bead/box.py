@@ -355,7 +355,7 @@ class Box:
         '''
         Retrieve matching beads.
         '''
-        return self.index.get_beads(conditions, self.name)
+        return self.index.get_beads(conditions)
 
     def resolve(self, bead: Bead) -> Archive:
         '''
@@ -391,9 +391,9 @@ class Box:
         
         zipfilename = self.directory / f'{workspace.name}_{freeze_time}.zip'
         workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT)
-        
+
         # Add to index
-        self.index.index_archive_file(zipfilename)
+        self.index.add_file(zipfilename)
         
         return zipfilename
 

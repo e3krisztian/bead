@@ -314,7 +314,7 @@ class BoxIndex:
 
         processed, error_count = yield from self._process_files(
             paths=new_files,
-            action=self.index_archive_file,
+            action=self.add_file,
             total=total,
             processed=0,
             error_count=0,
@@ -322,17 +322,26 @@ class BoxIndex:
 
         yield from self._process_files(
             paths=orphaned_files,
-            action=self._unindex_single_archive,
+            action=self.remove_file,
             total=total,
             processed=processed,
             error_count=error_count,
         )
 
-    def index_archive_file(self, archive_path: Path):
+    def add_file(self, archive_path: Path):
         '''
-        Add single bead to index.
-        Raises InvalidArchive for non-fatal errors.
-        Raises BoxIndexError for fatal database errors.
+        Add a bead archive to the index.
+
+        Extracts metadata from the archive file, validates it, and adds a record
+        to the index. This is called automatically by Box.store() when creating
+        a new bead, but can also be used to index manually added archive files.
+
+        Args:
+            archive_path: Path to the bead archive file (.zip)
+
+        Raises:
+            InvalidArchive: Archive is corrupted or has invalid metadata (non-fatal)
+            BoxIndexError: Database operation failed (fatal, see error advice)
         '''
         archive = ZipArchive(archive_path, box_name='')
         archive.validate()
@@ -341,21 +350,30 @@ class BoxIndex:
             insert_bead_record(conn, archive, relative_path)
             conn.commit()
 
-    def _unindex_single_archive(self, archive_path: Path):
+    def remove_file(self, archive_path: Path):
         '''
-        Helper to encapsulate un-indexing a single file.
-        Raises BoxIndexError for fatal database errors.
+        Remove a bead archive from the index.
+
+        Deletes the index record for the given archive file. The operation is
+        idempotent - no error if the file is not in the index. This is called
+        automatically by sync() for deleted files, but can also be used to
+        manually remove index entries.
+
+        Args:
+            archive_path: Path to the bead archive file (.zip)
+
+        Raises:
+            BoxIndexError: Database operation failed (fatal, see error advice)
         '''
         relative_path = archive_path.relative_to(self.box_directory)
         with self._safe_db_access() as conn:
             delete_bead_record(conn, str(relative_path))
             conn.commit()
 
-
-    def get_beads(self, conditions, box_name: str) -> list[Bead]:
+    def get_beads(self, conditions) -> list[Bead]:
         '''Query beads from index.'''
         with self._safe_db_access(read_only=True) as conn:
-            return query_beads(conn, conditions, box_name)
+            return query_beads(conn, conditions, self.box_name)
 
     def get_file_path(self, name: str, content_id: str) -> Path:
         '''Get file path for bead.'''
