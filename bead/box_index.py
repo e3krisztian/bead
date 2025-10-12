@@ -20,22 +20,20 @@ SCHEMA_VERSION = 4
 
 
 @dataclass(frozen=True)
-class IndexingProgress:
-    """Represents a single step in the indexing process."""
-    total: int                              # Total number of archives to process
-    processed: int                          # Number of archives processed so far
-    path: Path                              # The path of the archive just processed
-    error_count: int                        # Total number of errors encountered so far
-    latest_error: 'IndexingError | None' # The error for the current `path`, if any
-
-
-@dataclass(frozen=True)
 class IndexingError:
     """Represents a non-fatal error for a single archive."""
     path: Path          # The path of the problematic archive
     reason: str         # A string explaining the error
 
 
+@dataclass(frozen=True)
+class IndexingProgress:
+    """Represents a single step in the indexing process."""
+    total: int                              # Total number of archives to process
+    processed: int                          # Number of archives processed so far
+    path: Path                              # The path of the archive just processed
+    error_count: int                        # Total number of errors encountered so far
+    latest_error: IndexingError | None      # The error for the current `path`, if any
 
 
 def is_new_db(conn):
@@ -153,16 +151,16 @@ def build_where_clause(conditions):
         QueryCondition.AT_OR_NEWER: ('freeze_time_unix >= ?', normalize_timestamp_value),
         QueryCondition.AT_OR_OLDER: ('freeze_time_unix <= ?', normalize_timestamp_value),
     }
-    
+
     where_parts = []
     parameters = []
-    
+
     for condition_type, value in conditions:
         if condition_type in condition_mapping:
             sql_clause, value_transformer = condition_mapping[condition_type]
             where_parts.append(sql_clause)
             parameters.append(value_transformer(value))
-    
+
     return where_parts, parameters
 
 
@@ -353,7 +351,7 @@ class BoxIndex:
             delete_bead_record(conn, str(relative_path))
             conn.commit()
 
-    
+
     def get_beads(self, conditions, box_name: str) -> list[Bead]:
         '''Query beads from index.'''
         with self._safe_db_access(read_only=True) as conn:
@@ -366,4 +364,3 @@ class BoxIndex:
             if file_path is None:
                 raise LookupError(f"Bead not found in index: name='{name}', content_id='{content_id}'")
             return self.box_directory / file_path
-    
