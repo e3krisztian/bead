@@ -1,13 +1,70 @@
 '''
-We are responsible to store (and retrieve) beads.
+Bead storage and retrieval system.
 
-We are a convenience feature, as beads can be stored and used directly as files.
+## Overview
+
+A Box manages a directory of bead archives (.zip files), providing fast search and
+retrieval through an SQLite index. Boxes are a convenience feature - beads can be
+stored and used directly as files, but boxes enable efficient discovery and sharing.
+
+## Architecture
+
+The module defines three key types that work together:
+
+- **Bead**: Lightweight metadata object (name, content_id, kind, freeze_time, inputs)
+  returned from index queries. Fast to create and search.
+
+- **Archive**: Full archive object with file extraction capabilities. Created on-demand
+  from zip files via Box.resolve(). Heavier weight, only created when needed.
+
+- **Box**: Storage manager that maintains a directory of archives and a SQLite index.
+  Provides search API and resolution from Bead to Archive.
+
+## Design Decisions
+
+### Index as Source of Truth
+
+Box treats the SQLite index as authoritative. If a bead is not in the index, it
+doesn't exist from Box's perspective. The index must be kept in sync via:
+- Automatic: `store()` adds new beads to index
+- Manual: `sync()` discovers new/deleted files
+
+### No Archive Caching
+
+Box does not cache Archive objects. The index provides metadata (Bead instances),
+and Archives are created on-demand via `resolve()` when file access is needed.
+This keeps memory usage low and ensures consistency with filesystem.
+
+### Search then Resolve Pattern
+
+Typical workflow:
+```python
+# Search returns lightweight Beads
+beads = box.search().by_kind("model").newer_than(timestamp).all()
+
+# Resolve individual Beads to Archives only when needed
+for bead in beads:
+    archive = box.resolve(bead)
+    archive.extract_dir('code', destination)
+```
+
+This two-phase approach optimizes for the common case where you search many beads
+but only access a few.
+
+## Use Cases
 
 Boxes can be used to:
-- share computations (beads) (when the box is on a shared drive (e.g. NFS or sshfs mounted))
-- store separate computation branches (e.g. versions, that are released to the public)
-- hide sensitive computations by splitting up storage according to access level
-  (this is naive access control, but could work)
+- **Share computations** (beads) when the box is on a shared drive (e.g. NFS, sshfs)
+- **Store separate computation branches** (e.g. versions released to the public)
+- **Hide sensitive computations** by splitting storage according to access level
+  (naive access control, but can work)
+
+## Key Classes
+
+- **Box**: Main class for storage and retrieval
+- **BeadSearch**: Abstract base class for fluent search API
+- **BoxSearch**: Search within a single box
+- **MultiBoxSearch**: Search across multiple boxes
 '''
 
 from abc import ABC

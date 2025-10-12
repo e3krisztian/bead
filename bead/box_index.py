@@ -1,5 +1,88 @@
 '''
 SQLite-based index for bead storage and retrieval.
+
+## Overview
+
+This module provides a fast, reliable SQLite-based index for bead boxes, replacing
+filesystem scanning and Python-based filtering. The index stores bead metadata including
+name, content_id, kind, freeze time, and input dependencies, enabling efficient queries
+and dependency graph construction.
+
+## Design Principles
+
+1. **Schema Versioning**: Database schema is versioned (current: v4) to enable safe
+   upgrades. Incompatible schemas trigger reindexing with clear error messages.
+
+2. **Error Handling**: Graceful handling of corrupted databases, missing indexes,
+   and invalid archives. All errors provide actionable advice (e.g., "run bead box reindex").
+
+3. **Cross-Platform Support**: Works on Windows, MacOS, and Linux.
+
+## Design Rationale
+
+### Why Embedded Inputs?
+
+The schema embeds inputs as JSON rather than using a separate table. This design:
+- Simplifies queries (no joins needed)
+- Matches the Archive data model (inputs are part of bead metadata)
+- Reduces database complexity
+- Sufficient for current use cases (dependency graphs, input tracking)
+
+### Name vs Freeze Name
+
+The schema stores two name fields:
+- `name`: Derived from archive filename, used for all search queries
+- `freeze_name`: Immutable name from bead creation, stored for historical reference only
+
+Search operations query the `name` field. The `freeze_name` is preserved as metadata
+but not used for lookups.
+
+### Why Unix Microseconds?
+
+Freeze times are stored both as ISO strings (for display/compatibility) and Unix
+microseconds (for efficient time-based queries). ISO timestamps include timezone
+information and cannot be correctly compared as strings in SQL (e.g., "2024-01-01T12:00:00+0200"
+sorts incorrectly relative to "2024-01-01T11:00:00+0000" despite being the same moment).
+
+By converting to Unix microseconds (UTC-normalized integers), we get:
+- Correct temporal ordering regardless of timezone
+- Fast numeric comparisons in SQL WHERE clauses
+- Efficient range queries (NEWER_THAN, OLDER_THAN, etc.)
+
+## Usage Example
+
+```python
+# Initialize index (auto-creates if missing)
+index = BoxIndex(
+    box_name="archive",
+    box_directory=Path("/path/to/box"),
+    index_file_path=Path("/path/to/box/.index.sqlite")
+)
+
+# Sync new files (generator yields progress)
+for progress in index.sync():
+    print(f"Processed {progress.processed}/{progress.total}: {progress.path}")
+    if progress.latest_error:
+        print(f"Error: {progress.latest_error.reason}")
+
+# Query beads
+conditions = [(QueryCondition.KIND, "model"), (QueryCondition.NEWER_THAN, timestamp)]
+beads = index.get_beads(conditions)
+
+# Add new bead
+index.add_file(Path("/path/to/box/new-bead.zip"))
+
+# Resolve to file path
+file_path = index.get_file_path(name="hotel-dataset", content_id="abc123...")
+```
+
+## Related Modules
+
+- `bead/box.py`: Box class uses BoxIndex for all queries and operations
+- `bead/box_query.py`: QueryCondition enum for building queries
+- `bead/bead.py`: Bead dataclass representing indexed metadata
+- `bead/ziparchive.py`: ZipArchive provides metadata for indexing
+- `bead/infra/sqlite.py`: SQLite connection handling with transactions
 '''
 
 import json
