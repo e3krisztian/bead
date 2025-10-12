@@ -82,7 +82,7 @@ D: input map system to decouple input names from source bead names
    - Exception handling: FileNotFoundError for workspace, KeyError for ziparchive (zipfile API)
 
    Command behavior (when mappings change):
-   - input add: Sets initial mapping to added bead name (calls set_input_bead_name)
+   - input add: Sets initial mapping to added bead name (calls set_source_name)
    - input map: Changes mapping to specified bead name
    - input update <explicit_bead>: Updates mapping to new bead name when explicit bead specified
    - input load: Preserves existing mappings (never modifies input_map)
@@ -91,7 +91,7 @@ D: input map system to decouple input names from source bead names
 
    Key implementation insight:
    - Shared utility _check_load_with_feedback() must NOT set mappings (used by both add and load)
-   - CmdAdd explicitly calls workspace.set_input_bead_name() after loading
+   - CmdAdd explicitly calls workspace.set_source_name() after loading
    - CmdLoad only loads, never modifies mappings
    - CmdUpdate sets mapping only when user provides explicit bead reference
 
@@ -120,7 +120,7 @@ D: three-level verification system with explicit bypass flags
    Name verification:
    - Only runs when no explicit bead name given (default update mode)
    - Skipped for file paths and explicit bead names (clear user intent)
-   - Checks archive.name matches workspace.get_input_bead_name(input.name)
+   - Checks archive.name matches workspace.get_source_name(input.name)
    - Can be relaxed with --no-name or --force
    - Error message: "Name change detected: old → new. Use --no-name or --force to allow."
 
