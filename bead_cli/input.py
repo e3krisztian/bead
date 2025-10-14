@@ -3,7 +3,6 @@ from enum import Enum
 from typing import TYPE_CHECKING, Literal, NoReturn, overload
 
 from bead.bead import Archive
-from bead.box import Box
 from bead.box import resolve
 from bead.box import search
 from bead.exceptions import InvalidArchive
@@ -13,12 +12,9 @@ from bead.workspace import Workspace
 from . import arg_help
 from . import arg_metavar
 from .cmdparse import Command
-from .common import BEAD_OFFSET
-from .common import BEAD_TIME
-from .common import OPTIONAL_WORKSPACE
-from .common import TIME_LATEST
 from .common import BEAD_SPEC_defaulting_to
 from .common import DefaultArgSentinel
+from .common import OPTIONAL_WORKSPACE
 from .common import assert_valid_workspace
 from .common import die
 from .common import refresh_all_box_indexes
@@ -85,7 +81,6 @@ class CmdInputAdd(Command):
     def declare(self, arg):
         arg(INPUT_NAME)
         arg(BEAD_SPEC_defaulting_to(USE_INPUT_NAME))
-        arg(BEAD_TIME)
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
@@ -103,7 +98,7 @@ class CmdInputAdd(Command):
         refresh_all_box_indexes(env)
 
         try:
-            bead = resolve_bead(env, bead_spec, args.bead_time)
+            bead = resolve_bead(env, bead_spec)
         except LookupError:
             die(f'Not a known bead name: {bead_spec}')
 
@@ -166,8 +161,6 @@ class CmdUpdate(Command):
     def declare(self, arg):
         arg(OPTIONAL_INPUT_NAME)
         arg(BEAD_SPEC_defaulting_to(SAME_BEAD_NEWEST_VERSION))
-        arg(BEAD_TIME)
-        arg(BEAD_OFFSET)
         arg(OPTIONAL_WORKSPACE)
         # Matching options (mutually exclusive)
         # NOTE: Option names --no-kind/--no-name chosen for better UX over --ignore-kind/--ignore-name
@@ -202,18 +195,24 @@ class CmdUpdate(Command):
     def update_all_inputs(self, args, env):
         if args.bead_spec is not SAME_BEAD_NEWEST_VERSION:
             die('Too many arguments')
-        if args.bead_offset:
-            die("--next, --prev can not be specified when updating all inputs")
 
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
 
         workspace = get_workspace(args)
         for input in workspace.inputs:
+            # Use mapped bead name for updates (unless --no-name is used)
+            use_name = (args.match_strategy != MatchStrategy.KIND_ONLY)
+            if use_name:
+                bead_spec_to_resolve = workspace.get_source_name(input.name)
+            else:
+                # KIND_ONLY: don't use any name, just search by kind
+                bead_spec_to_resolve = ''
             try:
-                archive = self._find_archive_for_update(
-                    env.get_boxes(), input, args.bead_time, offset=None,
-                    match_strategy=args.match_strategy, workspace=workspace
+                archive = resolve_bead(
+                    env, bead_spec_to_resolve, context_input=input,
+                    use_kind=(args.match_strategy != MatchStrategy.NAME_ONLY),
+                    use_name=use_name
                 )
             except LookupError:
                 if workspace.is_loaded(input.name):
@@ -239,123 +238,61 @@ class CmdUpdate(Command):
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
 
-        # Acquire archive using appropriate strategy
-        boxes = env.get_boxes()
+        # Determine whether user explicitly specified a bead name (not using default/context)
         explicit_bead_name_given = (bead_spec is not SAME_BEAD_NEWEST_VERSION)
 
+        # Resolve archive using new mini-language
         if bead_spec is SAME_BEAD_NEWEST_VERSION:
-            archive = self._acquire_archive_for_existing_input(boxes, input, args, workspace)
-        elif os.path.isfile(bead_spec):
-            archive = self._acquire_archive_from_file(bead_spec, args)
+            # Use mapped bead name for default updates (unless --no-name is used)
+            use_name = (args.match_strategy != MatchStrategy.KIND_ONLY)
+            if use_name:
+                bead_spec_to_resolve = workspace.get_source_name(input_name)
+            else:
+                # KIND_ONLY: don't use any name, just search by kind
+                bead_spec_to_resolve = ''
+            try:
+                archive = resolve_bead(
+                    env, bead_spec_to_resolve, context_input=input,
+                    use_kind=(args.match_strategy != MatchStrategy.NAME_ONLY),
+                    use_name=use_name
+                )
+            except LookupError:
+                self._no_match_found(input, args, fatal=True)
         else:
-            archive = self._acquire_archive_by_name(boxes, input, bead_spec, args, workspace)
+            # User provided explicit bead spec
+            # For relative offsets without explicit name (e.g., @-, @+), prepend mapped name
+            from .bead_spec import parse_bead_spec
+            spec = parse_bead_spec(bead_spec)
+            if spec.time and not spec.name:
+                # Relative offset without name - use mapped name
+                mapped_name = workspace.get_source_name(input_name)
+                bead_spec = f'{mapped_name}@{spec.time}'
+
+            try:
+                archive = resolve_bead(
+                    env, bead_spec, context_input=input,
+                    use_kind=(args.match_strategy != MatchStrategy.NAME_ONLY),
+                    use_name=(args.match_strategy != MatchStrategy.KIND_ONLY)
+                )
+            except LookupError:
+                die(f'Not a known bead name: {bead_spec}')
 
         # Verify constraints before updating
-        self._verify_archive_constraints(input, archive, args, workspace, explicit_bead_name_given)
+        # Determine if spec has time constraint (allows downgrade)
+        from .bead_spec import parse_bead_spec
+        has_time_constraint = False
+        if bead_spec is not SAME_BEAD_NEWEST_VERSION and not os.path.isfile(bead_spec):
+            spec = parse_bead_spec(bead_spec)
+            has_time_constraint = bool(spec.time)
+
+        self._verify_archive_constraints(
+            input, archive, args, workspace, explicit_bead_name_given, has_time_constraint
+        )
 
         _update_input(workspace, input, archive)
         # Update mapping when user specifies explicit bead (not when using existing mapping)
         if bead_spec is not SAME_BEAD_NEWEST_VERSION:
             workspace.set_source_name(input_name, archive.name)
-
-    def _acquire_archive_for_existing_input(
-        self, boxes: list[Box], input: InputSpec, args, workspace: Workspace
-    ) -> Archive:
-        """Acquire archive by updating existing input to newer version."""
-        if args.bead_offset and args.bead_time is not TIME_LATEST:
-            die('You can give either --prev/--next or --time, not both')
-
-        try:
-            return self._find_archive_for_update(
-                boxes, input, args.bead_time, args.bead_offset,
-                match_strategy=args.match_strategy, workspace=workspace
-            )
-        except LookupError:
-            self._no_match_found(input, args, fatal=True)
-
-    def _acquire_archive_from_file(self, bead_spec, args) -> Archive:
-        """Acquire archive directly from file path."""
-        if args.bead_offset:
-            die('--prev/--next is not supported when an input is replaced with another bead')
-
-        from bead.ziparchive import ZipArchive
-        return ZipArchive(bead_spec)
-
-    def _acquire_archive_by_name(
-        self, boxes: list[Box], input: InputSpec, bead_spec, args, workspace: Workspace
-    ) -> Archive:
-        """Acquire archive by searching for explicitly named bead."""
-        if args.bead_offset:
-            die('--prev/--next is not supported when an input is replaced with another bead')
-
-        try:
-            return self._find_archive_for_update(
-                boxes, input, args.bead_time, offset=None,
-                match_strategy=args.match_strategy, workspace=workspace,
-                bead_name_override=bead_spec
-            )
-        except LookupError:
-            die(f'Not a known bead name: {bead_spec}')
-
-    def _find_archive_for_update(
-        self,
-        boxes: list[Box],
-        input: InputSpec,
-        time,
-        offset: int | None,
-        match_strategy: MatchStrategy,
-        workspace: Workspace | None = None,
-        bead_name_override: str | None = None
-    ) -> Archive:
-        """Find and resolve archive for input update based on matching strategy.
-
-        Args:
-            boxes: List of boxes to search
-            input: InputSpec from workspace
-            time: Timestamp constraint (for newest search)
-            offset: Version offset (1 for --next, -1 for --prev, 0/None for newest)
-            match_strategy: MatchStrategy enum value
-            workspace: Workspace (optional, for input name mapping)
-            bead_name_override: If provided, use this name instead of input/mapped name
-
-        Returns:
-            Archive object ready for loading
-
-        Raises:
-            LookupError: When no matching bead is found
-        """
-        query = search(boxes)
-
-        # Determine which bead name to search for
-        if bead_name_override:
-            bead_name = bead_name_override
-        elif workspace:
-            bead_name = workspace.get_source_name(input.name)
-        else:
-            bead_name = input.name
-
-        if match_strategy == MatchStrategy.NAME_ONLY:
-            query = query.by_name(bead_name)
-        elif match_strategy == MatchStrategy.KIND_ONLY:
-            query = query.by_kind(input.kind)
-        elif match_strategy == MatchStrategy.NAME_AND_KIND:
-            query = query.by_name(bead_name).by_kind(input.kind)
-        else:
-            raise ValueError(f"Unknown match strategy: {match_strategy}")
-
-        # Apply time/offset constraint and get bead
-        if offset == 1:
-            # --next: oldest of newer beads
-            bead = query.newer_than(input.freeze_time).oldest()
-        elif offset == -1:
-            # --prev: newest of older beads
-            bead = query.older_than(input.freeze_time).newest()
-        else:
-            # newest at or before time
-            bead = query.at_or_older(time).newest()
-
-        # Resolve bead to archive
-        return resolve(boxes, bead)
 
     @overload
     def _no_match_found(self, input, args, fatal: Literal[True]) -> NoReturn: ...
@@ -372,12 +309,13 @@ class CmdUpdate(Command):
         (die if fatal else warning)(msg)
 
     def _verify_archive_constraints(
-        self, input: InputSpec, archive: Archive, args, workspace: Workspace, explicit_bead_name: bool = False
+        self, input: InputSpec, archive: Archive, args, workspace: Workspace,
+        explicit_bead_name: bool = False, has_time_constraint: bool = False
     ) -> None:
         """Verify archive meets safety constraints (name, kind, time)."""
         self._verify_name_constraint(input, archive, args, workspace, explicit_bead_name)
         self._verify_kind_constraint(input, archive, args)
-        self._verify_time_constraint(input, archive, args)
+        self._verify_time_constraint(input, archive, args, has_time_constraint)
 
     def _verify_name_constraint(
         self, input: InputSpec, archive: Archive, args, workspace: Workspace, explicit_bead_name: bool
@@ -406,13 +344,14 @@ class CmdUpdate(Command):
                 die(f'Kind mismatch: expected {input.kind}, got {archive.kind}. '
                     f'Use --no-kind or --force to allow.')
 
-    def _verify_time_constraint(self, input: InputSpec, archive: Archive, args) -> None:
+    def _verify_time_constraint(
+        self, input: InputSpec, archive: Archive, args, has_time_constraint: bool = False
+    ) -> None:
         """Verify archive is not a downgrade (unless explicitly allowed)."""
         allows_downgrade = (
             args.allow_downgrade or
             args.force or
-            args.bead_offset or  # --prev/--next
-            args.bead_time != TIME_LATEST  # --time
+            has_time_constraint  # Time specified in bead spec (e.g., @2024, @-, @+)
         )
         if archive.freeze_time < input.freeze_time:
             if not allows_downgrade:

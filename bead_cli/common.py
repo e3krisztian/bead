@@ -1,4 +1,3 @@
-import os
 import sys
 from typing import Iterable, NoReturn
 
@@ -11,11 +10,13 @@ from bead.box_index import BoxIndexError, IndexingProgress
 from bead.exceptions import InvalidArchive
 from bead.infra.timestamp import parse_iso8601
 from bead.infra.timestamp import time_from_user
+from bead.meta import InputSpec
 from bead.workspace import Workspace
 from bead.ziparchive import ZipArchive
 
 from . import arg_help
 from . import arg_metavar
+from .bead_spec import BeadSpec, parse_bead_spec, parse_relative_offset, is_relative_offset
 
 TIME_LATEST = parse_iso8601('9999-12-31')
 
@@ -74,15 +75,6 @@ class DefaultArgSentinel:
         return self.description
 
 
-def BEAD_TIME(parser):
-    parser.arg('-t', '--time', dest='bead_time', type=time_from_user, default=TIME_LATEST)
-
-
-def BEAD_OFFSET(parser):
-    parser.arg('-N', '--next', dest='bead_offset', action='store_const', const=1, default=0)
-    parser.arg('-P', '--prev', '--previous', dest='bead_offset', action='store_const', const=-1)
-
-
 def arg_bead_spec(nargs, default):
     '''
     Declare bead_spec argument - either a name or a file or something special
@@ -101,14 +93,101 @@ def BEAD_SPEC_defaulting_to(name):
 BEAD_SPEC = arg_bead_spec(nargs=None, default=None)
 
 
-def resolve_bead(env, bead_spec, time) -> Archive:
-    # prefer exact file name over box search
-    if os.path.isfile(bead_spec):
-        return ZipArchive(bead_spec)
+def resolve_bead(
+    env,
+    bead_spec: str | BeadSpec,
+    context_input: InputSpec | None = None,
+    use_kind: bool = True,
+    use_name: bool = True
+) -> Archive:
+    """
+    Resolve a bead specification to an Archive.
 
-    # not a file - try box search
-    boxes = env.get_boxes()
-    bead = bead_box.search(boxes).by_name(bead_spec).at_or_older(time).newest()
+    Args:
+        env: Environment with box definitions
+        bead_spec: Bead specification (string or BeadSpec object)
+        context_input: Input spec for context name/kind and relative offsets
+        use_kind: Whether to filter by kind when context_input is provided
+        use_name: Whether to filter by name when context_input is provided
+
+    Returns:
+        Archive object
+
+    Raises:
+        LookupError: If bead cannot be found
+        ValueError: If specification is invalid
+    """
+    # Parse spec if it's a string
+    if isinstance(bead_spec, str):
+        spec = parse_bead_spec(bead_spec)
+    else:
+        spec = bead_spec
+
+    # Handle file paths
+    if spec.is_file_path:
+        return ZipArchive(spec.file_path)
+
+    # Determine bead name
+    name = None
+    if spec.name:
+        name = spec.name
+    elif use_name and context_input:
+        name = context_input.name
+    elif not use_kind:
+        # NAME_ONLY strategy requires a name
+        raise ValueError("Bead name not specified and no context provided")
+
+    # Filter boxes
+    if spec.box:
+        boxes = [env.get_box(spec.box)]
+    else:
+        boxes = env.get_boxes()
+
+    # Build search query
+    query = bead_box.search(boxes)
+
+    # Add name constraint if we have a name
+    if name:
+        query = query.by_name(name)
+
+    # Add kind constraint if requested
+    if use_kind and context_input:
+        query = query.by_kind(context_input.kind)
+
+    # Apply time constraint from spec
+    if spec.time:
+        time_expr = spec.time
+
+        if is_relative_offset(time_expr):
+            # Relative offset requires context
+            if not context_input:
+                raise ValueError(f"Relative offset '{time_expr}' requires context input")
+
+            offset = parse_relative_offset(time_expr)
+
+            if offset < 0:
+                # Moving backwards in time (older)
+                query = query.older_than(context_input.freeze_time)
+                # Get the nth older bead (offset is negative, so negate it)
+                bead = query.older(-offset - 1)
+            else:
+                # Moving forwards in time (newer)
+                query = query.newer_than(context_input.freeze_time)
+                # Get the nth newer bead
+                bead = query.newer(offset - 1)
+        else:
+            # Absolute time from spec (parse string)
+            if time_expr == "latest":
+                time_constraint = TIME_LATEST
+            else:
+                time_constraint = time_from_user(time_expr)
+
+            bead = query.at_or_older(time_constraint).newest()
+    else:
+        # No time specified - use latest
+        bead = query.at_or_older(TIME_LATEST).newest()
+
+    # Resolve to archive
     return bead_box.resolve(boxes, bead)
 
 

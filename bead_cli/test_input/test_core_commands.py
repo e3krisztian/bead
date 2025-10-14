@@ -21,7 +21,7 @@ def test_basic_input_add_load_delete(shell, box, check, times, tmp_path_factory)
     shell.bead('new', 'nextbead')
     shell.cd('nextbead')
     # add version TS2
-    shell.bead('input', 'add', 'input1', 'history_bead', '--time', times.TS2)
+    shell.bead('input', 'add', 'input1', f'history_bead@{times.TS2}')
     check.loaded('input1', times.TS2)
     shell.bead('save')
     shell.cd('..')

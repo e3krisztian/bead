@@ -22,9 +22,8 @@ def test_missing_bead(shell, box, check, times, tmp_path_factory):
     assert 'not found' in shell.stderr
 
 
-def assert_edit_version(shell, timestamp, *bead_spec):
-    assert bead_spec[0] == 'test_history_bead'
-    shell.bead('edit', *bead_spec)
+def assert_edit_version(shell, timestamp, bead_spec):
+    shell.bead('edit', bead_spec)
     assert os.path.exists(shell.cwd / 'test_history_bead' / f'sentinel-{timestamp}')
 
 
@@ -35,7 +34,7 @@ def test_last_version(shell, box, check, times, tmp_path_factory):
 
 def test_at_time(shell, box, check, times, tmp_path_factory):
     create_bead_family(box, 'test_history_bead', [times.TS1, times.TS2, times.TS3, times.TS4, times.TS5], tmp_path_factory)
-    assert_edit_version(shell, times.TS1, 'test_history_bead', '-t', times.TS1)
+    assert_edit_version(shell, times.TS1, f'test_history_bead@{times.TS1}')
 
 
 def test_hacked_bead_is_detected(shell, hacked_bead):

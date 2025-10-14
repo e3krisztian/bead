@@ -62,13 +62,13 @@ def test_update_to_next_version(shell, box, check, times, tmp_path_factory):
     shell.bead('new', 'test-workspace')
     shell.cd('test-workspace')
     # add version TS1
-    shell.bead('input', 'add', 'input1', 'history_bead', '--time', times.TS1)
+    shell.bead('input', 'add', 'input1', f'history_bead@{times.TS1}')
     check.loaded('input1', times.TS1)
 
-    shell.bead('input', 'update', 'input1', '--next')
+    shell.bead('input', 'update', 'input1', '@+')
     check.loaded('input1', times.TS2)
 
-    shell.bead('input', 'update', 'input1', '-N')
+    shell.bead('input', 'update', 'input1', '@+')
     check.loaded('input1', times.TS3)
 
 
@@ -78,13 +78,13 @@ def test_update_to_previous_version(shell, box, check, times, tmp_path_factory):
     shell.bead('new', 'test-workspace')
     shell.cd('test-workspace')
     # add version TS4
-    shell.bead('input', 'add', 'input1', 'history_bead', '--time', times.TS4)
+    shell.bead('input', 'add', 'input1', f'history_bead@{times.TS4}')
     check.loaded('input1', times.TS4)
 
-    shell.bead('input', 'update', 'input1', '--prev')
+    shell.bead('input', 'update', 'input1', '@-')
     check.loaded('input1', times.TS3)
 
-    shell.bead('input', 'update', 'input1', '-P')
+    shell.bead('input', 'update', 'input1', '@-')
     check.loaded('input1', times.TS2)
 
 
@@ -141,7 +141,7 @@ def test_update_default_name_and_kind_matching(shell, box, check, times, tmp_pat
     # Create workspace with older version as input
     shell.bead('new', 'consumer')
     shell.cd('consumer')
-    shell.bead('input', 'add', 'test_bead', 'test_bead', '--time', times.TS1)
+    shell.bead('input', 'add', 'test_bead', f'test_bead@{times.TS1}')
 
     # Update should find the newer version
     shell.bead('input', 'update', 'test_bead')
@@ -327,7 +327,7 @@ def test_update_explicit_changes_reference(shell, box, check, times, tmp_path_fa
 
 def test_update_navigation_preserves_mapping(shell, box, check, times, tmp_path_factory):
     """
-    Test that input mappings are preserved during --prev/--next navigation.
+    Test that input mappings are preserved during @-/@+ navigation.
     """
 
     # Create bead with version history for navigation testing
@@ -337,14 +337,14 @@ def test_update_navigation_preserves_mapping(shell, box, check, times, tmp_path_
     shell.cd('test_workspace')
 
     # Set up input with specific version and mapping
-    shell.bead('input', 'add', 'nav_input', 'navigate_bead', '--time', times.TS2)
+    shell.bead('input', 'add', 'nav_input', f'navigate_bead@{times.TS2}')
     check.loaded('nav_input', times.TS2)
     shell.bead('input', 'map', 'nav_input', 'navigate_bead')
 
     # Test navigation preserves mapping
-    shell.bead('input', 'update', 'nav_input', '--next')  # Should go from TS2 to TS3
+    shell.bead('input', 'update', 'nav_input', '@+')  # Should go from TS2 to TS3
     check.loaded('nav_input', times.TS3)
-    shell.bead('input', 'update', 'nav_input', '--prev')  # Should go from TS3 back to TS2
+    shell.bead('input', 'update', 'nav_input', '@-')  # Should go from TS3 back to TS2
     check.loaded('nav_input', times.TS2)
 
 
@@ -458,32 +458,32 @@ def test_update_downgrade_blocked_without_flag(shell, box, check, times, tmp_pat
 
 
 def test_downgrade_requires_allow_downgrade_or_force(shell, box, check, times, tmp_path_factory):
-    """Test that downgrades require --allow-downgrade, --force, or explicit --time."""
+    """Test that downgrades require --allow-downgrade, --force, or explicit @timestamp."""
     create_bead_family(box, 'versioned', [times.TS1, times.TS3], tmp_path_factory)
 
     shell.bead('new', 'workspace')
     shell.cd('workspace')
-    shell.bead('input', 'add', 'myinput', 'versioned', '--time', times.TS3)
+    shell.bead('input', 'add', 'myinput', f'versioned@{times.TS3}')
     check.loaded('myinput', times.TS3)
 
-    # Using --time with older timestamp implicitly allows downgrade
-    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS1)
+    # Using @timestamp with older timestamp implicitly allows downgrade
+    shell.bead('input', 'update', 'myinput', f'versioned@{times.TS1}')
     check.loaded('myinput', times.TS1)
 
     # Reset to TS3
-    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS3)
+    shell.bead('input', 'update', 'myinput', f'versioned@{times.TS3}')
     check.loaded('myinput', times.TS3)
 
-    # With --allow-downgrade and explicit --time should also work
-    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS1, '--allow-downgrade')
+    # With --allow-downgrade and explicit @timestamp should also work
+    shell.bead('input', 'update', 'myinput', f'versioned@{times.TS1}', '--allow-downgrade')
     check.loaded('myinput', times.TS1)
 
     # Reset to TS3 again
-    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS3)
+    shell.bead('input', 'update', 'myinput', f'versioned@{times.TS3}')
     check.loaded('myinput', times.TS3)
 
     # With --force should also work
-    shell.bead('input', 'update', 'myinput', 'versioned', '--time', times.TS1, '--force')
+    shell.bead('input', 'update', 'myinput', f'versioned@{times.TS1}', '--force')
     check.loaded('myinput', times.TS1)
 
 
@@ -525,15 +525,15 @@ def test_force_bypasses_all_constraints(shell, box, check, times, tmp_path_facto
 
 
 def test_prev_implicitly_allows_downgrade(shell, box, check, times, tmp_path_factory):
-    """Test that --prev implicitly allows downgrade."""
+    """Test that @- implicitly allows downgrade."""
     create_bead_family(box, 'versioned', [times.TS1, times.TS2, times.TS3], tmp_path_factory)
 
     shell.bead('new', 'workspace')
     shell.cd('workspace')
-    shell.bead('input', 'add', 'myinput', 'versioned', '--time', times.TS3)
+    shell.bead('input', 'add', 'myinput', f'versioned@{times.TS3}')
 
-    # --prev should allow downgrade without --allow-downgrade
-    shell.bead('input', 'update', 'myinput', '--prev')
+    # @- should allow downgrade without --allow-downgrade
+    shell.bead('input', 'update', 'myinput', '@-')
     check.loaded('myinput', times.TS2)
 
 

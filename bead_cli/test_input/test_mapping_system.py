@@ -54,7 +54,7 @@ def test_input_mapping_preserved_after_deletion(shell, box, check, times, tmp_pa
 
     # Set up multiple inputs with different mappings
     shell.bead('input', 'add', 'input1', 'preserve_alpha')
-    shell.bead('input', 'add', 'input2', 'preserve_beta', '--time', times.TS2)
+    shell.bead('input', 'add', 'input2', f'preserve_beta@{times.TS2}')
     shell.bead('input', 'add', 'input3', 'preserve_mapped')
 
     # Configure mappings
@@ -129,7 +129,7 @@ def test_update_use_mapped_name_not_newest_by_kind(shell, box, check, times, tmp
 
     # Map the input to mapping_target and set to older version
     shell.bead('input', 'map', 'data_source', 'mapping_target')
-    shell.bead('input', 'update', 'data_source', 'mapping_target', '--time', times.TS2)
+    shell.bead('input', 'update', 'data_source', f'mapping_target@{times.TS2}')
     check.loaded('data_source', times.TS2)
 
     # Update should find newer mapping_target (TS4), NOT mapping_distractor (TS5)
@@ -154,7 +154,7 @@ def test_update_default_use_mapping(shell, box, check, times, tmp_path_factory):
     shell.bead('input', 'add', 'test_input', 'start_bead')
     check.loaded('test_input', times.TS1)
     shell.bead('input', 'map', 'test_input', 'mapped_bead')
-    shell.bead('input', 'update', 'test_input', 'mapped_bead', '--time', times.TS2)
+    shell.bead('input', 'update', 'test_input', f'mapped_bead@{times.TS2}')
     check.loaded('test_input', times.TS2)
 
     # Test default strategy (NAME_AND_KIND) uses mapping to find newer version
@@ -178,7 +178,7 @@ def test_update_no_kind_use_mapping(shell, box, check, times, tmp_path_factory):
     shell.bead('input', 'add', 'test_input', 'start_bead')
     check.loaded('test_input', times.TS1)
     shell.bead('input', 'map', 'test_input', 'mapped_bead')
-    shell.bead('input', 'update', 'test_input', 'mapped_bead', '--time', times.TS2)
+    shell.bead('input', 'update', 'test_input', f'mapped_bead@{times.TS2}')
     check.loaded('test_input', times.TS2)
 
     # Test --no-kind (NAME_ONLY) still uses mapping to find newer version
@@ -292,7 +292,7 @@ def test_input_add_sets_initial_mapping(shell, box, check, times, tmp_path_facto
     shell.cd('test_workspace')
 
     # Add input pointing to older version - this should set initial mapping
-    shell.bead('input', 'add', 'test_input', 'initial_bead', '--time', times.TS1)
+    shell.bead('input', 'add', 'test_input', f'initial_bead@{times.TS1}')
     check.loaded('test_input', times.TS1)
 
     # Verify initial mapping works - should find newer version of initial_bead via mapping
@@ -395,7 +395,7 @@ def test_update_mapped_ignore_wrong_kind(shell, box, check, times, tmp_path_fact
     shell.cd('test_workspace')
 
     # Add input from the original kind
-    shell.bead('input', 'add', 'data_source', 'mapped_target', '--time', times.TS1)
+    shell.bead('input', 'add', 'data_source', f'mapped_target@{times.TS1}')
     check.loaded('data_source', times.TS1)
 
     # Update should find newer bead of same kind, not the newest distractor
@@ -418,7 +418,7 @@ def test_update_mapped_constrain_to_name(shell, box, check, times, tmp_path_fact
     shell.cd('test_workspace')
 
     # Add input and explicitly map to specific bead family
-    shell.bead('input', 'add', 'data_source', 'mapped_target', '--time', times.TS2)
+    shell.bead('input', 'add', 'data_source', f'mapped_target@{times.TS2}')
     shell.bead('input', 'map', 'data_source', 'mapped_target')
     check.loaded('data_source', times.TS2)
 
@@ -457,7 +457,7 @@ def test_input_map_edge_cases(shell, box, check, times, tmp_path_factory):
     shell.cd('test_workspace')
 
     # When input add is called, it sets mapping: test_input -> edge_case_v
-    shell.bead('input', 'add', 'test_input', 'edge_case_v', '--time', times.TS1)
+    shell.bead('input', 'add', 'test_input', f'edge_case_v@{times.TS1}')
     check.loaded('test_input', times.TS1)
 
     # Update should work using the mapping set by input add (test_input -> edge_case_v)
@@ -484,7 +484,7 @@ def test_input_map_all_inputs_respects_individual_mappings(shell, box, check, ti
     shell.cd('test_workspace')
 
     # Set up multiple inputs with different mappings
-    shell.bead('input', 'add', 'input1', 'bead_alpha', '--time', times.TS1)
+    shell.bead('input', 'add', 'input1', f'bead_alpha@{times.TS1}')
     shell.bead('input', 'add', 'input2', 'bead_beta')
     shell.bead('input', 'map', 'input1', 'bead_alpha')  # Should find TS4 version
     shell.bead('input', 'map', 'input2', 'bead_gamma')  # Should find TS3 version
