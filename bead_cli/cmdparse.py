@@ -29,7 +29,7 @@ class Command:
     argparse (user input), and a function.
     '''
 
-    FORMATTER_CLASS = argparse.HelpFormatter
+    FORMATTER_CLASS = argparse.RawTextHelpFormatter
 
     def declare(self, arg):
         '''
