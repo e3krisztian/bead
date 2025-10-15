@@ -14,6 +14,7 @@ from bead.infra.fs import Path
 from bead.infra.timestamp import timestamp
 
 from . import box
+from . import completion
 from . import input
 from . import workspace
 from .cmdparse import Command
@@ -67,6 +68,7 @@ def make_argument_parser(defaults):
             ('status', workspace.CmdStatus, 'Show workspace information.'),
             ('graph', graph_commands.CmdGraph, 'Visualize dependency graph and connections between beads.'),
             ('nuke', workspace.CmdDiscard, 'Delete workspace. (same as discard)'),
+            ('completion', completion.CmdCompletion, 'Output shell completion setup code.'),
             ('version', CmdVersion, 'Show program version.'),
         ))
 
