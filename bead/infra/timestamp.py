@@ -1,6 +1,7 @@
 from datetime import datetime
 from datetime import timedelta
 from datetime import tzinfo
+from enum import Enum, auto
 import re
 import time as _time
 
@@ -232,3 +233,141 @@ def time_from_user(timeish):
     except ValueError:
         raise ValueError(
             'Can not interpret string either as time or as delta', timeish)
+
+
+class TimePrecision(Enum):
+    """Enum representing the precision/granularity of a time specification."""
+    YEAR = auto()
+    MONTH = auto()
+    DAY = auto()
+    HOUR = auto()
+    MINUTE = auto()
+    SECOND = auto()
+    MICROSECOND = auto()
+
+
+def detect_time_precision(timeish_str: str) -> TimePrecision:
+    """
+    Detect the finest time unit specified in a user's time string.
+
+    Args:
+        timeish_str: Time specification string (e.g., "2025", "2025-09", "2025-09-19T14:30:45")
+
+    Returns:
+        TimePrecision enum value indicating the finest specified unit
+
+    Raises:
+        ValueError: If the time string format is not recognized
+    """
+    # Remove any leading/trailing whitespace
+    timeish_str = timeish_str.strip()
+
+    # Templates organized by string length: (length, precision, template)
+    # Note: %f outputs 6 digits (microseconds), %z outputs 5 chars (+/-HHMM)
+    templates_by_length = [
+        # MICROSECOND precision
+        (21, TimePrecision.MICROSECOND, '%Y%m%dT%H%M%S%f'),           # Compact: YYYYMMDDTHHMMSSnnnnnn (8+1+6+6)
+        (26, TimePrecision.MICROSECOND, '%Y%m%dT%H%M%S%f%z'),         # Compact: YYYYMMDDTHHMMSSnnnnnn+HHMM (8+1+6+6+5)
+        (26, TimePrecision.MICROSECOND, '%Y-%m-%dT%H:%M:%S.%f'),      # ISO8601: YYYY-MM-DDTHH:MM:SS.nnnnnn
+        (31, TimePrecision.MICROSECOND, '%Y-%m-%dT%H:%M:%S.%f%z'),    # ISO8601: YYYY-MM-DDTHH:MM:SS.nnnnnn+HHMM
+        # SECOND precision
+        (15, TimePrecision.SECOND, '%Y%m%dT%H%M%S'),                  # Compact: YYYYMMDDTHHmmss (8+1+6)
+        (19, TimePrecision.SECOND, '%Y-%m-%dT%H:%M:%S'),              # ISO8601: YYYY-MM-DDTHH:MM:SS
+        (20, TimePrecision.SECOND, '%Y%m%dT%H%M%S%z'),                # Compact: YYYYMMDDTHHmmss+HHMM (8+1+6+5)
+        (24, TimePrecision.SECOND, '%Y-%m-%dT%H:%M:%S%z'),            # ISO8601: YYYY-MM-DDTHH:MM:SS+HHMM
+        # MINUTE precision
+        (13, TimePrecision.MINUTE, '%Y%m%dT%H%M'),                    # Compact: YYYYMMDDTHHmm
+        (16, TimePrecision.MINUTE, '%Y-%m-%dT%H:%M'),                 # ISO8601: YYYY-MM-DDTHH:MM
+        (18, TimePrecision.MINUTE, '%Y%m%dT%H%M%z'),                  # Compact: YYYYMMDDTHHmm+HHMM
+        (21, TimePrecision.MINUTE, '%Y-%m-%dT%H:%M%z'),               # ISO8601: YYYY-MM-DDTHH:MM+HHMM
+        # HOUR precision
+        (11, TimePrecision.HOUR, '%Y%m%dT%H'),                        # Compact: YYYYMMDDTHH
+        (13, TimePrecision.HOUR, '%Y-%m-%dT%H'),                      # ISO8601: YYYY-MM-DDTHH
+        (16, TimePrecision.HOUR, '%Y%m%dT%H%z'),                      # Compact: YYYYMMDDTHH+HHMM
+        (18, TimePrecision.HOUR, '%Y-%m-%dT%H%z'),                    # ISO8601: YYYY-MM-DDTHH+HHMM
+        # DAY precision
+        (8, TimePrecision.DAY, '%Y%m%d'),                             # Compact: YYYYMMDD
+        (10, TimePrecision.DAY, '%Y-%m-%d'),                          # ISO8601: YYYY-MM-DD
+        # MONTH precision
+        (6, TimePrecision.MONTH, '%Y%m'),                             # Compact: YYYYMM
+        (7, TimePrecision.MONTH, '%Y-%m'),                            # ISO8601: YYYY-MM
+        # YEAR precision
+        (4, TimePrecision.YEAR, '%Y'),                                # Year only
+    ]
+
+    # Try to match against templates for the actual length
+    actual_len = len(timeish_str)
+    for expected_len, precision, template in templates_by_length:
+        if expected_len == actual_len:
+            try:
+                datetime.strptime(timeish_str, template)
+                return precision
+            except (ValueError, TypeError):
+                continue
+
+    # No matching format found
+    raise ValueError(f'Time specification not recognized: {timeish_str}')
+
+
+def add_one_unit(dt: datetime, precision: TimePrecision) -> datetime:
+    """
+    Add one unit of time based on the specified precision.
+
+    Handles month/year boundary conditions (e.g., December → January of next year).
+    When adding a month/year would result in an invalid day (e.g., Feb 31), loops
+    down to find the first valid day.
+
+    Args:
+        dt: datetime object to add to
+        precision: TimePrecision enum indicating which unit to add
+
+    Returns:
+        New datetime with one unit added
+    """
+    if precision == TimePrecision.YEAR:
+        # Add 1 year
+        new_year = dt.year + 1
+        # Loop down from current day until it succeeds (handles leap year edge cases)
+        for day in range(dt.day, 0, -1):
+            try:
+                return dt.replace(year=new_year, day=day)
+            except ValueError:
+                continue
+        # Should never reach here
+        raise ValueError(f"Could not add 1 year to {dt}")
+
+    elif precision == TimePrecision.MONTH:
+        # Add 1 month, handling year boundary
+        if dt.month == 12:
+            new_year = dt.year + 1
+            new_month = 1
+        else:
+            new_year = dt.year
+            new_month = dt.month + 1
+
+        # Loop down from current day until it succeeds (handles different month lengths)
+        for day in range(dt.day, 0, -1):
+            try:
+                return dt.replace(year=new_year, month=new_month, day=day)
+            except ValueError:
+                continue
+        # Should never reach here
+        raise ValueError(f"Could not add 1 month to {dt}")
+
+    elif precision == TimePrecision.DAY:
+        return dt + timedelta(days=1)
+
+    elif precision == TimePrecision.HOUR:
+        return dt + timedelta(hours=1)
+
+    elif precision == TimePrecision.MINUTE:
+        return dt + timedelta(minutes=1)
+
+    elif precision == TimePrecision.SECOND:
+        return dt + timedelta(seconds=1)
+
+    elif precision == TimePrecision.MICROSECOND:
+        return dt + timedelta(microseconds=1)
+
+    else:
+        raise ValueError(f"Unknown precision: {precision}")

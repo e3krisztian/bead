@@ -11,6 +11,9 @@ from .timestamp import parse_timedelta
 from .timestamp import time_from_timestamp
 from .timestamp import time_from_user
 from .timestamp import timestamp
+from .timestamp import TimePrecision
+from .timestamp import detect_time_precision
+from .timestamp import add_one_unit
 
 
 @pytest.mark.parametrize(
@@ -94,3 +97,88 @@ def test_timestamp():
         assert (
             time_from_timestamp(timestamp())
             == time_from_timestamp('20191101T010203000004+0500'))
+
+
+@pytest.mark.parametrize(
+    "timeish_str, expected_precision",
+    [
+        # ISO8601 date-only formats
+        ('2025', TimePrecision.YEAR),
+        ('2025-09', TimePrecision.MONTH),
+        ('2025-09-19', TimePrecision.DAY),
+        # Compact date-only formats
+        ('201509', TimePrecision.MONTH),
+        ('20250919', TimePrecision.DAY),
+        # ISO8601 date+time formats with colons
+        ('2025-09-19T14', TimePrecision.HOUR),
+        ('2025-09-19T14:30', TimePrecision.MINUTE),
+        ('2025-09-19T14:30:45', TimePrecision.SECOND),
+        ('2025-09-19T14:30:45.123456', TimePrecision.MICROSECOND),
+        # ISO8601 with timezone
+        ('2025-09-19T14:30:45+0200', TimePrecision.SECOND),
+        ('2025-09-19T14:30:45.123456+0200', TimePrecision.MICROSECOND),
+        # Compact bead timestamp format (no colons/dashes)
+        ('20250919T14', TimePrecision.HOUR),
+        ('20250919T1430', TimePrecision.MINUTE),
+        ('20250919T143045', TimePrecision.SECOND),
+        ('20250919T143045123456', TimePrecision.MICROSECOND),
+        # Compact with timezone
+        ('20250919T143045+0200', TimePrecision.SECOND),
+        ('20250919T143045123456+0200', TimePrecision.MICROSECOND),
+    ]
+)
+def test_detect_time_precision(timeish_str, expected_precision):
+    assert detect_time_precision(timeish_str) == expected_precision
+
+
+@pytest.mark.parametrize(
+    "timeish_str",
+    [
+        # Invalid formats
+        '2025-09-19T',               # Ends with T separator
+        '2025-09-19 14:30:45',       # Space instead of T
+        '2025/09/19',                # Slashes instead of dashes
+        '25-09-19',                  # 2-digit year
+        '2025-09-19T14:30:45:12',    # Extra colon
+        '2025-13-01',                # Invalid month
+        '2025-09-31',                # Invalid day for September
+        '20250919T25',               # Invalid hour
+        '20250919T145',              # Odd number of digits in time
+        'not-a-date',                # Non-numeric
+        '',                          # Empty string
+        '2025-09-19T14:30:45.12345', # Incomplete microseconds (5 instead of 6)
+    ]
+)
+def test_detect_time_precision_invalid(timeish_str):
+    with pytest.raises(ValueError):
+        detect_time_precision(timeish_str)
+
+
+@pytest.mark.parametrize(
+    "dt, precision, expected",
+    [
+        # Year precision
+        (datetime(2025, 1, 1, 0, 0, 0, 0, UTC), TimePrecision.YEAR, datetime(2026, 1, 1, 0, 0, 0, 0, UTC)),
+        # Leap year handling: Feb 29 → Feb 28 (non-leap year)
+        (datetime(2020, 2, 29, 0, 0, 0, 0, UTC), TimePrecision.YEAR, datetime(2021, 2, 28, 0, 0, 0, 0, UTC)),
+        # Month precision
+        (datetime(2025, 9, 15, 0, 0, 0, 0, UTC), TimePrecision.MONTH, datetime(2025, 10, 15, 0, 0, 0, 0, UTC)),
+        # Month boundary: December → January of next year
+        (datetime(2025, 12, 31, 0, 0, 0, 0, UTC), TimePrecision.MONTH, datetime(2026, 1, 31, 0, 0, 0, 0, UTC)),
+        # Month edge case: Jan 31 → Feb 28
+        (datetime(2025, 1, 31, 0, 0, 0, 0, UTC), TimePrecision.MONTH, datetime(2025, 2, 28, 0, 0, 0, 0, UTC)),
+        # Day precision
+        (datetime(2025, 9, 19, 0, 0, 0, 0, UTC), TimePrecision.DAY, datetime(2025, 9, 20, 0, 0, 0, 0, UTC)),
+        # Hour precision
+        (datetime(2025, 9, 19, 14, 0, 0, 0, UTC), TimePrecision.HOUR, datetime(2025, 9, 19, 15, 0, 0, 0, UTC)),
+        # Minute precision
+        (datetime(2025, 9, 19, 14, 30, 0, 0, UTC), TimePrecision.MINUTE, datetime(2025, 9, 19, 14, 31, 0, 0, UTC)),
+        # Second precision
+        (datetime(2025, 9, 19, 14, 30, 45, 0, UTC), TimePrecision.SECOND, datetime(2025, 9, 19, 14, 30, 46, 0, UTC)),
+        # Microsecond precision
+        (datetime(2025, 9, 19, 14, 30, 45, 123456, UTC), TimePrecision.MICROSECOND, datetime(2025, 9, 19, 14, 30, 45, 123457, UTC)),
+    ]
+)
+def test_add_one_unit(dt, precision, expected):
+    result = add_one_unit(dt, precision)
+    assert result == expected

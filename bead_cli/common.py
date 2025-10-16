@@ -10,6 +10,9 @@ from bead.box_index import BoxIndexError, IndexingProgress
 from bead.exceptions import InvalidArchive
 from bead.infra.timestamp import parse_iso8601
 from bead.infra.timestamp import time_from_user
+from bead.infra.timestamp import detect_time_precision
+from bead.infra.timestamp import add_one_unit
+from bead.infra.timestamp import TimePrecision
 from bead.meta import InputSpec
 from bead.workspace import Workspace
 from bead.ziparchive import ZipArchive
@@ -179,6 +182,7 @@ def resolve_bead(
             # Absolute time from spec (parse string)
             if time_expr == "latest":
                 time_constraint = TIME_LATEST
+                bead = query.at_or_older(time_constraint).newest()
             else:
                 try:
                     time_constraint = time_from_user(time_expr)
@@ -186,7 +190,22 @@ def resolve_bead(
                     die(f"Invalid time expression: '{time_expr}'. "
                         f"Expected ISO8601 timestamp (e.g., 2024-06-15) or timedelta (e.g., 1d, 2w).")
 
-            bead = query.at_or_older(time_constraint).newest()
+                # Detect precision and adjust to end of unit for inclusive matching
+                try:
+                    precision = detect_time_precision(time_expr)
+                except ValueError:
+                    die(f"Invalid time expression: '{time_expr}'. "
+                        f"Expected ISO8601 timestamp (e.g., 2024-06-15) or timedelta (e.g., 1d, 2w).")
+
+                if precision != TimePrecision.MICROSECOND:
+                    # For partial specifications (year, month, day, etc.), use end-of-unit logic
+                    # This makes @2025-09-19 match all beads on that day, not just those
+                    # created after midnight UTC
+                    end_of_unit = add_one_unit(time_constraint, precision)
+                    bead = query.older_than(end_of_unit).newest()
+                else:
+                    # Fully specified timestamp - use as-is
+                    bead = query.at_or_older(time_constraint).newest()
     else:
         # No time specified - use latest
         bead = query.at_or_older(TIME_LATEST).newest()
