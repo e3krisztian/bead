@@ -261,3 +261,40 @@ def test_reindex_all_with_corrupted_indexes(shell):
     # Verify the command succeeded
     assert shell.exit_code == 0
     assert 'ERROR' not in shell.stderr
+
+
+def test_add_box_with_outdated_index_succeeds(shell, tmp_path_factory):
+    """Test that adding a box with outdated .index.sqlite succeeds."""
+    # Create directory with outdated index schema
+    box_dir = tmp_path_factory.mktemp('old_box_dir')
+
+    # Create an index with old schema version but valid structure
+    index_path = box_dir / '.index.sqlite'
+    with sqlite.transaction(index_path) as conn:
+        # Create the old schema table
+        conn.execute('''
+            CREATE TABLE beads (
+                name TEXT NOT NULL,
+                content_id TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                freeze_time_iso TEXT NOT NULL,
+                freeze_time_unix INTEGER NOT NULL,
+                file_path TEXT NOT NULL,
+                PRIMARY KEY (name, content_id)
+            )
+        ''')
+        # Set old version (current is 4)
+        conn.execute('PRAGMA user_version = 1')
+        conn.commit()
+
+    # Add the box - should succeed despite outdated index
+    shell.bead('box', 'add', 'legacy_box', str(box_dir))
+
+    # Verify success
+    assert shell.exit_code == 0
+    assert 'ERROR' not in shell.stderr
+    assert 'Will remember box legacy_box' in shell.stdout
+
+    # Verify box is listed
+    shell.bead('box', 'list')
+    assert 'legacy_box' in shell.stdout

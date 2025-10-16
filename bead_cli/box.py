@@ -1,6 +1,7 @@
 import shutil
 from typing import TYPE_CHECKING
 
+from bead.box_index import index_schema_is_current
 from bead.infra.fs import Path
 
 from .cmdparse import Command
@@ -20,6 +21,15 @@ def seed_box_index(box_directory: Path, new_index_path: Path):
             print(f'Seeded index from existing data at {old_index_path}')
         except Exception as e:
             print(f'Warning: Failed to seed index: {e}')
+
+    # Check and remove outdated index at the destination
+    # (either from copy above or pre-existing from previous runs)
+    if new_index_path.exists() and not index_schema_is_current(new_index_path):
+        try:
+            new_index_path.unlink()
+            print(f'Removed outdated index at {new_index_path}')
+        except Exception as e:
+            print(f'Warning: Failed to remove outdated index: {e}')
 
 
 class CmdBoxAdd(Command):

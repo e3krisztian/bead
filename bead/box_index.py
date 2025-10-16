@@ -116,6 +116,16 @@ def find_file_path(conn, name, content_id):
     return row[0] if row else None
 
 
+def index_schema_is_current(index_path: Path) -> bool:
+    '''Check if index has current schema version.'''
+    try:
+        with sqlite.transaction(index_path, read_only=True) as conn:
+            [[version]] = conn.execute('PRAGMA user_version')
+            return version == SCHEMA_VERSION
+    except sqlite.Error:
+        return False
+
+
 def iso_timestamp_to_unix_utc_microseconds(timestamp):
     """Convert timestamp to UTC unix microseconds for database storage."""
     if hasattr(timestamp, 'timestamp'):
