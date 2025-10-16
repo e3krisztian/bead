@@ -96,60 +96,64 @@ def BEAD_SPEC_defaulting_to(name):
 BEAD_SPEC = arg_bead_spec(nargs=None, default=None)
 
 
-def resolve_bead(
-    env,
-    bead_spec: str | BeadSpec,
-    context_input: InputSpec | None = None,
-    use_kind: bool = True,
-    use_name: bool = True
-) -> Archive:
+def _get_bead_name(
+    spec: BeadSpec,
+    context_input: InputSpec | None,
+    use_name: bool
+) -> str | None:
     """
-    Resolve a bead specification to an Archive.
+    Determine the bead name to search for.
+
+    Priority: spec name > context name > None
+
+    Args:
+        spec: Parsed bead specification
+        context_input: Input spec for context name
+        use_name: Whether to use context name if spec doesn't provide one
+
+    Returns:
+        Bead name or None if no name available
+    """
+    if spec.name:
+        return spec.name
+    if use_name and context_input:
+        return context_input.name
+    return None
+
+
+def _create_bead_search(
+    env,
+    spec: BeadSpec,
+    context_input: InputSpec | None,
+    use_kind: bool,
+    use_name: bool
+):
+    """
+    Create a bead search with optional name and kind constraints.
+
+    Selects boxes based on spec and environment, then applies optional
+    filters for name (from spec or context) and kind (from context).
 
     Args:
         env: Environment with box definitions
-        bead_spec: Bead specification (string or BeadSpec object)
-        context_input: Input spec for context name/kind and relative offsets
-        use_kind: Whether to filter by kind when context_input is provided
-        use_name: Whether to filter by name when context_input is provided
+        spec: Parsed bead specification
+        context_input: Input spec for context kind/name
+        use_kind: Whether to filter by kind
+        use_name: Whether to filter by name
 
     Returns:
-        Archive object
-
-    Raises:
-        LookupError: If bead cannot be found
-        ValueError: If specification is invalid
+        BeadSearch query object ready for selection
     """
-    # Parse spec if it's a string
-    if isinstance(bead_spec, str):
-        spec = parse_bead_spec(bead_spec)
-    else:
-        spec = bead_spec
-
-    # Handle file paths
-    if spec.is_file_path:
-        return ZipArchive(spec.file_path)
-
-    # Determine bead name
-    name = None
-    if spec.name:
-        name = spec.name
-    elif use_name and context_input:
-        name = context_input.name
-    elif not use_kind:
-        # NAME_ONLY strategy requires a name
-        raise ValueError("Bead name not specified and no context provided")
-
     # Filter boxes
     if spec.box:
         boxes = [env.get_box(spec.box)]
     else:
         boxes = env.get_boxes()
 
-    # Build search query
     query = bead_box.search(boxes)
 
-    # Add name constraint if we have a name
+    # Add name constraint if we have one
+    name = _get_bead_name(spec, context_input, use_name)
     if name:
         query = query.by_name(name)
 
@@ -157,7 +161,34 @@ def resolve_bead(
     if use_kind and context_input:
         query = query.by_kind(context_input.kind)
 
-    # Apply time constraint from spec
+    return query
+
+
+def _select_bead_by_time(
+    query,
+    spec: BeadSpec,
+    context_input: InputSpec | None
+):
+    """
+    Select a bead from the query based on time constraints.
+
+    Handles three cases:
+    - Relative offsets (e.g., -, +, -)
+    - Absolute timestamps with precision-based end-of-unit logic
+    - No time specified (defaults to latest)
+
+    Args:
+        query: BeadSearch query object
+        spec: Parsed bead specification
+        context_input: Input spec for freeze_time with relative offsets
+
+    Returns:
+        Selected Bead object
+
+    Raises:
+        ValueError: If relative offset requires context but none provided
+        LookupError: If no bead found matching constraints
+    """
     if spec.time:
         time_expr = spec.time
 
@@ -209,6 +240,53 @@ def resolve_bead(
     else:
         # No time specified - use latest
         bead = query.at_or_older(TIME_LATEST).newest()
+
+    return bead
+
+
+def resolve_bead(
+    env,
+    bead_spec: str | BeadSpec,
+    context_input: InputSpec | None = None,
+    use_kind: bool = True,
+    use_name: bool = True
+) -> Archive:
+    """
+    Resolve a bead specification to an Archive.
+
+    Args:
+        env: Environment with box definitions
+        bead_spec: Bead specification (string or BeadSpec object)
+        context_input: Input spec for context name/kind and relative offsets
+        use_kind: Whether to filter by kind when context_input is provided
+        use_name: Whether to filter by name when context_input is provided
+
+    Returns:
+        Archive object
+
+    Raises:
+        LookupError: If bead cannot be found
+        ValueError: If specification is invalid
+    """
+    # Parse spec if it's a string
+    if isinstance(bead_spec, str):
+        spec = parse_bead_spec(bead_spec)
+    else:
+        spec = bead_spec
+
+    # Handle file paths
+    if spec.is_file_path:
+        return ZipArchive(spec.file_path)
+
+    # Build query and resolve
+    search = _create_bead_search(env, spec, context_input, use_kind, use_name)
+    bead = _select_bead_by_time(search, spec, context_input)
+
+    # Get boxes for resolution
+    if spec.box:
+        boxes = [env.get_box(spec.box)]
+    else:
+        boxes = env.get_boxes()
 
     # Resolve to archive
     return bead_box.resolve(boxes, bead)
