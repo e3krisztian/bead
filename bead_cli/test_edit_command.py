@@ -61,3 +61,15 @@ def test_dies_if_directory_exists(shell, box, check, times, tmp_path_factory):
     assert 'ERROR' in shell.stderr
 
 
+def test_edit_with_invalid_time_expression_shows_error(shell, box, check, times, tmp_path_factory):
+    """Test that invalid time expressions show user-friendly errors, not tracebacks."""
+    create_bead_family(box, 'test_bead', [times.TS1], tmp_path_factory)
+    shell.bead('edit', 'test_bead@invalidtime', expect_failure=True)
+    assert 'ERROR' in shell.stderr
+    assert 'Invalid time expression' in shell.stderr
+    assert 'invalidtime' in shell.stderr
+    # Should NOT show traceback
+    assert 'Traceback' not in shell.stderr
+    assert 'ValueError' not in shell.stderr
+
+

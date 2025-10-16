@@ -363,6 +363,24 @@ def test_update_with_nonexistent_bead_shows_error(shell, box, times, tmp_path_fa
     assert 'ERROR' in shell.stderr or 'not found' in shell.stderr.lower()
 
 
+def test_update_with_invalid_time_expression_shows_error(shell, box, check, times, tmp_path_factory):
+    """Test that invalid time expressions show user-friendly errors, not tracebacks."""
+    create_bead_family(box, 'test_bead', [times.TS1], tmp_path_factory)
+    shell.bead('new', 'test_workspace')
+    shell.cd('test_workspace')
+    shell.bead('input', 'add', 'myinput', 'test_bead')
+    check.loaded('myinput', times.TS1)
+
+    # Try to update with invalid time expression
+    shell.bead('input', 'update', 'myinput', 'test_bead@invalidtime', expect_failure=True)
+    assert 'ERROR' in shell.stderr
+    assert 'Invalid time expression' in shell.stderr
+    assert 'invalidtime' in shell.stderr
+    # Should NOT show traceback
+    assert 'Traceback' not in shell.stderr
+    assert 'ValueError' not in shell.stderr
+
+
 def test_update_with_new_bead_name_respects_kind_matching(shell, box, check, times, tmp_path_factory):
     """Test that updating with new bead name respects kind unless --no-kind is given."""
     # Create original bead with KIND:original

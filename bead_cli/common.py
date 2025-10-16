@@ -180,7 +180,11 @@ def resolve_bead(
             if time_expr == "latest":
                 time_constraint = TIME_LATEST
             else:
-                time_constraint = time_from_user(time_expr)
+                try:
+                    time_constraint = time_from_user(time_expr)
+                except ValueError:
+                    die(f"Invalid time expression: '{time_expr}'. "
+                        f"Expected ISO8601 timestamp (e.g., 2024-06-15) or timedelta (e.g., 1d, 2w).")
 
             bead = query.at_or_older(time_constraint).newest()
     else:

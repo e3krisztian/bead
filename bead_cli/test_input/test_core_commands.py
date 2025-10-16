@@ -139,6 +139,20 @@ def test_add_with_hacked_bead_is_refused(shell, hacked_bead, box, check, times, 
     assert 'WARNING' in shell.stderr
 
 
+def test_add_with_invalid_time_expression_shows_error(shell, box, check, times, tmp_path_factory):
+    """Test that invalid time expressions show user-friendly errors, not tracebacks."""
+    create_bead_family(box, 'test_bead', [times.TS1], tmp_path_factory)
+    shell.bead('new', 'test_workspace')
+    shell.cd('test_workspace')
+    shell.bead('input', 'add', 'myinput', 'test_bead@invalidtime', expect_failure=True)
+    assert 'ERROR' in shell.stderr
+    assert 'Invalid time expression' in shell.stderr
+    assert 'invalidtime' in shell.stderr
+    # Should NOT show traceback
+    assert 'Traceback' not in shell.stderr
+    assert 'ValueError' not in shell.stderr
+
+
 def test_unload_all(shell, box, check, times, tmp_path_factory):
     # Create input beads
     create_bead_family(box, 'unload_input_a', [times.TS1], tmp_path_factory)
