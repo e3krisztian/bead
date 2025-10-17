@@ -1,5 +1,4 @@
 import os.path
-from enum import Enum
 from typing import TYPE_CHECKING, Literal, NoReturn, overload
 
 from bead.bead import Archive
@@ -14,6 +13,7 @@ from . import arg_metavar
 from .cmdparse import Command
 from .common import BEAD_SPEC_defaulting_to
 from .common import DefaultArgSentinel
+from .common import MatchStrategy
 from .common import OPTIONAL_WORKSPACE
 from .common import assert_valid_workspace
 from .common import die
@@ -24,26 +24,6 @@ from .common import warning
 
 if TYPE_CHECKING:
     from .environment import Environment
-
-
-class MatchStrategy(Enum):
-    """Strategy for matching beads during input update.
-
-    Historical evolution:
-    - Pre-2019: KIND_ONLY matching
-    - 2019-2025: NAME_ONLY matching
-    - 2025+: NAME_AND_KIND (strict) matching by default
-
-    IMPORTANT: No automatic fallbacks between strategies - any relaxation
-    must be explicit user choice to preserve upgrade coordinate integrity.
-    """
-    NAME_AND_KIND = ("name_and_kind", "name and kind")  # Default: strict matching
-    NAME_ONLY = ("name_only", "name only")              # --no-kind: ignore kind differences
-    KIND_ONLY = ("kind_only", "kind only")              # --no-name: ignore name differences
-
-    def __init__(self, value, display_name):
-        self._value_ = value
-        self.display_name = display_name
 
 
 # input_name
@@ -211,8 +191,7 @@ class CmdUpdate(Command):
             try:
                 archive = resolve_bead(
                     env, bead_spec_to_resolve, context_input=input,
-                    use_kind=(args.match_strategy != MatchStrategy.NAME_ONLY),
-                    use_name=use_name
+                    match_strategy=args.match_strategy
                 )
             except LookupError:
                 if workspace.is_loaded(input.name):
@@ -253,8 +232,7 @@ class CmdUpdate(Command):
             try:
                 archive = resolve_bead(
                     env, bead_spec_to_resolve, context_input=input,
-                    use_kind=(args.match_strategy != MatchStrategy.NAME_ONLY),
-                    use_name=use_name
+                    match_strategy=args.match_strategy
                 )
             except LookupError:
                 self._no_match_found(input, args, fatal=True)
@@ -271,8 +249,7 @@ class CmdUpdate(Command):
             try:
                 archive = resolve_bead(
                     env, bead_spec, context_input=input,
-                    use_kind=(args.match_strategy != MatchStrategy.NAME_ONLY),
-                    use_name=(args.match_strategy != MatchStrategy.KIND_ONLY)
+                    match_strategy=args.match_strategy
                 )
             except LookupError:
                 # Check if this is a kind mismatch by trying without kind constraint
@@ -282,8 +259,7 @@ class CmdUpdate(Command):
                     try:
                         resolve_bead(
                             env, bead_spec, context_input=input,
-                            use_kind=False,
-                            use_name=(args.match_strategy != MatchStrategy.KIND_ONLY)
+                            match_strategy=MatchStrategy.NAME_ONLY
                         )
                         # If we got here, it found a bead without kind constraint
                         die(f"Kind (lineage) mismatch: only a different kind of {spec.name} was found. "

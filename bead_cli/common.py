@@ -1,4 +1,5 @@
 import sys
+from enum import Enum
 from typing import Iterable, NoReturn
 
 from tqdm import tqdm
@@ -20,6 +21,26 @@ from bead.ziparchive import ZipArchive
 from . import arg_help
 from . import arg_metavar
 from .bead_spec import BeadSpec, parse_bead_spec, parse_relative_offset, is_relative_offset
+
+
+class MatchStrategy(Enum):
+    """Strategy for matching beads during resolution.
+
+    Historical evolution:
+    - Pre-2019: KIND_ONLY matching
+    - 2019-2025: NAME_ONLY matching
+    - 2025+: NAME_AND_KIND (strict) matching by default
+
+    IMPORTANT: No automatic fallbacks between strategies - any relaxation
+    must be explicit user choice to preserve upgrade coordinate integrity.
+    """
+    NAME_AND_KIND = ("name_and_kind", "name and kind")  # Default: strict matching
+    NAME_ONLY = ("name_only", "name only")              # --no-kind: ignore kind differences
+    KIND_ONLY = ("kind_only", "kind only")              # --no-name: ignore name differences
+
+    def __init__(self, value, display_name):
+        self._value_ = value
+        self.display_name = display_name
 
 TIME_LATEST = parse_iso8601('9999-12-31')
 
@@ -125,21 +146,20 @@ def _create_bead_search(
     env,
     spec: BeadSpec,
     context_input: InputSpec | None,
-    use_kind: bool,
-    use_name: bool
+    match_strategy: MatchStrategy = MatchStrategy.NAME_AND_KIND
 ):
     """
     Create a bead search with optional name and kind constraints.
 
     Selects boxes based on spec and environment, then applies optional
-    filters for name (from spec or context) and kind (from context).
+    filters for name (from spec or context) and kind (from context)
+    according to the match strategy.
 
     Args:
         env: Environment with box definitions
         spec: Parsed bead specification
         context_input: Input spec for context kind/name
-        use_kind: Whether to filter by kind
-        use_name: Whether to filter by name
+        match_strategy: Strategy for matching name and/or kind
 
     Returns:
         BeadSearch query object ready for selection
@@ -152,12 +172,14 @@ def _create_bead_search(
 
     query = bead_box.search(boxes)
 
-    # Add name constraint if we have one
+    # Add name constraint if strategy allows it
+    use_name = (match_strategy != MatchStrategy.KIND_ONLY)
     name = _get_bead_name(spec, context_input, use_name)
     if name:
         query = query.by_name(name)
 
-    # Add kind constraint if requested
+    # Add kind constraint if strategy allows it
+    use_kind = (match_strategy != MatchStrategy.NAME_ONLY)
     if use_kind and context_input:
         query = query.by_kind(context_input.kind)
 
@@ -248,8 +270,7 @@ def resolve_bead(
     env,
     bead_spec: str | BeadSpec,
     context_input: InputSpec | None = None,
-    use_kind: bool = True,
-    use_name: bool = True
+    match_strategy: MatchStrategy = MatchStrategy.NAME_AND_KIND
 ) -> Archive:
     """
     Resolve a bead specification to an Archive.
@@ -258,8 +279,7 @@ def resolve_bead(
         env: Environment with box definitions
         bead_spec: Bead specification (string or BeadSpec object)
         context_input: Input spec for context name/kind and relative offsets
-        use_kind: Whether to filter by kind when context_input is provided
-        use_name: Whether to filter by name when context_input is provided
+        match_strategy: Strategy for matching name and/or kind when updating
 
     Returns:
         Archive object
@@ -279,7 +299,7 @@ def resolve_bead(
         return ZipArchive(spec.file_path)
 
     # Build query and resolve
-    search = _create_bead_search(env, spec, context_input, use_kind, use_name)
+    search = _create_bead_search(env, spec, context_input, match_strategy)
     bead = _select_bead_by_time(search, spec, context_input)
 
     # Get boxes for resolution
