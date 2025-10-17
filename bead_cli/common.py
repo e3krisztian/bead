@@ -268,18 +268,69 @@ def _select_bead_by_time(
 
 def resolve_bead(
     env,
-    bead_spec: str,
-    context_input: InputSpec | None = None,
-    match_strategy: MatchStrategy = MatchStrategy.NAME_AND_KIND
+    bead_spec: str
 ) -> Archive:
     """
-    Resolve a bead specification to an Archive.
+    Resolve a bead specification to an Archive (simple lookup).
+
+    Finds a bead by name or file path without context or matching constraints.
+    Use this for direct bead lookups like 'bead edit' or 'input add'.
 
     Args:
         env: Environment with box definitions
         bead_spec: Bead specification string (e.g., "name", "box:name@2024", "/path/to/bead.zip")
-        context_input: Input spec for context name/kind and relative offsets
-        match_strategy: Strategy for matching name and/or kind when updating
+
+    Returns:
+        Archive object
+
+    Raises:
+        LookupError: If bead cannot be found
+        ValueError: If specification is invalid or uses relative offsets without context
+    """
+    spec = BeadSpec.parse(bead_spec)
+
+    if spec.is_file_path:
+        return ZipArchive(spec.file_path)
+
+    if spec.time and is_relative_offset(spec.time):
+        die(f"Relative time offset '{spec.time}' requires an input context. "
+            f"Use 'bead input update' with a context.")
+
+    # Simple search with just name constraint
+    if spec.box:
+        boxes = [env.get_box(spec.box)]
+    else:
+        boxes = env.get_boxes()
+
+    query = bead_box.search(boxes)
+
+    if spec.name:
+        query = query.by_name(spec.name)
+
+    # Time selection (absolute time only, no context needed)
+    bead = _select_bead_by_time(query, spec, context_input=None)
+
+    return bead_box.resolve(boxes, bead)
+
+
+def find_bead_for_update(
+    env,
+    bead_spec: str,
+    current_input: InputSpec,
+    match_strategy: MatchStrategy = MatchStrategy.NAME_AND_KIND
+) -> Archive:
+    """
+    Resolve a bead for updating an input (with full context support).
+
+    Finds a bead with context and matching strategy support. Use this when
+    updating an input, where we need to fall back to context for name/kind
+    and support relative time offsets.
+
+    Args:
+        env: Environment with box definitions
+        bead_spec: Bead specification string (e.g., "name", "@-", "box:name@2024")
+        current_input: Current input spec for context name/kind and relative offsets
+        match_strategy: Strategy for matching name and/or kind
 
     Returns:
         Archive object
@@ -293,8 +344,8 @@ def resolve_bead(
     if spec.is_file_path:
         return ZipArchive(spec.file_path)
 
-    search = _create_bead_search(env, spec, context_input, match_strategy)
-    bead = _select_bead_by_time(search, spec, context_input)
+    search = _create_bead_search(env, spec, current_input, match_strategy)
+    bead = _select_bead_by_time(search, spec, current_input)
 
     if spec.box:
         boxes = [env.get_box(spec.box)]

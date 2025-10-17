@@ -17,6 +17,7 @@ from .common import MatchStrategy
 from .common import OPTIONAL_WORKSPACE
 from .common import assert_valid_workspace
 from .common import die
+from .common import find_bead_for_update
 from .common import refresh_all_box_indexes
 from .common import resolve_bead
 from .common import verify_with_feedback
@@ -189,8 +190,8 @@ class CmdUpdate(Command):
                 # KIND_ONLY: don't use any name, just search by kind
                 bead_spec_to_resolve = ''
             try:
-                archive = resolve_bead(
-                    env, bead_spec_to_resolve, context_input=input,
+                archive = find_bead_for_update(
+                    env, bead_spec_to_resolve, current_input=input,
                     match_strategy=args.match_strategy
                 )
             except LookupError:
@@ -230,8 +231,8 @@ class CmdUpdate(Command):
                 # KIND_ONLY: don't use any name, just search by kind
                 bead_spec_to_resolve = ''
             try:
-                archive = resolve_bead(
-                    env, bead_spec_to_resolve, context_input=input,
+                archive = find_bead_for_update(
+                    env, bead_spec_to_resolve, current_input=input,
                     match_strategy=args.match_strategy
                 )
             except LookupError:
@@ -247,8 +248,8 @@ class CmdUpdate(Command):
                 bead_spec = f'{mapped_name}@{spec.time}'
 
             try:
-                archive = resolve_bead(
-                    env, bead_spec, context_input=input,
+                archive = find_bead_for_update(
+                    env, bead_spec, current_input=input,
                     match_strategy=args.match_strategy
                 )
             except LookupError:
@@ -257,8 +258,8 @@ class CmdUpdate(Command):
                 spec = BeadSpec.parse(bead_spec)
                 if spec.name and args.match_strategy == MatchStrategy.NAME_AND_KIND:
                     try:
-                        resolve_bead(
-                            env, bead_spec, context_input=input,
+                        find_bead_for_update(
+                            env, bead_spec, current_input=input,
                             match_strategy=MatchStrategy.NAME_ONLY
                         )
                         # If we got here, it found a bead without kind constraint
