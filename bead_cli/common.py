@@ -268,7 +268,7 @@ def _select_bead_by_time(
 
 def resolve_bead(
     env,
-    bead_spec: str | BeadSpec,
+    bead_spec: str,
     context_input: InputSpec | None = None,
     match_strategy: MatchStrategy = MatchStrategy.NAME_AND_KIND
 ) -> Archive:
@@ -277,7 +277,7 @@ def resolve_bead(
 
     Args:
         env: Environment with box definitions
-        bead_spec: Bead specification (string or BeadSpec object)
+        bead_spec: Bead specification string (e.g., "name", "box:name@2024", "/path/to/bead.zip")
         context_input: Input spec for context name/kind and relative offsets
         match_strategy: Strategy for matching name and/or kind when updating
 
@@ -288,27 +288,19 @@ def resolve_bead(
         LookupError: If bead cannot be found
         ValueError: If specification is invalid
     """
-    # Parse spec if it's a string
-    if isinstance(bead_spec, str):
-        spec = parse_bead_spec(bead_spec)
-    else:
-        spec = bead_spec
+    spec = parse_bead_spec(bead_spec)
 
-    # Handle file paths
     if spec.is_file_path:
         return ZipArchive(spec.file_path)
 
-    # Build query and resolve
     search = _create_bead_search(env, spec, context_input, match_strategy)
     bead = _select_bead_by_time(search, spec, context_input)
 
-    # Get boxes for resolution
     if spec.box:
         boxes = [env.get_box(spec.box)]
     else:
         boxes = env.get_boxes()
 
-    # Resolve to archive
     return bead_box.resolve(boxes, bead)
 
 
