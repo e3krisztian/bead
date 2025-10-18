@@ -41,6 +41,7 @@ dev = [
     "freezegun",
     "pytest",
     "pytest-cov",
+    "pexpect",
 
     # debug
     "pysnooper",
