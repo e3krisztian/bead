@@ -27,9 +27,8 @@ Strategy:
 import os
 
 from bead.box_query import QueryCondition
-from bead.infra.fs import Path
 from .bead_spec import BeadSpec
-from .environment import Environment, get_environment
+from .environment import get_environment
 
 
 SHELL_COMMAND_SEPARATORS = ' |><&;()'
@@ -65,6 +64,8 @@ def complete_bead_spec(prefix, parsed_args, **kwargs):
     comp_line = os.environ.get('COMP_LINE', '')
     comp_point = os.environ.get('COMP_POINT', '')
     _debug(f"[ENTRY] COMP_LINE={repr(comp_line)}, COMP_POINT={repr(comp_point)}")
+    _debug(f"[ENTRY] COMP_LINE length={len(comp_line)}, chars after cursor: {repr(comp_line[int(comp_point):] if comp_point else '')}")
+    _debug(f"[ENTRY] Has # in COMP_LINE: {'#' in comp_line}, Has @ in COMP_LINE: {'@' in comp_line}")
 
     # Reconstruct the full bead spec from COMP_LINE and COMP_POINT FIRST
     # This is crucial - we need the full context before creating Environment
@@ -215,7 +216,7 @@ def _complete_bead_after_box(full_spec, spec, env, prefix):
 
     # Extract the part after the colon
     if ':' not in full_spec:
-        _debug(f"[_complete_bead_after_box] No ':' in full_spec, returning []")
+        _debug("[_complete_bead_after_box] No ':' in full_spec, returning []")
         return []
 
     box_name, name_prefix = full_spec.rsplit(':', 1)
@@ -298,7 +299,7 @@ def _complete_time_expr(full_spec, spec, env, prefix):
 
     for completion in fixed_completions:
         if completion.startswith(time_prefix):
-            # Return full name_part@completion (argcomplete will trim based on last @)
+            # Return full name_part@completion
             candidates.append(name_part + '@' + completion)
 
     # Get actual timestamps from matching beads
@@ -326,7 +327,7 @@ def _complete_time_expr(full_spec, spec, env, prefix):
                     patterns = _extract_timestamp_patterns(dt)
                     for pattern in patterns:
                         if pattern.startswith(time_prefix) and pattern not in seen_timestamps:
-                            # Return full name_part@pattern (argcomplete will trim based on last @)
+                            # Return full name_part@pattern
                             candidates.append(name_part + '@' + pattern)
                             seen_timestamps.add(pattern)
             except Exception:

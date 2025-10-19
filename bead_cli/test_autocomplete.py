@@ -20,11 +20,11 @@ class TestBeadSpecCompletion:
 
             # Mock boxes
             box1 = Mock()
-            box1.name = 'home'
+            box1.name = 'box'
             box2 = Mock()
             box2.name = 'archive'
 
-            # Mock beads in home box
+            # Mock beads in box
             bead1 = Mock()
             bead1.name = 'hotel-dataset'
             bead1.freeze_time = Mock()
@@ -56,7 +56,7 @@ class TestBeadSpecCompletion:
         """Test completion of box names and bead names without separators."""
         # Empty prefix should return all boxes and beads with full names
         results = complete_bead_spec('', Namespace())
-        assert 'home:' in results  # full box name with separator
+        assert 'box:' in results  # full box name with separator
         assert 'archive:' in results  # full box name with separator
         assert 'hotel-dataset' in results  # full bead name
         assert 'hotel-bookings' in results  # full bead name
@@ -67,58 +67,57 @@ class TestBeadSpecCompletion:
         results = complete_bead_spec('hotel', Namespace())
         assert 'hotel-dataset' in results  # full name for hotel-dataset
         assert 'hotel-bookings' in results  # full name for hotel-bookings
-        assert 'home:' not in results  # Doesn't match prefix
+        assert 'box:' not in results  # Doesn't match prefix
 
     def test_complete_box_name_with_prefix(self, mock_env):
         """Test completion of box names with partial prefix."""
         # Returns full box names with separator
-        results = complete_bead_spec('ho', Namespace())
-        assert 'home:' in results  # full box name with separator
-        assert 'archive:' not in results  # doesn't start with 'ho'
+        results = complete_bead_spec('bo', Namespace())
+        assert 'box:' in results  # full box name with separator
+        assert 'archive:' not in results  # doesn't start with 'bo'
 
     def test_complete_bead_after_box(self, mock_env):
         """Test completion of bead names after box: separator."""
-        # When full_spec is 'home:', returns bead names from that box
-        results = complete_bead_spec('home:', Namespace())
-        assert 'hotel-dataset' in results
-        assert 'hotel-bookings' in results
+        # When full_spec is 'box:', returns full bead specs from that box
+        # (full spec so bash can handle wordbreaks correctly)
+        results = complete_bead_spec('box:', Namespace())
+        assert 'box:hotel-dataset' in results
+        assert 'box:hotel-bookings' in results
 
     def test_complete_bead_after_box_with_prefix(self, mock_env):
         """Test completion of bead names after box: with partial name."""
-        # When full_spec is 'home:hotel-d', returns full bead names matching prefix
-        results = complete_bead_spec('home:hotel-d', Namespace())
-        assert 'hotel-dataset' in results  # full bead name
-        assert 'hotel-bookings' not in results  # doesn't match prefix
+        # When full_spec is 'box:hotel-d', returns full bead specs matching prefix
+        results = complete_bead_spec('box:hotel-d', Namespace())
+        assert 'box:hotel-dataset' in results  # full spec for matching bead
+        assert 'box:hotel-bookings' not in results  # doesn't match prefix
 
     def test_complete_time_expressions_full_prefix(self, mock_env):
         """Test completion of time expressions with full box:name@ prefix."""
-        # When full_spec is 'home:hotel-dataset@', returns time completions
-        results = complete_bead_spec('home:hotel-dataset@', Namespace())
+        # When full_spec is 'box:hotel-dataset@', returns full time completions
+        results = complete_bead_spec('box:hotel-dataset@', Namespace())
 
-        # Should have latest keyword
-        assert 'latest' in results
-
-        # Should have timestamps from the bead
-        assert '2024' in results
-        assert '2024-06' in results
-        assert '2024-06-15' in results
+        # Should have full specs with latest keyword and timestamps
+        assert 'box:hotel-dataset@latest' in results
+        assert 'box:hotel-dataset@2024' in results
+        assert 'box:hotel-dataset@2024-06' in results
+        assert 'box:hotel-dataset@2024-06-15' in results
 
     def test_complete_name_with_time_prefix(self, mock_env):
         """Test completion of bead name with @ but no box."""
-        # When full_spec is 'hotel-dataset@', returns time completions
+        # When full_spec is 'hotel-dataset@', returns full time completions
         results = complete_bead_spec('hotel-dataset@', Namespace())
 
-        assert 'latest' in results
-        assert '2024' in results
+        assert 'hotel-dataset@latest' in results
+        assert 'hotel-dataset@2024' in results
 
     def test_complete_time_with_partial_timestamp(self, mock_env):
         """Test completion with partial timestamp."""
-        # When full_spec is 'hotel-dataset@2024-', returns matching time completions
+        # When full_spec is 'hotel-dataset@2024-', returns matching full time completions
         results = complete_bead_spec('hotel-dataset@2024-', Namespace())
 
         # Should complete timestamps starting with 2024-
-        assert any(r == '2024-06' for r in results)  # 2024-06 completion
-        assert any(r == '2024-09' for r in results)  # 2024-09 completion
+        assert any(r == 'hotel-dataset@2024-06' for r in results)  # 2024-06 completion
+        assert any(r == 'hotel-dataset@2024-09' for r in results)  # 2024-09 completion
 
     def test_file_path_returns_empty(self, mock_env):
         """Test that file paths return empty to let shell handle."""

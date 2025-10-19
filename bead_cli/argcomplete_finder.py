@@ -9,6 +9,14 @@ import os
 from argcomplete import CompletionFinder
 
 
+def _debug(msg):
+    """Write debug message to log file if BEAD_COMPLETION_DEBUG is set."""
+    debug_log = os.environ.get('BEAD_COMPLETION_DEBUG')
+    if debug_log:
+        with open(debug_log, 'a') as f:
+            f.write(msg + '\n')
+
+
 class BeadCompletionFinder(CompletionFinder):
     """Custom completion finder that preserves @ character in completions."""
 
@@ -27,20 +35,37 @@ class BeadCompletionFinder(CompletionFinder):
         Returns:
             List of quoted/trimmed completions
         """
-        # Check if the wordbreak character is @ by looking at COMP_LINE
-        if last_wordbreak_pos is not None:
-            comp_line = os.environ.get('COMP_LINE', '')
-            if last_wordbreak_pos < len(comp_line) and comp_line[last_wordbreak_pos] == '@':
-                # For @ wordbreaks, trim at the position to keep the @
-                # instead of trimming at position + 1 which removes it
+        _debug(f"[quote_completions] completions={completions}, last_wordbreak_pos={last_wordbreak_pos}")
+
+        comp_line = os.environ.get('COMP_LINE', '')
+        comp_point = os.environ.get('COMP_POINT', '')
+        _debug(f"[quote_completions] comp_line={repr(comp_line)}, COMP_POINT={comp_point}")
+
+        # Search for @ character in completions (don't strip it)
+        # The @ character may be a wordbreak, but we want to keep it in the completion
+        has_at = any('@' in c for c in completions)
+        if has_at:
+            # Find the position of @ in the first completion string
+            at_pos_in_completion = -1
+            if completions and '@' in completions[0]:
+                at_pos_in_completion = completions[0].index('@')
+                _debug(f"[quote_completions] Found @ in completion at position {at_pos_in_completion}")
+
+                # Trim completions at the @ position to preserve it
                 completions_trimmed = []
                 for c in completions:
-                    # Trim to keep @ by taking from position onwards
-                    trimmed = c[last_wordbreak_pos:]
-                    completions_trimmed.append(trimmed)
+                    if '@' in c:
+                        at_idx = c.index('@')
+                        trimmed = c[at_idx:]
+                        completions_trimmed.append(trimmed)
+                    else:
+                        completions_trimmed.append(c)
+                _debug(f"[quote_completions] Trimmed to preserve @: {completions_trimmed}")
                 completions = completions_trimmed
                 # Clear last_wordbreak_pos so parent doesn't trim again
                 last_wordbreak_pos = None
 
         # Call parent's quote_completions
-        return super().quote_completions(completions, cword_prequote, last_wordbreak_pos)
+        result = super().quote_completions(completions, cword_prequote, last_wordbreak_pos)
+        _debug(f"[quote_completions] Final result from parent={result}")
+        return result

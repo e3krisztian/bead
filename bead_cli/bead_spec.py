@@ -97,13 +97,16 @@ class BeadSpec:
             return cls.from_file(spec)
 
         # Parse qualified name: [[box:]name][@time]
-        # Strategy: Find '@' first (time separator), then ':' in the prefix (box separator)
+        # Strategy: Find '@' (time separator), then ':' in the prefix (box separator)
         # This avoids confusion with ':' in timestamps (e.g., 2024-06-15T14:30:45)
 
+        prefix = spec
+        time = ''
+
         if '@' in spec:
-            # Has time separator
-            # Split at first '@' to separate name/box part from time part
-            prefix, time = spec.split('@', 1)
+            # Has time separator @
+            at_pos = spec.find('@')
+            prefix, time = spec[:at_pos], spec[at_pos + 1:]
 
             if ':' in prefix:
                 # box:name@time or box:@time
