@@ -13,7 +13,9 @@ args=(
     --workdir "$PWD"
     --env-file ~/.env
 #    --tmpfs ~
-    -v $HOME/podman:$HOME
+    -v $HOME/podman/home:$HOME
+    -v $HOME/podman/opt:/opt
+    -v $HOME/podman/usr/local:/usr/local
     -v $PWD:$PWD
 )
 
