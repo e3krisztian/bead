@@ -20,6 +20,7 @@ from bead.ziparchive import ZipArchive
 
 from . import arg_help
 from . import arg_metavar
+from .autocomplete import complete_bead_spec
 from .bead_spec import BeadSpec, parse_relative_offset, is_relative_offset
 
 
@@ -72,7 +73,7 @@ def OPTIONAL_WORKSPACE(parser):
     '''
     Define `workspace` as option, defaulting to current directory
     '''
-    parser.arg(
+    return parser.arg(
         '--workspace', '-w', metavar=arg_metavar.WORKSPACE,
         type=Workspace, default=Workspace.for_current_working_directory(),
         help=arg_help.WORKSPACE)
@@ -104,9 +105,11 @@ def arg_bead_spec(nargs, default):
     Declare bead_spec argument - either a name or a file or something special
     '''
     def declare(parser):
-        parser.arg(
+        action = parser.arg(
             'bead_spec', metavar=arg_metavar.BEAD, help=arg_help.BEAD,
             nargs=nargs, type=str, default=default)
+        action.completer = complete_bead_spec
+        return action
     return declare
 
 

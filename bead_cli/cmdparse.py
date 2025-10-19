@@ -118,7 +118,7 @@ class Parser:
 
         raise TypeError
 
-    def arg(self, *args: Any, **kwargs: Any) -> None:
+    def arg(self, *args: Any, **kwargs: Any):
         '''
         Declare one or more arguments.
 
@@ -127,17 +127,19 @@ class Parser:
         the parser to do some non-trivial work, like adding an argument group.
 
         The argument help is fixed up to show the default value.
+
+        Returns the action object from add_argument (or from callable).
         '''
         assert args
         if not kwargs and len(args) == 1 and callable(args[0]):
-            args[0](self)
+            return args[0](self)
         else:
             arg_kwargs = dict(kwargs)
             if 'default' in kwargs:
                 # extend help with default
                 arg_kwargs['help'] = (
                     f"{kwargs.get('help', '')} (default: {kwargs['default']!s})")
-            self.argparser.add_argument(*args, **arg_kwargs)
+            return self.argparser.add_argument(*args, **arg_kwargs)
 
     def command(self, name: str, commandish: Command | type[Command], title: str) -> None:
         '''
