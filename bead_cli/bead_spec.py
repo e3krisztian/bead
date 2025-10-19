@@ -64,64 +64,64 @@ class BeadSpec:
         """
         return cls(name="", box="", time="", is_file_path=True, file_path=path)
 
+    @classmethod
+    def parse(cls, spec: str):
+        """
+        Parse a bead specification string.
 
-def parse_bead_spec(spec: str) -> BeadSpec:
-    """
-    Parse a bead specification string.
+        Grammar:
+            BEAD_SPEC ::= FILE_PATH | QUALIFIED_NAME
+            QUALIFIED_NAME ::= [ BOX ":" ] NAME [ "@" TIME_EXPR ]
 
-    Grammar:
-        BEAD_SPEC ::= FILE_PATH | QUALIFIED_NAME
-        QUALIFIED_NAME ::= [ BOX ":" ] NAME [ "@" TIME_EXPR ]
+        Args:
+            spec: Bead specification string
 
-    Args:
-        spec: Bead specification string
+        Returns:
+            BeadSpec with parsed components
 
-    Returns:
-        BeadSpec with parsed components
+        Examples:
+            >>> BeadSpec.parse("hotel-dataset")
+            BeadSpec(name="hotel-dataset", box="", time="", is_file_path=False, file_path="")
 
-    Examples:
-        >>> parse_bead_spec("hotel-dataset")
-        BeadSpec(name="hotel-dataset", box="", time="", is_file_path=False, file_path="")
+            >>> BeadSpec.parse("home:hotel-dataset")
+            BeadSpec(name="hotel-dataset", box="home", time="", is_file_path=False, file_path="")
 
-        >>> parse_bead_spec("home:hotel-dataset")
-        BeadSpec(name="hotel-dataset", box="home", time="", is_file_path=False, file_path="")
+            >>> BeadSpec.parse("hotel-dataset@2024")
+            BeadSpec(name="hotel-dataset", box="", time="2024", is_file_path=False, file_path="")
 
-        >>> parse_bead_spec("hotel-dataset@2024")
-        BeadSpec(name="hotel-dataset", box="", time="2024", is_file_path=False, file_path="")
+            >>> BeadSpec.parse("/path/to/bead.zip")
+            BeadSpec(name="", box="", time="", is_file_path=True, file_path="/path/to/bead.zip")
+        """
+        # Check for file path
+        if '/' in spec or '\\' in spec or spec.endswith('.zip'):
+            return cls.from_file(spec)
 
-        >>> parse_bead_spec("/path/to/bead.zip")
-        BeadSpec(name="", box="", time="", is_file_path=True, file_path="/path/to/bead.zip")
-    """
-    # Check for file path
-    if '/' in spec or '\\' in spec or spec.endswith('.zip'):
-        return BeadSpec.from_file(spec)
+        # Parse qualified name: [[box:]name][@time]
+        # Strategy: Find '@' first (time separator), then ':' in the prefix (box separator)
+        # This avoids confusion with ':' in timestamps (e.g., 2024-06-15T14:30:45)
 
-    # Parse qualified name: [[box:]name][@time]
-    # Strategy: Find '@' first (time separator), then ':' in the prefix (box separator)
-    # This avoids confusion with ':' in timestamps (e.g., 2024-06-15T14:30:45)
+        if '@' in spec:
+            # Has time separator
+            # Split at first '@' to separate name/box part from time part
+            prefix, time = spec.split('@', 1)
 
-    if '@' in spec:
-        # Has time separator
-        # Split at first '@' to separate name/box part from time part
-        prefix, time = spec.split('@', 1)
+            if ':' in prefix:
+                # box:name@time or box:@time
+                box, name = prefix.split(':', 1)
+                return cls.named(name=name, box=box, time=time)
+            else:
+                # name@time or @time (empty name)
+                return cls.named(name=prefix, time=time)
 
-        if ':' in prefix:
-            # box:name@time or box:@time
-            box, name = prefix.split(':', 1)
-            return BeadSpec.named(name=name, box=box, time=time)
+        elif ':' in spec:
+            # Has box separator but no time
+            # box:name or box:
+            box, name = spec.split(':', 1)
+            return cls.named(name=name, box=box)
+
         else:
-            # name@time or @time (empty name)
-            return BeadSpec.named(name=prefix, time=time)
-
-    elif ':' in spec:
-        # Has box separator but no time
-        # box:name or box:
-        box, name = spec.split(':', 1)
-        return BeadSpec.named(name=name, box=box)
-
-    else:
-        # Just name
-        return BeadSpec.named(name=spec)
+            # Just name
+            return cls.named(name=spec)
 
 
 def parse_relative_offset(expr: str) -> int:

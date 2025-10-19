@@ -3,7 +3,7 @@ Unit tests for bead specification parser.
 """
 
 import pytest
-from .bead_spec import BeadSpec, parse_bead_spec, parse_relative_offset, is_relative_offset
+from .bead_spec import BeadSpec, parse_relative_offset, is_relative_offset
 
 
 class TestBeadSpecParsing:
@@ -11,7 +11,7 @@ class TestBeadSpecParsing:
 
     def test_name_only(self):
         """Parse plain bead name."""
-        spec = parse_bead_spec("hotel-dataset")
+        spec = BeadSpec.parse("hotel-dataset")
         assert spec == BeadSpec(
             name="hotel-dataset",
             box="",
@@ -22,7 +22,7 @@ class TestBeadSpecParsing:
 
     def test_box_and_name(self):
         """Parse box:name format."""
-        spec = parse_bead_spec("home:hotel-dataset")
+        spec = BeadSpec.parse("home:hotel-dataset")
         assert spec == BeadSpec(
             name="hotel-dataset",
             box="home",
@@ -33,7 +33,7 @@ class TestBeadSpecParsing:
 
     def test_name_and_time(self):
         """Parse name@time format."""
-        spec = parse_bead_spec("hotel-dataset@2024-06-15")
+        spec = BeadSpec.parse("hotel-dataset@2024-06-15")
         assert spec == BeadSpec(
             name="hotel-dataset",
             box="",
@@ -44,7 +44,7 @@ class TestBeadSpecParsing:
 
     def test_box_name_time(self):
         """Parse box:name@time format."""
-        spec = parse_bead_spec("home:hotel-dataset@2024-06-15")
+        spec = BeadSpec.parse("home:hotel-dataset@2024-06-15")
         assert spec == BeadSpec(
             name="hotel-dataset",
             box="home",
@@ -55,7 +55,7 @@ class TestBeadSpecParsing:
 
     def test_box_only(self):
         """Parse box: format (context name)."""
-        spec = parse_bead_spec("home:")
+        spec = BeadSpec.parse("home:")
         assert spec == BeadSpec(
             name="",
             box="home",
@@ -66,7 +66,7 @@ class TestBeadSpecParsing:
 
     def test_time_only(self):
         """Parse @time format (context name, all boxes)."""
-        spec = parse_bead_spec("@2024")
+        spec = BeadSpec.parse("@2024")
         assert spec == BeadSpec(
             name="",
             box="",
@@ -77,7 +77,7 @@ class TestBeadSpecParsing:
 
     def test_box_and_time(self):
         """Parse box:@time format (context name, specific box)."""
-        spec = parse_bead_spec("home:@2024-06-15")
+        spec = BeadSpec.parse("home:@2024-06-15")
         assert spec == BeadSpec(
             name="",
             box="home",
@@ -89,45 +89,45 @@ class TestBeadSpecParsing:
     def test_relative_time_shorthand(self):
         """Parse relative time expressions (shorthand)."""
         # Previous
-        assert parse_bead_spec("hotel-dataset@-").time == "-"
-        assert parse_bead_spec("hotel-dataset@--").time == "--"
-        assert parse_bead_spec("hotel-dataset@---").time == "---"
+        assert BeadSpec.parse("hotel-dataset@-").time == "-"
+        assert BeadSpec.parse("hotel-dataset@--").time == "--"
+        assert BeadSpec.parse("hotel-dataset@---").time == "---"
 
         # Next
-        assert parse_bead_spec("hotel-dataset@+").time == "+"
-        assert parse_bead_spec("hotel-dataset@++").time == "++"
+        assert BeadSpec.parse("hotel-dataset@+").time == "+"
+        assert BeadSpec.parse("hotel-dataset@++").time == "++"
 
         # Git alias
-        assert parse_bead_spec("hotel-dataset@^").time == "^"
-        assert parse_bead_spec("hotel-dataset@^^").time == "^^"
+        assert BeadSpec.parse("hotel-dataset@^").time == "^"
+        assert BeadSpec.parse("hotel-dataset@^^").time == "^^"
 
     def test_relative_time_explicit(self):
         """Parse relative time expressions (explicit numbers)."""
-        assert parse_bead_spec("hotel-dataset@-5").time == "-5"
-        assert parse_bead_spec("hotel-dataset@+10").time == "+10"
-        assert parse_bead_spec("hotel-dataset@^7").time == "^7"
+        assert BeadSpec.parse("hotel-dataset@-5").time == "-5"
+        assert BeadSpec.parse("hotel-dataset@+10").time == "+10"
+        assert BeadSpec.parse("hotel-dataset@^7").time == "^7"
 
     def test_latest_keyword(self):
         """Parse 'latest' keyword."""
-        spec = parse_bead_spec("hotel-dataset@latest")
+        spec = BeadSpec.parse("hotel-dataset@latest")
         assert spec.time == "latest"
 
     def test_partial_timestamps(self):
         """Parse partial ISO timestamps."""
         # Year only
-        assert parse_bead_spec("dataset@2024").time == "2024"
+        assert BeadSpec.parse("dataset@2024").time == "2024"
 
         # Year-month
-        assert parse_bead_spec("dataset@2024-06").time == "2024-06"
+        assert BeadSpec.parse("dataset@2024-06").time == "2024-06"
 
         # Full date
-        assert parse_bead_spec("dataset@2024-06-15").time == "2024-06-15"
+        assert BeadSpec.parse("dataset@2024-06-15").time == "2024-06-15"
 
         # Date + time
-        assert parse_bead_spec("dataset@2024-06-15T14:30").time == "2024-06-15T14:30"
+        assert BeadSpec.parse("dataset@2024-06-15T14:30").time == "2024-06-15T14:30"
 
         # Full timestamp with timezone
-        assert parse_bead_spec("dataset@2024-06-15T14:30:45+0200").time == "2024-06-15T14:30:45+0200"
+        assert BeadSpec.parse("dataset@2024-06-15T14:30:45+0200").time == "2024-06-15T14:30:45+0200"
 
 
 class TestFilePathDetection:
@@ -135,7 +135,7 @@ class TestFilePathDetection:
 
     def test_absolute_unix_path(self):
         """Detect absolute Unix path."""
-        spec = parse_bead_spec("/path/to/bead.zip")
+        spec = BeadSpec.parse("/path/to/bead.zip")
         assert spec.is_file_path
         assert spec.file_path == "/path/to/bead.zip"
         assert spec.name == ""
@@ -144,31 +144,31 @@ class TestFilePathDetection:
 
     def test_relative_unix_path(self):
         """Detect relative Unix path."""
-        spec = parse_bead_spec("./local/bead.zip")
+        spec = BeadSpec.parse("./local/bead.zip")
         assert spec.is_file_path
         assert spec.file_path == "./local/bead.zip"
 
     def test_parent_relative_path(self):
         """Detect parent-relative path."""
-        spec = parse_bead_spec("../beads/hotel-dataset.zip")
+        spec = BeadSpec.parse("../beads/hotel-dataset.zip")
         assert spec.is_file_path
         assert spec.file_path == "../beads/hotel-dataset.zip"
 
     def test_windows_path(self):
         """Detect Windows path."""
-        spec = parse_bead_spec("C:\\Users\\data\\bead.zip")
+        spec = BeadSpec.parse("C:\\Users\\data\\bead.zip")
         assert spec.is_file_path
         assert spec.file_path == "C:\\Users\\data\\bead.zip"
 
     def test_zip_extension(self):
         """Detect .zip extension without path separators."""
-        spec = parse_bead_spec("archive.zip")
+        spec = BeadSpec.parse("archive.zip")
         assert spec.is_file_path
         assert spec.file_path == "archive.zip"
 
     def test_not_a_path(self):
         """Names without path separators are not file paths."""
-        spec = parse_bead_spec("hotel-dataset")
+        spec = BeadSpec.parse("hotel-dataset")
         assert not spec.is_file_path
         assert spec.file_path == ""
 
@@ -265,7 +265,7 @@ class TestEdgeCases:
 
     def test_empty_string(self):
         """Empty string parses as empty name."""
-        spec = parse_bead_spec("")
+        spec = BeadSpec.parse("")
         assert spec == BeadSpec(
             name="",
             box="",
@@ -276,19 +276,19 @@ class TestEdgeCases:
 
     def test_colons_in_name(self):
         """Only first colon is separator."""
-        spec = parse_bead_spec("box:name:with:colons")
+        spec = BeadSpec.parse("box:name:with:colons")
         assert spec.box == "box"
         assert spec.name == "name:with:colons"
 
     def test_at_signs_in_name(self):
         """Only first @ is separator (after :)."""
-        spec = parse_bead_spec("name@time@more")
+        spec = BeadSpec.parse("name@time@more")
         assert spec.name == "name"
         assert spec.time == "time@more"
 
     def test_complex_combination(self):
         """Complex case with multiple special chars."""
-        spec = parse_bead_spec("archive:hotel-bookings@2024-06-15T14:30:45+0200")
+        spec = BeadSpec.parse("archive:hotel-bookings@2024-06-15T14:30:45+0200")
         assert spec.box == "archive"
         assert spec.name == "hotel-bookings"
         assert spec.time == "2024-06-15T14:30:45+0200"

@@ -239,8 +239,8 @@ class CmdUpdate(Command):
         else:
             # User provided explicit bead spec
             # For relative offsets without explicit name (e.g., @-, @+), prepend mapped name
-            from .bead_spec import parse_bead_spec
-            spec = parse_bead_spec(bead_spec)
+            from .bead_spec import BeadSpec
+            spec = BeadSpec.parse(bead_spec)
             if spec.time and not spec.name:
                 # Relative offset without name - use mapped name
                 mapped_name = workspace.get_source_name(input_name)
@@ -253,8 +253,8 @@ class CmdUpdate(Command):
                 )
             except LookupError:
                 # Check if this is a kind mismatch by trying without kind constraint
-                from .bead_spec import parse_bead_spec
-                spec = parse_bead_spec(bead_spec)
+                from .bead_spec import BeadSpec
+                spec = BeadSpec.parse(bead_spec)
                 if spec.name and args.match_strategy == MatchStrategy.NAME_AND_KIND:
                     try:
                         resolve_bead(
@@ -271,10 +271,10 @@ class CmdUpdate(Command):
 
         # Verify constraints before updating
         # Determine if spec has time constraint (allows downgrade)
-        from .bead_spec import parse_bead_spec
+        from .bead_spec import BeadSpec
         has_time_constraint = False
         if bead_spec is not SAME_BEAD_NEWEST_VERSION and not os.path.isfile(bead_spec):
-            spec = parse_bead_spec(bead_spec)
+            spec = BeadSpec.parse(bead_spec)
             has_time_constraint = bool(spec.time)
 
         self._verify_archive_constraints(

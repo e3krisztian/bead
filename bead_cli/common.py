@@ -20,7 +20,7 @@ from bead.ziparchive import ZipArchive
 
 from . import arg_help
 from . import arg_metavar
-from .bead_spec import BeadSpec, parse_bead_spec, parse_relative_offset, is_relative_offset
+from .bead_spec import BeadSpec, parse_relative_offset, is_relative_offset
 
 
 class MatchStrategy(Enum):
@@ -288,7 +288,7 @@ def resolve_bead(
         LookupError: If bead cannot be found
         ValueError: If specification is invalid
     """
-    spec = parse_bead_spec(bead_spec)
+    spec = BeadSpec.parse(bead_spec)
 
     if spec.is_file_path:
         return ZipArchive(spec.file_path)
