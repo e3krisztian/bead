@@ -174,16 +174,30 @@ class Parser:
         '''
         parser = self._subparsers.add_parser(
             name, help=title + '...', description=help)
-        return self.__class__(parser, self.defaults)
+        group_parser = self.__class__(parser, self.defaults)
+
+        # Set a default handler for the group that prints the group's own help
+        # when invoked without a subcommand
+        def group_help(args, env: 'Environment'):
+            # Print error message with the group name
+            print(f'ERROR: not a full command <{name}>\n')
+            parser.print_help()
+            return -1
+
+        parser.set_defaults(_cmdparse__run=group_help)
+        return group_parser
 
     def dispatch(self, argv: Sequence[str], env: 'Environment') -> int:
         '''
         Parse `argv` and dispatch to the appropriate command.
         '''
         def print_help(args, env: 'Environment'):
-            print(
-                'ERROR: not a full command <%s>\n'
-                % ' '.join(shlex.quote(arg) for arg in argv))
+            # Format error message - show argv unless it's empty
+            command_str = ' '.join(shlex.quote(arg) for arg in argv)
+            error_msg = 'ERROR: not a full command'
+            if command_str:
+                error_msg += f' <{command_str}>'
+            print(f'{error_msg}\n')
             self.argparser.print_help()
             return -1
 
