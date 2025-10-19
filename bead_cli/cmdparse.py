@@ -17,7 +17,7 @@ import shlex
 from typing import TYPE_CHECKING
 from typing import Any
 
-import argcomplete
+from .argcomplete_finder import BeadCompletionFinder
 
 if TYPE_CHECKING:
     from .environment import Environment
@@ -220,4 +220,6 @@ class Parser:
 
     def autocomplete(self):
         """Enable shell autocomplete"""
-        argcomplete.autocomplete(self.argparser)
+        # Use our custom completion finder that preserves @ characters
+        finder = BeadCompletionFinder()
+        finder(self.argparser)
