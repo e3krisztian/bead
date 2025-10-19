@@ -5,6 +5,8 @@ User specific environment
 import os
 from dataclasses import dataclass
 
+import platformdirs
+
 from bead.box import Box
 from bead.infra import persistence
 from bead.infra.fs import Path
@@ -13,6 +15,13 @@ ENV_BOXES = 'boxes'
 BOX_NAME = 'name'
 BOX_LOCATION = 'directory'
 BOX_ENABLED = 'enabled'
+
+
+def get_environment() -> 'Environment':
+    """Get Environment with standard user directories."""
+    config_dir = Path(platformdirs.user_config_dir('bead'))
+    state_dir = Path(platformdirs.user_state_dir('bead'))
+    return Environment(config_dir, state_dir)
 
 
 @dataclass
