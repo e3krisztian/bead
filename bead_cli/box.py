@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from bead.box_index import index_schema_is_current
 from bead.infra.fs import Path
 
+from .autocomplete import complete_box_name
 from .cmdparse import Command
 from .common import die, report_progress
 
@@ -95,7 +96,8 @@ class CmdForget(Command):
     '''
 
     def declare(self, arg):
-        arg('name')
+        action = arg('name')
+        action.completer = complete_box_name
 
     def run(self, args, env: 'Environment'):
         name = args.name
@@ -114,7 +116,8 @@ class CmdEnable(Command):
     '''
 
     def declare(self, arg):
-        arg('name')
+        action = arg('name')
+        action.completer = complete_box_name
 
     def run(self, args, env: 'Environment'):
         name = args.name
@@ -133,7 +136,8 @@ class CmdDisable(Command):
     '''
 
     def declare(self, arg):
-        arg('name')
+        action = arg('name')
+        action.completer = complete_box_name
 
     def run(self, args, env: 'Environment'):
         name = args.name
@@ -183,7 +187,8 @@ class CmdReindex(Command):
     '''
 
     def declare(self, arg):
-        arg('box_name', nargs='?', help='Box name to rebuild (optional if only one box exists)')
+        action = arg('box_name', nargs='?', help='Box name to rebuild (optional if only one box exists)')
+        action.completer = complete_box_name
         arg('--all', action='store_true', help='Rebuild all boxes')
 
     def run(self, args, env: 'Environment'):
@@ -253,7 +258,8 @@ class CmdIndex(Command):
     '''
 
     def declare(self, arg):
-        arg('box_name', nargs='?', help='Box name to index (optional if only one box exists)')
+        action = arg('box_name', nargs='?', help='Box name to index (optional if only one box exists)')
+        action.completer = complete_box_name
         arg('--all', action='store_true', help='Index all boxes')
 
     def run(self, args, env: 'Environment'):

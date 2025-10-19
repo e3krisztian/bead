@@ -26,6 +26,7 @@ Strategy:
 
 import os
 
+from bead import meta
 from bead.box_query import QueryCondition
 from .bead_spec import BeadSpec
 from .environment import get_environment
@@ -363,3 +364,67 @@ def _extract_timestamp_patterns(dt):
         pass
 
     return patterns
+
+
+def complete_input_name(prefix, parsed_args, **kwargs):
+    """
+    Autocomplete function for input names.
+
+    Returns input names from the current workspace that match the given prefix.
+
+    Args:
+        prefix: The partial input name being completed
+        parsed_args: Already parsed arguments (containing workspace)
+        **kwargs: Additional argcomplete context
+
+    Returns:
+        List of input names matching the prefix
+    """
+    try:
+        # Get workspace from parsed_args
+        workspace = getattr(parsed_args, 'workspace', None)
+
+        if not workspace:
+            return []
+
+        # Check if workspace is valid
+        if not getattr(workspace, 'is_valid', False):
+            return []
+
+        # Get input names from workspace
+        input_names = list(workspace.meta.get(meta.INPUTS, {}).keys())
+
+        # Filter by prefix
+        return sorted([name for name in input_names if name.startswith(prefix)])
+    except Exception:
+        # Gracefully handle any errors
+        return []
+
+
+def complete_box_name(prefix, parsed_args, **kwargs):
+    """
+    Autocomplete function for box names.
+
+    Returns enabled box names from the environment that match the given prefix.
+
+    Args:
+        prefix: The partial box name being completed
+        parsed_args: Already parsed arguments
+        **kwargs: Additional argcomplete context
+
+    Returns:
+        List of box names matching the prefix
+    """
+    try:
+        env = get_environment()
+
+        # Get enabled boxes
+        boxes = env.get_boxes()
+
+        # Get box names and filter by prefix
+        box_names = [box.name for box in boxes if box.name.startswith(prefix)]
+
+        return sorted(box_names)
+    except Exception:
+        # Gracefully handle any errors
+        return []

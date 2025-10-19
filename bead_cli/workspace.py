@@ -13,6 +13,7 @@ from bead.workspace import Workspace
 
 from . import arg_help
 from . import arg_metavar
+from .autocomplete import complete_box_name
 from .cmdparse import Command
 from .common import BEAD_SPEC
 from .common import OPTIONAL_WORKSPACE
@@ -84,8 +85,9 @@ class CmdSave(Command):
     '''
 
     def declare(self, arg):
-        arg('box_name', nargs='?', default=USE_THE_ONLY_BOX, type=str,
+        action = arg('box_name', nargs='?', default=USE_THE_ONLY_BOX, type=str,
             metavar=arg_metavar.BOX, help=arg_help.BOX)
+        action.completer = complete_box_name
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):

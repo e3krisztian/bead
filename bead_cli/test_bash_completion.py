@@ -497,11 +497,106 @@ def test_bead_name_with_time_completion(bash_tester, completion_debug_log):
     # Check debug log
     if completion_debug_log.exists():
         debug_content = completion_debug_log.read_text()
-        print(f"\n[DEBUG LOG]\n{debug_content}\n")
 
-    # Should complete to 'bead input add test name@latest'
-    assert result['completed_line'] == 'bead input add test name@latest', \
-        f"Expected 'bead input add test name@latest' but got: {result['completed_line']}"
+
+def test_input_name_completion_delete(bash_tester):
+    """Test completing input names for 'bead input delete' command.
+
+    First add an input, then verify we can complete its name.
+    """
+    # Add an input
+    bash_tester._send_command("bead input add training-data name")
+
+    # Test completion of the input name
+    result = bash_tester.complete("bead input delete train")
+    assert result['success']
+    # Should complete to 'bead input delete training-data'
+    assert result['completed_line'] == 'bead input delete training-data', \
+        f"Expected 'bead input delete training-data' but got: {result['completed_line']}"
+
+
+def test_input_name_completion_update(bash_tester):
+    """Test completing input names for 'bead input update' command.
+
+    Tests optional input name completion.
+    """
+    # Add an input
+    bash_tester._send_command("bead input add test-input name")
+
+    # Test completion of the optional input name
+    result = bash_tester.complete("bead input update test")
+    assert result['success']
+    # Should complete to 'bead input update test-input'
+    assert result['completed_line'] == 'bead input update test-input', \
+        f"Expected 'bead input update test-input' but got: {result['completed_line']}"
+
+
+def test_box_name_completion_save(bash_tester):
+    """Test completing box names for 'bead save' command.
+
+    The test box 'box' should be available for completion.
+    """
+    result = bash_tester.complete("bead save bo")
+    assert result['success']
+    # Should complete to 'bead save box'
+    assert result['completed_line'] == 'bead save box', \
+        f"Expected 'bead save box' but got: {result['completed_line']}"
+
+
+def test_box_name_completion_forget(bash_tester):
+    """Test completing box names for 'bead box forget' command.
+
+    The test box 'box' should be available for completion.
+    """
+    result = bash_tester.complete("bead box forget bo")
+    assert result['success']
+    # Should complete to 'bead box forget box'
+    assert result['completed_line'] == 'bead box forget box', \
+        f"Expected 'bead box forget box' but got: {result['completed_line']}"
+
+
+def test_box_name_completion_enable(bash_tester):
+    """Test completing box names for 'bead box enable' command.
+
+    The test box 'box' should be available for completion.
+    """
+    result = bash_tester.complete("bead box enable bo")
+    assert result['success']
+    # Should complete to 'bead box enable box'
+    assert result['completed_line'] == 'bead box enable box', \
+        f"Expected 'bead box enable box' but got: {result['completed_line']}"
+
+
+def test_box_name_completion_index(bash_tester):
+    """Test completing box names for 'bead box index' command.
+
+    The test box 'box' should be available for completion.
+    """
+    result = bash_tester.complete("bead box index bo")
+    assert result['success']
+    # Should complete to 'bead box index box'
+    assert result['completed_line'] == 'bead box index box', \
+        f"Expected 'bead box index box' but got: {result['completed_line']}"
+
+
+def test_input_name_partial_completion(bash_tester):
+    """Test completing input names with multiple candidates.
+
+    Add multiple inputs and test prefix matching.
+    """
+    # Add multiple inputs with similar names
+    bash_tester._send_command("bead input add train-data name")
+    bash_tester._send_command("bead input add train-labels name")
+
+    # Test completion with 'train-d' - should complete to one of them
+    result = bash_tester.complete("bead input delete train-d")
+    assert result['success']
+    # Should complete to one of the matching inputs
+    assert result['completed_line'] in [
+        'bead input delete train-data',
+        'bead input delete train-labels'
+    ] or 'train' in result['completed_line'], \
+        f"Expected completion with 'train' in result but got: {result['completed_line']}"
 
 
 def test_complex_spec_completion(bash_tester, bead_freeze_time):

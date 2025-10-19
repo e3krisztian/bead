@@ -6,7 +6,7 @@ import pytest
 from argparse import Namespace
 from unittest.mock import Mock, patch
 
-from .autocomplete import complete_bead_spec
+from .autocomplete import complete_bead_spec, complete_input_name, complete_box_name
 
 
 class TestBeadSpecCompletion:
@@ -139,3 +139,156 @@ class TestBeadSpecCompletion:
         results = complete_bead_spec('!!!invalid!!!', Namespace())
         # Should still return empty or handle gracefully
         assert isinstance(results, list)
+
+
+class TestInputNameCompletion:
+    """Test input name autocomplete functionality."""
+
+    @pytest.fixture
+    def mock_workspace(self):
+        """Create a mock workspace with test inputs."""
+        workspace = Mock()
+
+        # Mock input specs
+        input1 = Mock()
+        input1.name = 'training-data'
+
+        input2 = Mock()
+        input2.name = 'validation-set'
+
+        input3 = Mock()
+        input3.name = 'test-data'
+
+        workspace.inputs = [input1, input2, input3]
+        workspace.is_valid = True
+
+        # Mock meta dictionary for direct access
+        workspace.meta = {
+            'inputs': {
+                'training-data': input1,
+                'validation-set': input2,
+                'test-data': input3,
+            }
+        }
+
+        return workspace
+
+    def test_complete_input_names_all(self, mock_workspace):
+        """Test completion of all input names with empty prefix."""
+        parsed_args = Namespace(workspace=mock_workspace)
+        results = complete_input_name('', parsed_args)
+
+        assert 'training-data' in results
+        assert 'validation-set' in results
+        assert 'test-data' in results
+        assert len(results) == 3
+
+    def test_complete_input_names_with_prefix(self, mock_workspace):
+        """Test completion of input names with partial prefix."""
+        parsed_args = Namespace(workspace=mock_workspace)
+        results = complete_input_name('training', parsed_args)
+
+        assert 'training-data' in results
+        assert 'validation-set' not in results
+        assert 'test-data' not in results
+
+    def test_complete_input_names_with_prefix_match_multiple(self, mock_workspace):
+        """Test completion that matches multiple input names."""
+        parsed_args = Namespace(workspace=mock_workspace)
+        results = complete_input_name('test', parsed_args)
+
+        # Only 'test-data' matches 'test' prefix
+        assert 'test-data' in results
+        assert 'training-data' not in results
+        assert 'validation-set' not in results
+
+    def test_complete_input_names_no_workspace(self):
+        """Test completion with no workspace returns empty."""
+        parsed_args = Namespace(workspace=None)
+        results = complete_input_name('', parsed_args)
+
+        assert results == []
+
+    def test_complete_input_names_invalid_workspace(self):
+        """Test completion with invalid workspace returns empty."""
+        workspace = Mock()
+        workspace.is_valid = False
+
+        parsed_args = Namespace(workspace=workspace)
+        results = complete_input_name('', parsed_args)
+
+        assert results == []
+
+    def test_complete_input_names_exception_handling(self):
+        """Test completion handles exceptions gracefully."""
+        parsed_args = Namespace(workspace=Mock(side_effect=Exception("Error")))
+        results = complete_input_name('', parsed_args)
+
+        assert results == []
+
+
+class TestBoxNameCompletion:
+    """Test box name autocomplete functionality."""
+
+    @pytest.fixture
+    def mock_env(self):
+        """Create a mock environment with test boxes."""
+        env = Mock()
+
+        # Mock boxes
+        box1 = Mock()
+        box1.name = 'research-data'
+        box1.enabled = True
+
+        box2 = Mock()
+        box2.name = 'archive'
+        box2.enabled = True
+
+        box3 = Mock()
+        box3.name = 'backup'
+        box3.enabled = False
+
+        env.get_boxes.return_value = [box1, box2]  # Only enabled boxes
+
+        return env
+
+    @patch('bead_cli.autocomplete.get_environment')
+    def test_complete_box_names_all(self, mock_get_env, mock_env):
+        """Test completion of all enabled box names with empty prefix."""
+        mock_get_env.return_value = mock_env
+
+        parsed_args = Namespace()
+        results = complete_box_name('', parsed_args)
+
+        assert 'research-data' in results
+        assert 'archive' in results
+        assert len(results) == 2
+
+    @patch('bead_cli.autocomplete.get_environment')
+    def test_complete_box_names_with_prefix(self, mock_get_env, mock_env):
+        """Test completion of box names with partial prefix."""
+        mock_get_env.return_value = mock_env
+
+        parsed_args = Namespace()
+        results = complete_box_name('ar', parsed_args)
+
+        assert 'archive' in results
+        assert 'research-data' not in results
+
+    @patch('bead_cli.autocomplete.get_environment')
+    def test_complete_box_names_returns_sorted(self, mock_get_env, mock_env):
+        """Test that completed box names are sorted."""
+        mock_get_env.return_value = mock_env
+
+        parsed_args = Namespace()
+        results = complete_box_name('', parsed_args)
+
+        assert results == sorted(results)
+
+    @patch('bead_cli.autocomplete.get_environment', side_effect=Exception("No config"))
+    def test_complete_box_names_env_error(self, mock_get_env):
+        """Test completion handles environment errors gracefully."""
+        parsed_args = Namespace()
+        results = complete_box_name('', parsed_args)
+
+        assert results == []

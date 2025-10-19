@@ -10,6 +10,7 @@ from bead.workspace import Workspace
 
 from . import arg_help
 from . import arg_metavar
+from .autocomplete import complete_input_name
 from .cmdparse import Command
 from .common import BEAD_SPEC_defaulting_to
 from .common import DefaultArgSentinel
@@ -35,18 +36,20 @@ def OPTIONAL_INPUT_NAME(parser):
     '''
     Declare `input_name` as optional parameter
     '''
-    parser.arg(
+    action = parser.arg(
         'input_name', type=str, nargs='?', default=ALL_INPUTS,
         metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
+    action.completer = complete_input_name
 
 
 def INPUT_NAME(parser):
     '''
     Declare `input_name` as mandatory parameter
     '''
-    parser.arg(
+    action = parser.arg(
         'input_name',
         metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
+    action.completer = complete_input_name
 
 
 # bead_spec sentinels
