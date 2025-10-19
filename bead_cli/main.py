@@ -100,29 +100,33 @@ def make_argument_parser(defaults):
 
 def setup_logging(debug: bool, log_dir: Path):
     """
-    Configure logging based on debug flag.
+    Configure logging to write only to file, never to console.
+
+    This allows error handling functions (die, warning, info) to control
+    all console output directly, while allowing log.* calls to write to
+    debug logs without duplication.
 
     Args:
         debug: Enable debug logging to file
         log_dir: Directory for log files
     """
+    # Remove any default handlers to prevent console output
+    logging.root.handlers = []
+
     if debug:
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = log_dir / 'bead-debug.log'
 
-        # Manually add handlers for full control (basicConfig only works once)
+        # Add only file handler - never log to console
         file_handler = logging.FileHandler(log_file)
-        console_handler = logging.StreamHandler()
-
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter)
-        console_handler.setFormatter(formatter)
 
         logging.root.addHandler(file_handler)
-        logging.root.addHandler(console_handler)
         logging.root.setLevel(logging.DEBUG)
     else:
-        # Only log WARNING and above to stderr (for warnings from libraries, etc.)
+        # Set to WARNING level to match expected behavior
+        # No handlers means no console output (user-facing messages go through die/warning/info)
         logging.root.setLevel(logging.WARNING)
 
 
