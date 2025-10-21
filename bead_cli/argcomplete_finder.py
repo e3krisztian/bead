@@ -21,11 +21,13 @@ class BeadCompletionFinder(CompletionFinder):
     """Custom completion finder that preserves @ character in completions."""
 
     def quote_completions(self, completions, cword_prequote, last_wordbreak_pos):
-        """Override quote_completions to preserve @ in completions.
+        """Override quote_completions to preserve @ in completions (bash-only).
 
         The default implementation trims at last_wordbreak_pos + 1, which for @
         removes the @ character. We detect @ and preserve it by trimming at
         the exact position instead.
+
+        For ZSH, @ is NOT a wordbreak, so this hack is not needed and should be skipped.
 
         Args:
             completions: List of completion strings
@@ -37,12 +39,23 @@ class BeadCompletionFinder(CompletionFinder):
         """
         _debug(f"[quote_completions] completions={completions}, last_wordbreak_pos={last_wordbreak_pos}")
 
+        # Detect which shell we're running under
+        target_shell = os.environ.get('_ARGCOMPLETE_SHELL', 'bash')
+        _debug(f"[quote_completions] target_shell={target_shell}")
+
+        # For ZSH, skip the @ preservation hack (@ is not a wordbreak in zsh)
+        if target_shell == 'zsh':
+            _debug("[quote_completions] ZSH detected, skipping @ preservation hack")
+            result = super().quote_completions(completions, cword_prequote, last_wordbreak_pos)
+            _debug(f"[quote_completions] Final result from parent={result}")
+            return result
+
+        # For BASH, search for @ character in completions and preserve it
+        # The @ character may be a wordbreak, but we want to keep it in the completion
         comp_line = os.environ.get('COMP_LINE', '')
         comp_point = os.environ.get('COMP_POINT', '')
         _debug(f"[quote_completions] comp_line={repr(comp_line)}, COMP_POINT={comp_point}")
 
-        # Search for @ character in completions (don't strip it)
-        # The @ character may be a wordbreak, but we want to keep it in the completion
         has_at = any('@' in c for c in completions)
         if has_at:
             # Find the position of @ in the first completion string

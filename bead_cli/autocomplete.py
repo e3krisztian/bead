@@ -115,12 +115,23 @@ def _reconstruct_spec_from_comp_line(prefix):
     Bash splits on COMP_WORDBREAKS (:, @, etc.), so we need to piece back together
     what the user was typing before the wordbreak characters got in the way.
 
+    ZSH does NOT split on these characters, so prefix is already complete.
+    For ZSH, we just return the prefix as-is.
+
     Args:
         prefix: The current partial word (from argcomplete)
 
     Returns:
         Full bead spec string (e.g., "box:name@la")
     """
+    # Detect which shell we're running under
+    target_shell = os.environ.get('_ARGCOMPLETE_SHELL', 'bash')
+
+    # For ZSH, prefix is already the complete spec (no splitting on : and @)
+    if target_shell == 'zsh':
+        return prefix
+
+    # For BASH and others, reconstruct from COMP_LINE since prefix is split
     comp_line = os.environ.get('COMP_LINE', '')
     comp_point = os.environ.get('COMP_POINT', '')
 
