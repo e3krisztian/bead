@@ -275,6 +275,22 @@ class CmdUpdate(Command):
                     use_name=(args.match_strategy != MatchStrategy.KIND_ONLY)
                 )
             except LookupError:
+                # Check if this is a kind mismatch by trying without kind constraint
+                from .bead_spec import parse_bead_spec
+                spec = parse_bead_spec(bead_spec)
+                if spec.name and args.match_strategy == MatchStrategy.NAME_AND_KIND:
+                    try:
+                        resolve_bead(
+                            env, bead_spec, context_input=input,
+                            use_kind=False,
+                            use_name=(args.match_strategy != MatchStrategy.KIND_ONLY)
+                        )
+                        # If we got here, it found a bead without kind constraint
+                        die(f"Kind (lineage) mismatch: only a different kind of {spec.name} was found. "
+                            f"Use --no-kind to allow this update.")
+                    except LookupError:
+                        # Bead truly doesn't exist, report original error
+                        pass
                 die(f'Not a known bead name: {bead_spec}')
 
         # Verify constraints before updating
