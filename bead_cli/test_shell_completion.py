@@ -696,8 +696,9 @@ def test_cursor_in_middle_of_word(shell_tester):
     User types: bead input add test box:name@2024
     Cursor is in the middle, user presses TAB.
     """
-    # Complete with cursor in middle - should not crash
+    # Complete with cursor in middle
     full_input = "bead input add test box:name@2024"
     result = shell_tester.complete(full_input, cursor_offset=5)
-    # Just verify it doesn't crash and returns data
-    assert result['success'] or 'error' in result
+    assert result['success']
+    # Cursor at position after "name@20", completion should complete the year
+    assert result['completed_line'] == 'bead input add test box:name@2024'
