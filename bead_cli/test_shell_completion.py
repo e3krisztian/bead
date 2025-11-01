@@ -454,7 +454,7 @@ class ShellTester:
             return {'error': str(e), 'success': False}
 
 
-@pytest.fixture(params=['bash', 'zsh'])
+@pytest.fixture(params=['bash', 'zsh'], scope="module")
 def shell_tester(request, home_env):
     """Provide ShellTester instance for completion tests.
 
