@@ -56,9 +56,23 @@ TECHNICAL APPROACH
 Uses raw pexpect for complete control over shell interaction and consistent
 buffer management. Tests real shell completion behavior by driving interactive
 shells (bash, zsh).
+
+BASH VERSION REQUIREMENTS
+==========================
+
+Full test coverage requires bash 4.0+ for mid-word completion support. The
+skip-completed-text readline feature was introduced in bash 4.0 and is required
+for cursor-in-middle completion tests.
+
+macOS system bash is version 3.2 (from 2007, GPLv2) which lacks this feature.
+Tests automatically:
+- Prefer homebrew bash (5.x) on macOS when available
+- Skip cursor-in-middle tests on bash 3.2 with clear message
+- Full coverage on Linux (typically bash 4.x or 5.x)
 """
 
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -106,6 +120,52 @@ def _shell_available(shell_name):
         return True
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         return False
+
+
+def _find_best_bash():
+    """Find the best bash executable to use.
+
+    On macOS, prefer homebrew bash (5.x) over system bash (3.2) for better
+    completion support including mid-word completion with skip-completed-text.
+
+    Returns:
+        str: Path to bash executable, or 'bash' to use PATH
+    """
+    if sys.platform != 'darwin':
+        return 'bash'  # Use PATH on non-macOS
+
+    # On macOS, try homebrew locations first (bash 5.x)
+    for path in ['/opt/homebrew/bin/bash', '/usr/local/bin/bash']:
+        if os.path.exists(path):
+            return path
+
+    # Fall back to system bash (3.2)
+    return 'bash'
+
+
+def _get_bash_version(bash_path='bash'):
+    """Get bash major version number.
+
+    Args:
+        bash_path: Path to bash executable
+
+    Returns:
+        int or None: Major version number, or None if detection fails
+    """
+    try:
+        result = subprocess.run(
+            [bash_path, '--version'],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        # Parse version from first line: "GNU bash, version 5.2.37(1)-release"
+        match = re.search(r'version (\d+)\.', result.stdout)
+        if match:
+            return int(match.group(1))
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return None
 
 
 @dataclass
@@ -290,10 +350,18 @@ class ShellTester:
             raise ValueError(f"Unknown shell: {shell_name}")
         self.debug = debug
         self.shell = None
+        self.bash_version = None  # Will be set during setup for bash
 
     def setup(self):
         """Start shell and configure completion."""
-        shell_cmd = f"{self.shell_name} {self.config.init_args}"
+        # For bash on macOS, prefer homebrew bash (5.x) over system bash (3.2)
+        if self.shell_name == 'bash':
+            bash_path = _find_best_bash()
+            shell_cmd = f"{bash_path} {self.config.init_args}"
+            # Detect bash version
+            self.bash_version = _get_bash_version(bash_path)
+        else:
+            shell_cmd = f"{self.shell_name} {self.config.init_args}"
 
         # Use pure pexpect instead of pexpect.replwrap for complete control over
         # echo settings and buffer management. replwrap couldn't reliably disable
@@ -695,7 +763,19 @@ def test_cursor_in_middle_of_word(shell_tester):
     This is where bash's wordbreak complexity shows up.
     User types: bead input add test box:name@2024
     Cursor is in the middle, user presses TAB.
+
+    Requires bash 4.0+ for reliable mid-word completion support.
+    Bash 3.2 (macOS system bash) lacks skip-completed-text feature.
     """
+    # Skip on bash < 4.0 (e.g., macOS system bash 3.2)
+    if (shell_tester.shell_name == 'bash' and
+        shell_tester.bash_version is not None and
+        shell_tester.bash_version < 4):
+        pytest.skip(
+            f"Bash {shell_tester.bash_version}.x doesn't support skip-completed-text. "
+            "Mid-word completion unreliable. Install bash 4.0+ via homebrew for full support."
+        )
+
     # Complete with cursor in middle
     full_input = "bead input add test box:name@2024"
     result = shell_tester.complete(full_input, cursor_offset=5)
