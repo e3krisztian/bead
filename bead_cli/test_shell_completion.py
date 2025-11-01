@@ -485,12 +485,6 @@ def shell_tester(request, home_env):
         tester.cleanup()
 
 
-def test_bead_completion_loads(shell_tester):
-    """Test that bead completion loads successfully in the shell."""
-    # If setup succeeds, completion is loaded
-    assert shell_tester.shell is not None
-
-
 def test_bead_help_completion(shell_tester):
     """Test completing partial command 'bead inp' completes to 'bead input'."""
     result = shell_tester.complete("bead inp")
@@ -563,6 +557,7 @@ def test_bead_name_with_time_completion(shell_tester, completion_debug_log):
     """
     result = shell_tester.complete("bead input add test name@lat")
     assert result['success']
+    assert result['completed_line'] == 'bead input add test name@latest'
 
 
 def test_input_name_completion_delete(shell_tester):
