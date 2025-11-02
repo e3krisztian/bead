@@ -708,24 +708,22 @@ def test_box_name_completion_index(shell_tester):
         f"Expected 'bead box index box' but got: {result['completed_line']}"
 
 
-def test_input_name_partial_completion(shell_tester):
-    """Test completing input names with multiple candidates.
+def test_input_name_unique_prefix_completion(shell_tester):
+    """Test completing input names when prefix uniquely identifies one input.
 
-    Add multiple inputs and test prefix matching.
+    Add multiple inputs with similar names and test that a unique prefix
+    completes to the correct input.
     """
     # Add multiple inputs with similar names
     shell_tester.send_command("bead input add train-data name")
     shell_tester.send_command("bead input add train-labels name")
 
-    # Test completion with 'train-d' - should complete to one of them
+    # Test completion with 'train-d' - only 'train-data' matches this prefix
     result = shell_tester.complete("bead input delete train-d")
     assert result['success']
-    # Should complete to one of the matching inputs
-    assert result['completed_line'] in [
-        'bead input delete train-data',
-        'bead input delete train-labels'
-    ] or 'train' in result['completed_line'], \
-        f"Expected completion with 'train' in result but got: {result['completed_line']}"
+    # Should complete uniquely to 'train-data' since only it starts with 'train-d'
+    assert result['completed_line'] == 'bead input delete train-data', \
+        f"Expected unique completion to 'train-data' (only match for 'train-d'), got: {result['completed_line']}"
 
 
 def test_complex_spec_completion(shell_tester, bead_freeze_time):
