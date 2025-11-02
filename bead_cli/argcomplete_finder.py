@@ -20,6 +20,15 @@ def _debug(msg):
 class BeadCompletionFinder(CompletionFinder):
     """Custom completion finder that preserves @ character in completions."""
 
+    def __call__(self, *args, **kwargs):
+        """Override __call__ to add debug logging at entry point."""
+        _debug(f"[BeadCompletionFinder.__call__] ENTRY - args={args}, kwargs={kwargs}")
+        _debug(f"[BeadCompletionFinder.__call__] _ARGCOMPLETE={os.environ.get('_ARGCOMPLETE')}")
+        _debug(f"[BeadCompletionFinder.__call__] COMP_LINE={os.environ.get('COMP_LINE')}")
+        result = super().__call__(*args, **kwargs)
+        _debug(f"[BeadCompletionFinder.__call__] EXIT - result={result}")
+        return result
+
     def quote_completions(self, completions, cword_prequote, last_wordbreak_pos):
         """Override quote_completions to preserve @ in completions (bash-only).
 
@@ -43,9 +52,9 @@ class BeadCompletionFinder(CompletionFinder):
         target_shell = os.environ.get('_ARGCOMPLETE_SHELL', 'bash')
         _debug(f"[quote_completions] target_shell={target_shell}")
 
-        # For ZSH, skip the @ preservation hack (@ is not a wordbreak in zsh)
-        if target_shell == 'zsh':
-            _debug("[quote_completions] ZSH detected, skipping @ preservation hack")
+        # For ZSH and FISH, skip the @ preservation hack (@ is not a wordbreak)
+        if target_shell in ('zsh', 'fish'):
+            _debug(f"[quote_completions] {target_shell.upper()} detected, skipping @ preservation hack")
             result = super().quote_completions(completions, cword_prequote, last_wordbreak_pos)
             _debug(f"[quote_completions] Final result from parent={result}")
             return result

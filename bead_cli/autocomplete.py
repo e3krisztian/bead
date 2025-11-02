@@ -60,19 +60,21 @@ def complete_bead_spec(prefix, parsed_args, **kwargs):
         List of completion candidates (incremental parts to add)
     """
     # Log entry
-    _debug(f"[ENTRY] prefix={repr(prefix)}")
-    _debug(f"[ENTRY] parsed_args={parsed_args}")
+    _debug(f'[ENTRY] prefix={repr(prefix)}')
+    _debug(f'[ENTRY] parsed_args={parsed_args}')
     comp_line = os.environ.get('COMP_LINE', '')
     comp_point = os.environ.get('COMP_POINT', '')
-    _debug(f"[ENTRY] COMP_LINE={repr(comp_line)}, COMP_POINT={repr(comp_point)}")
-    _debug(f"[ENTRY] COMP_LINE length={len(comp_line)}, chars after cursor: {repr(comp_line[int(comp_point):] if comp_point else '')}")
-    _debug(f"[ENTRY] Has # in COMP_LINE: {'#' in comp_line}, Has @ in COMP_LINE: {'@' in comp_line}")
+    _debug(f'[ENTRY] COMP_LINE={repr(comp_line)}, COMP_POINT={repr(comp_point)}')
+    _debug(
+        f'[ENTRY] COMP_LINE length={len(comp_line)}, chars after cursor: {repr(comp_line[int(comp_point) :] if comp_point else "")}'
+    )
+    _debug(f'[ENTRY] Has # in COMP_LINE: {"#" in comp_line}, Has @ in COMP_LINE: {"@" in comp_line}')
 
     # Reconstruct the full bead spec from COMP_LINE and COMP_POINT FIRST
     # This is crucial - we need the full context before creating Environment
     full_spec = _reconstruct_spec_from_comp_line(prefix)
 
-    _debug(f"[SPEC] full_spec={repr(full_spec)}")
+    _debug(f'[SPEC] full_spec={repr(full_spec)}')
 
     # Try to create environment for querying boxes/beads
     try:
@@ -103,7 +105,7 @@ def complete_bead_spec(prefix, parsed_args, **kwargs):
         # Complete both box names and bead names
         result = _complete_box_or_bead(full_spec, env, prefix)
 
-    _debug(f"[RESULT] candidates={result}")
+    _debug(f'[RESULT] candidates={result}')
 
     return result
 
@@ -222,7 +224,7 @@ def _complete_bead_after_box(full_spec, spec, env, prefix):
     Returns:
         List of full bead name completions
     """
-    _debug(f"[_complete_bead_after_box] spec.box={repr(spec.box)}, spec.name={repr(spec.name)}")
+    _debug(f'[_complete_bead_after_box] spec.box={repr(spec.box)}, spec.name={repr(spec.name)}')
 
     candidates = []
 
@@ -232,16 +234,16 @@ def _complete_bead_after_box(full_spec, spec, env, prefix):
         return []
 
     box_name, name_prefix = full_spec.rsplit(':', 1)
-    _debug(f"[_complete_bead_after_box] box_name={repr(box_name)}, name_prefix={repr(name_prefix)}")
+    _debug(f'[_complete_bead_after_box] box_name={repr(box_name)}, name_prefix={repr(name_prefix)}')
 
     try:
         # Get beads from the specified box
         if spec.box:
             # Box name was explicitly specified
-            _debug(f"[_complete_bead_after_box] Using spec.box={repr(spec.box)}")
+            _debug(f'[_complete_bead_after_box] Using spec.box={repr(spec.box)}')
             box = env.get_box(spec.box)
             beads = box.index.get_beads([])
-            _debug(f"[_complete_bead_after_box] Found {len(beads)} beads in {spec.box}")
+            _debug(f'[_complete_bead_after_box] Found {len(beads)} beads in {spec.box}')
             seen_names = set()
             for bead in beads:
                 if bead.name.startswith(name_prefix) and bead.name not in seen_names:
@@ -251,11 +253,11 @@ def _complete_bead_after_box(full_spec, spec, env, prefix):
         else:
             # Box name part of full_spec (e.g., "box" from "box:")
             # Try to find beads from that box
-            _debug(f"[_complete_bead_after_box] spec.box is empty, trying box_name={repr(box_name)}")
+            _debug(f'[_complete_bead_after_box] spec.box is empty, trying box_name={repr(box_name)}')
             try:
                 box = env.get_box(box_name)
                 beads = box.index.get_beads([])
-                _debug(f"[_complete_bead_after_box] Found {len(beads)} beads in {box_name}")
+                _debug(f'[_complete_bead_after_box] Found {len(beads)} beads in {box_name}')
                 seen_names = set()
                 for bead in beads:
                     if bead.name.startswith(name_prefix) and bead.name not in seen_names:
@@ -264,7 +266,7 @@ def _complete_bead_after_box(full_spec, spec, env, prefix):
                         seen_names.add(bead.name)
             except Exception as e:
                 # If we can't find the specific box, try all boxes
-                _debug(f"[_complete_bead_after_box] Failed to get box {repr(box_name)}: {e}, trying all boxes")
+                _debug(f'[_complete_bead_after_box] Failed to get box {repr(box_name)}: {e}, trying all boxes')
                 boxes = env.get_boxes()
                 seen_names = set()
                 for box in boxes:
@@ -278,9 +280,9 @@ def _complete_bead_after_box(full_spec, spec, env, prefix):
                     except Exception:
                         continue
     except Exception as e:
-        _debug(f"[_complete_bead_after_box] Exception: {e}")
+        _debug(f'[_complete_bead_after_box] Exception: {e}')
 
-    _debug(f"[_complete_bead_after_box] returning {len(candidates)} candidates: {sorted(candidates)}")
+    _debug(f'[_complete_bead_after_box] returning {len(candidates)} candidates: {sorted(candidates)}')
     return sorted(candidates)
 
 

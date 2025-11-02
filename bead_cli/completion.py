@@ -7,12 +7,12 @@ Provides shell-specific completion scripts that users can eval or source.
 import os
 import sys
 
-from argcomplete import shellcode
+from argcomplete.shell_integration import shellcode
 
 from .cmdparse import Command
 
 
-SUPPORTED_SHELLS = ['bash', 'zsh', 'fish', 'tcsh']
+SUPPORTED_SHELLS = ['bash', 'zsh', 'fish']
 
 
 class CmdCompletion(Command):
@@ -58,16 +58,17 @@ class CmdCompletion(Command):
                 )
                 return 1
 
-        # Generate shell code
+        # Output instructions as comments
+        self._print_instructions(shell)
+
+        # Generate shell code using argcomplete
         try:
             code = shellcode(['bead'], shell=shell)
+            print(code)
         except ValueError as e:
             print(f"ERROR: {e}", file=sys.stderr)
             return 1
 
-        # Output instructions as comments + code
-        self._print_instructions(shell)
-        print(code)
         return 0
 
     def _detect_shell(self):
@@ -109,7 +110,4 @@ class CmdCompletion(Command):
             print("#   bead completion fish | source")
             print("# Or save to completion directory:")
             print("#   bead completion fish > ~/.config/fish/completions/bead.fish")
-        elif shell == 'tcsh':
-            print("# Add this to your ~/.tcshrc:")
-            print("#   eval `bead completion tcsh`")
         print()

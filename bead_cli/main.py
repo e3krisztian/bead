@@ -95,8 +95,6 @@ def make_argument_parser(defaults):
         ('reindex', box.CmdReindex, 'Rebuild box index from scratch.'),
     )
 
-    parser.autocomplete()
-
     return parser
 
 
@@ -163,6 +161,10 @@ def cleanup_old_error_files(error_dir: Path, keep_count: int = 20, max_age_days:
 def run(config_dir: Path, state_dir: Path, argv: Sequence[str]):
     parser_defaults = dict(config_dir=config_dir)
     parser = make_argument_parser(parser_defaults)
+
+    # Handle completion requests (bash, zsh, fish all use _ARGCOMPLETE env var)
+    # This must be called after parser creation but before parse_args()
+    parser.autocomplete()
 
     env = Environment(config_dir, state_dir)
     return parser.dispatch(argv, env)
