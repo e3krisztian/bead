@@ -75,7 +75,7 @@ import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pexpect
@@ -187,6 +187,9 @@ class ShellConfig:
     extra_init: str
     """Additional initialization commands (e.g., 'set +o history')"""
 
+    env_overrides: dict = field(default_factory=dict)
+    """Environment variables to override for this shell (e.g., {'TERM': 'dumb'})"""
+
     @property
     def tab(self) -> str:
         """Single tab character."""
@@ -205,6 +208,7 @@ SHELL_CONFIGS = {
         prompt_pattern=r'\$',
         prompt_change='PS1="[PEXPECT_PROMPT>"',
         extra_init='set +o history',  # Disable history to avoid noise in completion output
+        env_overrides={'TERM': 'dumb'},
     ),
     'zsh': ShellConfig(
         init_args='--no-rcs',
@@ -217,6 +221,7 @@ SHELL_CONFIGS = {
         # - NO_AUTO_MENU: Don't auto-cycle through completions (prevents unwanted 2nd completion)
         # - LIST_AMBIGUOUS: List completions when ambiguous
         extra_init='autoload -U compinit && compinit -u && setopt BASH_AUTO_LIST NO_AUTO_MENU LIST_AMBIGUOUS',
+        env_overrides={'TERM': 'dumb'},
     ),
 }
 
@@ -354,6 +359,10 @@ class ShellTester:
 
     def setup(self):
         """Start shell and configure completion."""
+        # Apply env_overrides from config
+        env = self.env.copy()
+        env.update(self.config.env_overrides)
+
         # For bash on macOS, prefer homebrew bash (5.x) over system bash (3.2)
         if self.shell_name == 'bash':
             bash_path = _find_best_bash()
@@ -368,7 +377,7 @@ class ShellTester:
         # echo (causing command text in output) and couldn't handle zsh's async
         # control codes sent after prompts. Manual setup with setecho(False) and
         # explicit prompt configuration provides the control needed for reliable testing.
-        self.shell = pexpect.spawn(shell_cmd, timeout=5, encoding='utf-8', env=self.env, echo=False)
+        self.shell = pexpect.spawn(shell_cmd, timeout=5, encoding='utf-8', env=env, echo=False)
 
         # Disable echo if it's enabled (like replwrap does)
         if self.shell.echo:
