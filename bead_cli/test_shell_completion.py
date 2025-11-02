@@ -223,6 +223,13 @@ SHELL_CONFIGS = {
         extra_init='autoload -U compinit && compinit -u && setopt BASH_AUTO_LIST NO_AUTO_MENU LIST_AMBIGUOUS',
         env_overrides={'TERM': 'dumb'},
     ),
+    'fish': ShellConfig(
+        init_args='--no-config --private',
+        prompt_pattern=r'> ',  # fish's simple prompt with TERM=dumb
+        prompt_change='function fish_prompt; echo "[PEXPECT_PROMPT]>"; end',
+        extra_init='',  # fish doesn't need compinit-like setup
+        env_overrides={'TERM': 'dumb'},
+    ),
 }
 
 
@@ -405,7 +412,11 @@ class ShellTester:
         self.shell.after = ''
 
         # Load bead completion
-        self.send_command(f'eval "$(bead completion {self.shell_name})"')
+        if self.shell_name == 'fish':
+            # For fish, pipe completion script directly to source
+            self.send_command(f'bead completion {self.shell_name} | source')
+        else:
+            self.send_command(f'eval "$(bead completion {self.shell_name})"')
 
         # Setup bead workspace
         self.send_command('bead new workspace')
@@ -531,7 +542,7 @@ class ShellTester:
             return {'error': str(e), 'success': False}
 
 
-@pytest.fixture(params=['bash', 'zsh'], scope="module")
+@pytest.fixture(params=['bash', 'zsh', 'fish'], scope="module")
 def shell_tester(request, home_env):
     """Provide ShellTester instance for completion tests.
 
