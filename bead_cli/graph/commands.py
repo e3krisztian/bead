@@ -112,7 +112,7 @@ class CmdGraph(Command):
 
         commands, remaining_words = parse_commands(env, args.words)
         if remaining_words:
-            msg = 'ERROR: Could not fully parse command line.\n'
+            msg = 'Could not fully parse command line.\n'
             if commands:
                 msg += '\nSuccessfully parsed:\n'
                 for cmd in commands:

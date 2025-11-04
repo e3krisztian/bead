@@ -125,8 +125,9 @@ def setup_logging(debug: bool, log_dir: Path):
         logging.root.addHandler(file_handler)
         logging.root.setLevel(logging.DEBUG)
     else:
-        # Set to WARNING level to match expected behavior
-        # No handlers means no console output (user-facing messages go through die/warning/info)
+        # Add NullHandler to prevent last-resort stderr output
+        # User-facing messages go through die/warning/info functions
+        logging.root.addHandler(logging.NullHandler())
         logging.root.setLevel(logging.WARNING)
 
 
