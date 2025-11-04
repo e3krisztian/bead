@@ -196,6 +196,35 @@ def _get_boxes_for_spec(spec, env):
     return env.get_boxes()
 
 
+def after_arg(required_attr, inner_completer, parser=None):
+    """
+    Wrapper that conditionally activates completers based on parser state.
+
+    Solves the problem where argcomplete shows completions for all optional
+    positional arguments simultaneously (e.g., `cmd [arg1 [arg2]]`), even when
+    they should complete in order. By suppressing arg2's completer until arg1
+    is provided, this ensures proper sequential completion.
+
+    Only calls inner_completer if the required argument has been explicitly
+    provided (not the default value).
+
+    Args:
+        required_attr: Name of the argument attribute to check
+        inner_completer: The completer function to wrap
+        parser: Optional parser to get default value from
+
+    Returns:
+        Wrapped completer function
+    """
+    def wrapper(prefix, parsed_args, **kwargs):
+        val = getattr(parsed_args, required_attr, None)
+        default = parser.get_default(required_attr) if parser else None
+        if val in (None, '') or val == default:
+            return []
+        return inner_completer(prefix, parsed_args, **kwargs)
+    return wrapper
+
+
 def _find_beads_by_name_prefix(boxes, name_prefix, conditions=None, format_fn=None):
     """
     Find beads from boxes by name prefix and format results.

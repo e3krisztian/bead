@@ -12,6 +12,7 @@ from . import arg_help
 from . import arg_metavar
 from .autocomplete import complete_input_name
 from .cmdparse import Command
+from .common import BEAD_SPEC_after
 from .common import BEAD_SPEC_defaulting_to
 from .common import DefaultArgSentinel
 from .common import MatchStrategy
@@ -144,7 +145,7 @@ class CmdUpdate(Command):
 
     def declare(self, arg):
         arg(OPTIONAL_INPUT_NAME)
-        arg(BEAD_SPEC_defaulting_to(SAME_BEAD_NEWEST_VERSION))
+        arg(BEAD_SPEC_after('input_name', default=SAME_BEAD_NEWEST_VERSION))
         arg(OPTIONAL_WORKSPACE)
         # Matching options (mutually exclusive)
         # NOTE: Option names --no-kind/--no-name chosen for better UX over --ignore-kind/--ignore-name

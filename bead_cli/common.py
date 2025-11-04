@@ -117,6 +117,16 @@ def BEAD_SPEC_defaulting_to(name):
     return arg_bead_spec(nargs='?', default=name)
 
 
+def BEAD_SPEC_after(required_attr, default=None):
+    """BEAD_SPEC that only completes after another argument is provided."""
+    from .autocomplete import after_arg
+    def declare(parser):
+        action = parser.arg('bead_spec', type=str, nargs='?', default=default)
+        action.completer = after_arg(required_attr, complete_bead_spec, parser.argparser)
+        return action
+    return declare
+
+
 BEAD_SPEC = arg_bead_spec(nargs=None, default=None)
 
 
