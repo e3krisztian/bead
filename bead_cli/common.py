@@ -100,34 +100,47 @@ class DefaultArgSentinel:
         return self.description
 
 
-def arg_bead_spec(nargs, default):
+def _arg_bead_spec(parser, nargs, default):
     '''
-    Declare bead_spec argument - either a name or a file or something special
+    Internal helper for declaring bead_spec argument.
     '''
-    def declare(parser):
-        action = parser.arg(
-            'bead_spec', metavar=arg_metavar.BEAD, help=arg_help.BEAD,
-            nargs=nargs, type=str, default=default)
-        action.completer = complete_bead_spec
-        return action
-    return declare
+    action = parser.arg(
+        'bead_spec', metavar=arg_metavar.BEAD, help=arg_help.BEAD,
+        nargs=nargs, type=str, default=default)
+    action.completer = complete_bead_spec
+    return action
 
 
-def BEAD_SPEC_defaulting_to(name):
-    return arg_bead_spec(nargs='?', default=name)
+class BEAD_SPEC:
+    """Argument declarer for bead specifications.
 
+    Provides variations for different argument parsing scenarios:
+    - required: Mandatory bead spec (no default)
+    - with_default(value): Optional bead spec with default value
+    - after(required_attr, default): Bead spec that completes after another arg
+    """
 
-def BEAD_SPEC_after(required_attr, default=None):
-    """BEAD_SPEC that only completes after another argument is provided."""
-    from .autocomplete import after_arg
-    def declare(parser):
-        action = parser.arg('bead_spec', type=str, nargs='?', default=default)
-        action.completer = after_arg(required_attr, complete_bead_spec, parser.argparser)
-        return action
-    return declare
+    @staticmethod
+    def required(parser):
+        """Declare required bead_spec argument."""
+        return _arg_bead_spec(parser, nargs=None, default=None)
 
+    @staticmethod
+    def with_default(name):
+        """Create bead_spec declarer with default value."""
+        def declare(parser):
+            return _arg_bead_spec(parser, nargs='?', default=name)
+        return declare
 
-BEAD_SPEC = arg_bead_spec(nargs=None, default=None)
+    @staticmethod
+    def after(required_attr, default):
+        """Create bead_spec declarer that completes after another argument."""
+        from .autocomplete import after_arg
+        def declare(parser):
+            action = parser.arg('bead_spec', type=str, nargs='?', default=default)
+            action.completer = after_arg(required_attr, complete_bead_spec, parser.argparser)
+            return action
+        return declare
 
 
 def _get_bead_name(

@@ -136,7 +136,7 @@ class CmdEdit(Command):
     '''
 
     def declare(self, arg):
-        arg(BEAD_SPEC)
+        arg(BEAD_SPEC.required)
         arg(WORKSPACE_defaulting_to(DERIVE_FROM_BEAD_NAME))
         arg('--review', dest='review',
             default=False, action='store_true',
