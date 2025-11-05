@@ -134,7 +134,6 @@ class WORKSPACE:
 
     Provides variations for different argument parsing scenarios:
     - required: Mandatory workspace directory (no default)
-    - optional: Optional flag (--workspace, -w) with current directory default
     - with_default(value): Optional positional with custom default value
     """
 
@@ -148,15 +147,6 @@ class WORKSPACE:
             metavar='DIRECTORY',
             type=Workspace,
             help='bead and directory to create')
-
-    @classmethod
-    def optional(cls, parser):
-        """Declare optional workspace flag argument with current directory default."""
-        return parser.arg(
-            '--workspace', '-w', dest=cls.ARG_NAME,
-            metavar='DIRECTORY',
-            type=Workspace, default=Workspace.for_current_working_directory(),
-            help='workspace directory')
 
     @classmethod
     def with_default(cls, default_workspace):

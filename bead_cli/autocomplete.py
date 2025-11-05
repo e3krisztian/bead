@@ -28,6 +28,8 @@ import os
 from dataclasses import dataclass
 
 from bead import meta
+
+from .common import get_workspace
 from bead.box_query import QueryCondition
 from .bead_spec import BeadSpec
 from .environment import get_environment
@@ -574,21 +576,18 @@ def complete_input_name(prefix, parsed_args, **kwargs):
 
     Args:
         prefix: The partial input name being completed
-        parsed_args: Already parsed arguments (containing workspace)
+        parsed_args: Already parsed arguments (not used - workspace from cwd)
         **kwargs: Additional argcomplete context
 
     Returns:
         List of input names matching the prefix
     """
     try:
-        # Get workspace from parsed_args
-        workspace = getattr(parsed_args, 'workspace', None)
-
-        if not workspace:
-            return []
+        # Get workspace from current working directory
+        workspace = get_workspace()
 
         # Check if workspace is valid
-        if not getattr(workspace, 'is_valid', False):
+        if not workspace.is_valid:
             return []
 
         # Get input names from workspace

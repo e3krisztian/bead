@@ -18,6 +18,7 @@ from .args import WORKSPACE
 from .cmdparse import Command
 from .common import assert_valid_workspace
 from .common import die
+from .common import get_workspace
 from .common import info
 from .common import refresh_all_box_indexes
 from .common import resolve_bead
@@ -74,11 +75,10 @@ class CmdSave(Command):
 
     def declare(self, arg):
         arg(BOX_NAME.with_default(USE_THE_ONLY_BOX))
-        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         box_name = args.box_name
-        workspace = args.workspace
+        workspace = get_workspace()
         assert_valid_workspace(workspace)
         # XXX: (usability) save - support saving directly to a directory outside of workspace
         if box_name is USE_THE_ONLY_BOX:
@@ -233,12 +233,11 @@ class CmdStatus(Command):
     '''
 
     def declare(self, arg):
-        arg(WORKSPACE.optional)
         arg('-v', '--verbose', default=False, action='store_true',
             help='show more detailed information')
 
     def run(self, args, env: 'Environment'):
-        workspace = args.workspace
+        workspace = get_workspace()
         verbose = args.verbose
         kind_needed = verbose
         if workspace.is_valid:

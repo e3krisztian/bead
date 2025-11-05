@@ -11,12 +11,11 @@ from bead.workspace import Workspace
 from .args import BEAD_SPEC
 from .args import DefaultArgSentinel
 from .args import INPUT_NAME
-from .args import WORKSPACE
 from .cmdparse import Command
 from .common import MatchStrategy
-from .common import assert_valid_workspace
 from .common import die
 from .common import find_bead_for_update
+from .common import get_workspace
 from .common import refresh_all_box_indexes
 from .common import resolve_bead
 from .common import verify_with_feedback
@@ -40,12 +39,11 @@ class CmdInputAdd(Command):
     def declare(self, arg):
         arg(INPUT_NAME.required)
         arg(BEAD_SPEC.with_default(USE_INPUT_NAME))
-        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
         bead_spec = args.bead_spec
-        workspace = get_workspace(args)
+        workspace = get_workspace()
 
         if os.path.dirname(input_name):
             die(f'Invalid input name: {input_name}')
@@ -72,11 +70,10 @@ class CmdDelete(Command):
 
     def declare(self, arg):
         arg(INPUT_NAME.required)
-        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
-        workspace = get_workspace(args)
+        workspace = get_workspace()
         if workspace.has_input(input_name):
             workspace.delete_input(input_name)
             print(f'Input {input_name} is deleted.')
@@ -92,12 +89,11 @@ class CmdMap(Command):
     def declare(self, arg):
         arg(INPUT_NAME.required)
         arg(BEAD_SPEC.with_default(USE_INPUT_NAME))
-        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
         bead_spec = args.bead_spec
-        workspace = get_workspace(args)
+        workspace = get_workspace()
 
         if input_name not in [input_spec.name for input_spec in workspace.inputs]:
             die(f'Unknown input name: {input_name}')
@@ -120,7 +116,6 @@ class CmdUpdate(Command):
     def declare(self, arg):
         arg(INPUT_NAME.with_default(ALL_INPUTS))
         arg(BEAD_SPEC.after(INPUT_NAME, default=SAME_BEAD_NEWEST_VERSION))
-        arg(WORKSPACE.optional)
         # Matching options (mutually exclusive)
         # NOTE: Option names --no-kind/--no-name chosen for better UX over --ignore-kind/--ignore-name
         # as they more clearly communicate what constraint is being relaxed
@@ -158,7 +153,7 @@ class CmdUpdate(Command):
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
 
-        workspace = get_workspace(args)
+        workspace = get_workspace()
         for input in workspace.inputs:
             # Use mapped bead name for updates (unless --no-name is used)
             use_name = (args.match_strategy != MatchStrategy.KIND_ONLY)
@@ -186,7 +181,7 @@ class CmdUpdate(Command):
     def update_one_input(self, args, env):
         input_name = args.input_name
         bead_spec = args.bead_spec
-        workspace = get_workspace(args)
+        workspace = get_workspace()
         try:
             input = workspace.get_input(input_name)
         except LookupError:
@@ -350,11 +345,10 @@ class CmdLoad(Command):
 
     def declare(self, arg):
         arg(INPUT_NAME.with_default(ALL_INPUTS))
-        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
-        workspace = get_workspace(args)
+        workspace = get_workspace()
 
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
@@ -426,11 +420,10 @@ class CmdUnload(Command):
 
     def declare(self, arg):
         arg(INPUT_NAME.with_default(ALL_INPUTS))
-        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
-        workspace = get_workspace(args)
+        workspace = get_workspace()
         if input_name is ALL_INPUTS:
             for input in workspace.inputs:
                 _unload(workspace, input.name)
@@ -445,9 +438,3 @@ def _unload(workspace, input_name):
         print(' Done', flush=True)
     else:
         print(input_name, 'was not loaded - skipping')
-
-
-
-def get_workspace(args) -> Workspace:
-    assert_valid_workspace(args.workspace)
-    return args.workspace

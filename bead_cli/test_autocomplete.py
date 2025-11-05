@@ -173,9 +173,11 @@ class TestInputNameCompletion:
 
         return workspace
 
-    def test_complete_input_names_all(self, mock_workspace):
+    @patch('bead_cli.autocomplete.get_workspace')
+    def test_complete_input_names_all(self, mock_get_workspace, mock_workspace):
         """Test completion of all input names with empty prefix."""
-        parsed_args = Namespace(workspace=mock_workspace)
+        mock_get_workspace.return_value = mock_workspace
+        parsed_args = Namespace()
         results = complete_input_name('', parsed_args)
 
         assert 'training-data' in results
@@ -183,18 +185,22 @@ class TestInputNameCompletion:
         assert 'test-data' in results
         assert len(results) == 3
 
-    def test_complete_input_names_with_prefix(self, mock_workspace):
+    @patch('bead_cli.autocomplete.get_workspace')
+    def test_complete_input_names_with_prefix(self, mock_get_workspace, mock_workspace):
         """Test completion of input names with partial prefix."""
-        parsed_args = Namespace(workspace=mock_workspace)
+        mock_get_workspace.return_value = mock_workspace
+        parsed_args = Namespace()
         results = complete_input_name('training', parsed_args)
 
         assert 'training-data' in results
         assert 'validation-set' not in results
         assert 'test-data' not in results
 
-    def test_complete_input_names_with_prefix_match_multiple(self, mock_workspace):
+    @patch('bead_cli.autocomplete.get_workspace')
+    def test_complete_input_names_with_prefix_match_multiple(self, mock_get_workspace, mock_workspace):
         """Test completion that matches multiple input names."""
-        parsed_args = Namespace(workspace=mock_workspace)
+        mock_get_workspace.return_value = mock_workspace
+        parsed_args = Namespace()
         results = complete_input_name('test', parsed_args)
 
         # Only 'test-data' matches 'test' prefix

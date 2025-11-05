@@ -15,6 +15,7 @@ from bead.infra.timestamp import detect_time_precision
 from bead.infra.timestamp import add_one_unit
 from bead.infra.timestamp import TimePrecision
 from bead.meta import InputSpec
+from bead.workspace import Workspace
 from bead.ziparchive import ZipArchive
 
 from .bead_spec import BeadSpec, parse_relative_offset, is_relative_offset
@@ -63,6 +64,16 @@ def info(msg):
     log.info(msg)
     sys.stderr.write(msg)
     sys.stderr.write('\n')
+
+
+def get_workspace() -> Workspace:
+    """
+    Get the current workspace.
+
+    Currently returns workspace from current working directory.
+    Future: May search parent directories to allow working in subdirectories.
+    """
+    return Workspace.for_current_working_directory()
 
 
 def assert_valid_workspace(workspace):

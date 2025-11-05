@@ -98,12 +98,13 @@ def test_save_dies_without_explicit_box(shell_multi_box, box1, box2):
 def test_save_stores_bead_in_specified_box(shell_multi_box, box1, box2):
     shell = shell_multi_box
     shell.bead('new', 'bead')
-    shell.bead('save', box1.name, '--workspace=bead')
+    shell.cd('bead')
+    shell.bead('save', box1.name)
     with shell.environment:
-        kind = Workspace('bead').kind
+        kind = Workspace('.').kind
     assert 1 == bead_count(box1, kind)
     assert 0 == bead_count(box2, kind)
-    shell.bead('save', box2.name, '-w', 'bead')
+    shell.bead('save', box2.name)
     assert 1 == bead_count(box1, kind)
     assert 1 == bead_count(box2, kind)
 
@@ -111,14 +112,16 @@ def test_save_stores_bead_in_specified_box(shell_multi_box, box1, box2):
 def test_invalid_box_specified(shell_multi_box, box1, box2):
     shell = shell_multi_box
     shell.bead('new', 'bead')
-    shell.bead('save', 'unknown-box', '--workspace', 'bead', expect_failure=True)
+    shell.cd('bead')
+    shell.bead('save', 'unknown-box', expect_failure=True)
     assert 'ERROR' in shell.stderr
 
 
 def test_save_to_box_without_backing_directory(shell_multi_box, box1, box2):
     shell = shell_multi_box
     shell.bead('new', 'bead')
+    shell.cd('bead')
     rmtree(box2.directory)
-    shell.bead('save', box2.name, '-w', 'bead', expect_failure=True)
+    shell.bead('save', box2.name, expect_failure=True)
     assert 'ERROR' in shell.stderr
     assert 'does not exist' in shell.stderr
