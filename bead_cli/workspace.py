@@ -16,8 +16,8 @@ from . import arg_metavar
 from .autocomplete import complete_box_name
 from .cmdparse import Command
 from .common import BEAD_SPEC
-from .common import OPTIONAL_WORKSPACE
 from .common import DefaultArgSentinel
+from .common import WORKSPACE
 from .common import assert_valid_workspace
 from .common import die
 from .common import info
@@ -65,15 +65,6 @@ class CmdNew(Command):
         print(f'Created workspace "{workspace.name}"')
 
 
-def WORKSPACE_defaulting_to(default_workspace):
-    def opt_workspace(parser):
-        parser.arg(
-            'workspace', nargs='?', type=Workspace,
-            default=default_workspace,
-            metavar=arg_metavar.WORKSPACE, help=arg_help.WORKSPACE)
-    return opt_workspace
-
-
 USE_THE_ONLY_BOX = DefaultArgSentinel(
     'if there is exactly one box,' +
     ' store there, otherwise it MUST be specified')
@@ -88,7 +79,7 @@ class CmdSave(Command):
         action = arg('box_name', nargs='?', default=USE_THE_ONLY_BOX, type=str,
             metavar=arg_metavar.BOX, help=arg_help.BOX)
         action.completer = complete_box_name
-        arg(OPTIONAL_WORKSPACE)
+        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         box_name = args.box_name
@@ -137,7 +128,7 @@ class CmdEdit(Command):
 
     def declare(self, arg):
         arg(BEAD_SPEC.required)
-        arg(WORKSPACE_defaulting_to(DERIVE_FROM_BEAD_NAME))
+        arg(WORKSPACE.with_default(DERIVE_FROM_BEAD_NAME))
         arg('--review', dest='review',
             default=False, action='store_true',
             help='Include output data for review (normally not needed for editing).')
@@ -247,7 +238,7 @@ class CmdStatus(Command):
     '''
 
     def declare(self, arg):
-        arg(OPTIONAL_WORKSPACE)
+        arg(WORKSPACE.optional)
         arg('-v', '--verbose', default=False, action='store_true',
             help='show more detailed information')
 
@@ -271,7 +262,7 @@ class CmdDiscard(Command):
     '''
 
     def declare(self, arg):
-        arg(WORKSPACE_defaulting_to(Workspace.for_current_working_directory()))
+        arg(WORKSPACE.with_default(Workspace.for_current_working_directory()))
         arg('-f', '--force', default=False, action='store_true',
             help=('Do not check that the directory is a valid workspace.'
                   ' Removes partially removed (damaged/invalid) workspaces,'

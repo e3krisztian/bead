@@ -69,16 +69,6 @@ def info(msg):
     sys.stderr.write('\n')
 
 
-def OPTIONAL_WORKSPACE(parser):
-    '''
-    Define `workspace` as option, defaulting to current directory
-    '''
-    return parser.arg(
-        '--workspace', '-w', metavar=arg_metavar.WORKSPACE,
-        type=Workspace, default=Workspace.for_current_working_directory(),
-        help=arg_help.WORKSPACE)
-
-
 def assert_valid_workspace(workspace):
     if not workspace.is_valid:
         die(f'{workspace.directory} is not a valid workspace')
@@ -140,6 +130,33 @@ class BEAD_SPEC:
             action = parser.arg('bead_spec', type=str, nargs='?', default=default)
             action.completer = after_arg(required_attr, complete_bead_spec, parser.argparser)
             return action
+        return declare
+
+
+class WORKSPACE:
+    """Argument declarer for workspace paths.
+
+    Provides variations for different argument parsing scenarios:
+    - optional: Optional flag (--workspace, -w) with current directory default
+    - with_default(value): Optional positional with custom default value
+    """
+
+    @staticmethod
+    def optional(parser):
+        """Declare optional workspace flag argument with current directory default."""
+        return parser.arg(
+            '--workspace', '-w', metavar=arg_metavar.WORKSPACE,
+            type=Workspace, default=Workspace.for_current_working_directory(),
+            help=arg_help.WORKSPACE)
+
+    @staticmethod
+    def with_default(default_workspace):
+        """Create workspace declarer with custom default value."""
+        def declare(parser):
+            parser.arg(
+                'workspace', nargs='?', type=Workspace,
+                default=default_workspace,
+                metavar=arg_metavar.WORKSPACE, help=arg_help.WORKSPACE)
         return declare
 
 

@@ -15,7 +15,7 @@ from .cmdparse import Command
 from .common import BEAD_SPEC
 from .common import DefaultArgSentinel
 from .common import MatchStrategy
-from .common import OPTIONAL_WORKSPACE
+from .common import WORKSPACE
 from .common import assert_valid_workspace
 from .common import die
 from .common import find_bead_for_update
@@ -72,7 +72,7 @@ class CmdInputAdd(Command):
     def declare(self, arg):
         arg(INPUT_NAME.required)
         arg(BEAD_SPEC.with_default(USE_INPUT_NAME))
-        arg(OPTIONAL_WORKSPACE)
+        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
@@ -104,7 +104,7 @@ class CmdDelete(Command):
 
     def declare(self, arg):
         arg(INPUT_NAME.required)
-        arg(OPTIONAL_WORKSPACE)
+        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
@@ -124,7 +124,7 @@ class CmdMap(Command):
     def declare(self, arg):
         arg(INPUT_NAME.required)
         arg(BEAD_SPEC.with_default(USE_INPUT_NAME))
-        arg(OPTIONAL_WORKSPACE)
+        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
@@ -152,7 +152,7 @@ class CmdUpdate(Command):
     def declare(self, arg):
         arg(INPUT_NAME.optional)
         arg(BEAD_SPEC.after('input_name', default=SAME_BEAD_NEWEST_VERSION))
-        arg(OPTIONAL_WORKSPACE)
+        arg(WORKSPACE.optional)
         # Matching options (mutually exclusive)
         # NOTE: Option names --no-kind/--no-name chosen for better UX over --ignore-kind/--ignore-name
         # as they more clearly communicate what constraint is being relaxed
@@ -382,7 +382,7 @@ class CmdLoad(Command):
 
     def declare(self, arg):
         arg(INPUT_NAME.optional)
-        arg(OPTIONAL_WORKSPACE)
+        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
@@ -458,7 +458,7 @@ class CmdUnload(Command):
 
     def declare(self, arg):
         arg(INPUT_NAME.optional)
-        arg(OPTIONAL_WORKSPACE)
+        arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
