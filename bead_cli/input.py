@@ -40,20 +40,22 @@ class INPUT_NAME:
     - optional: Optional input name (defaults to ALL_INPUTS)
     """
 
-    @staticmethod
-    def required(parser):
+    ARG_NAME = 'input_name'
+
+    @classmethod
+    def required(cls, parser):
         """Declare required input_name argument."""
         action = parser.arg(
-            'input_name',
+            cls.ARG_NAME,
             metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
         action.completer = complete_input_name
         return action
 
-    @staticmethod
-    def optional(parser):
+    @classmethod
+    def optional(cls, parser):
         """Declare optional input_name argument with ALL_INPUTS default."""
         action = parser.arg(
-            'input_name', type=str, nargs='?', default=ALL_INPUTS,
+            cls.ARG_NAME, type=str, nargs='?', default=ALL_INPUTS,
             metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
         action.completer = complete_input_name
         return action
@@ -151,7 +153,7 @@ class CmdUpdate(Command):
 
     def declare(self, arg):
         arg(INPUT_NAME.optional)
-        arg(BEAD_SPEC.after('input_name', default=SAME_BEAD_NEWEST_VERSION))
+        arg(BEAD_SPEC.after(INPUT_NAME, default=SAME_BEAD_NEWEST_VERSION))
         arg(WORKSPACE.optional)
         # Matching options (mutually exclusive)
         # NOTE: Option names --no-kind/--no-name chosen for better UX over --ignore-kind/--ignore-name

@@ -90,12 +90,12 @@ class DefaultArgSentinel:
         return self.description
 
 
-def _arg_bead_spec(parser, nargs, default):
+def _arg_bead_spec(parser, arg_name, nargs, default):
     '''
     Internal helper for declaring bead_spec argument.
     '''
     action = parser.arg(
-        'bead_spec', metavar=arg_metavar.BEAD, help=arg_help.BEAD,
+        arg_name, metavar=arg_metavar.BEAD, help=arg_help.BEAD,
         nargs=nargs, type=str, default=default)
     action.completer = complete_bead_spec
     return action
@@ -110,25 +110,28 @@ class BEAD_SPEC:
     - after(required_attr, default): Bead spec that completes after another arg
     """
 
-    @staticmethod
-    def required(parser):
-        """Declare required bead_spec argument."""
-        return _arg_bead_spec(parser, nargs=None, default=None)
+    ARG_NAME = 'bead_spec'
 
-    @staticmethod
-    def with_default(name):
+    @classmethod
+    def required(cls, parser):
+        """Declare required bead_spec argument."""
+        return _arg_bead_spec(parser, cls.ARG_NAME, nargs=None, default=None)
+
+    @classmethod
+    def with_default(cls, name):
         """Create bead_spec declarer with default value."""
         def declare(parser):
-            return _arg_bead_spec(parser, nargs='?', default=name)
+            return _arg_bead_spec(parser, cls.ARG_NAME, nargs='?', default=name)
         return declare
 
-    @staticmethod
-    def after(required_attr, default):
+    @classmethod
+    def after(cls, required_arg, default):
         """Create bead_spec declarer that completes after another argument."""
         from .autocomplete import after_arg
+        attr_name = required_arg.ARG_NAME
         def declare(parser):
-            action = parser.arg('bead_spec', type=str, nargs='?', default=default)
-            action.completer = after_arg(required_attr, complete_bead_spec, parser.argparser)
+            action = parser.arg(cls.ARG_NAME, type=str, nargs='?', default=default)
+            action.completer = after_arg(attr_name, complete_bead_spec, parser.argparser)
             return action
         return declare
 
@@ -141,20 +144,23 @@ class WORKSPACE:
     - with_default(value): Optional positional with custom default value
     """
 
-    @staticmethod
-    def optional(parser):
+    ARG_NAME = 'workspace'
+
+    @classmethod
+    def optional(cls, parser):
         """Declare optional workspace flag argument with current directory default."""
         return parser.arg(
-            '--workspace', '-w', metavar=arg_metavar.WORKSPACE,
+            '--workspace', '-w', dest=cls.ARG_NAME,
+            metavar=arg_metavar.WORKSPACE,
             type=Workspace, default=Workspace.for_current_working_directory(),
             help=arg_help.WORKSPACE)
 
-    @staticmethod
-    def with_default(default_workspace):
+    @classmethod
+    def with_default(cls, default_workspace):
         """Create workspace declarer with custom default value."""
         def declare(parser):
             parser.arg(
-                'workspace', nargs='?', type=Workspace,
+                cls.ARG_NAME, nargs='?', type=Workspace,
                 default=default_workspace,
                 metavar=arg_metavar.WORKSPACE, help=arg_help.WORKSPACE)
         return declare
