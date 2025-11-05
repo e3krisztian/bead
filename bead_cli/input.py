@@ -32,24 +32,31 @@ if TYPE_CHECKING:
 ALL_INPUTS = DefaultArgSentinel('all inputs')
 
 
-def OPTIONAL_INPUT_NAME(parser):
-    '''
-    Declare `input_name` as optional parameter
-    '''
-    action = parser.arg(
-        'input_name', type=str, nargs='?', default=ALL_INPUTS,
-        metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
-    action.completer = complete_input_name
+class INPUT_NAME:
+    """Argument declarer for input names.
 
+    Provides variations for different argument parsing scenarios:
+    - required: Mandatory input name (no default)
+    - optional: Optional input name (defaults to ALL_INPUTS)
+    """
 
-def INPUT_NAME(parser):
-    '''
-    Declare `input_name` as mandatory parameter
-    '''
-    action = parser.arg(
-        'input_name',
-        metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
-    action.completer = complete_input_name
+    @staticmethod
+    def required(parser):
+        """Declare required input_name argument."""
+        action = parser.arg(
+            'input_name',
+            metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
+        action.completer = complete_input_name
+        return action
+
+    @staticmethod
+    def optional(parser):
+        """Declare optional input_name argument with ALL_INPUTS default."""
+        action = parser.arg(
+            'input_name', type=str, nargs='?', default=ALL_INPUTS,
+            metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
+        action.completer = complete_input_name
+        return action
 
 
 # bead_spec sentinels
@@ -63,7 +70,7 @@ class CmdInputAdd(Command):
     '''
 
     def declare(self, arg):
-        arg(INPUT_NAME)
+        arg(INPUT_NAME.required)
         arg(BEAD_SPEC.with_default(USE_INPUT_NAME))
         arg(OPTIONAL_WORKSPACE)
 
@@ -96,7 +103,7 @@ class CmdDelete(Command):
     '''
 
     def declare(self, arg):
-        arg(INPUT_NAME)
+        arg(INPUT_NAME.required)
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
@@ -115,7 +122,7 @@ class CmdMap(Command):
     '''
 
     def declare(self, arg):
-        arg(INPUT_NAME)
+        arg(INPUT_NAME.required)
         arg(BEAD_SPEC.with_default(USE_INPUT_NAME))
         arg(OPTIONAL_WORKSPACE)
 
@@ -143,7 +150,7 @@ class CmdUpdate(Command):
     '''
 
     def declare(self, arg):
-        arg(OPTIONAL_INPUT_NAME)
+        arg(INPUT_NAME.optional)
         arg(BEAD_SPEC.after('input_name', default=SAME_BEAD_NEWEST_VERSION))
         arg(OPTIONAL_WORKSPACE)
         # Matching options (mutually exclusive)
@@ -374,7 +381,7 @@ class CmdLoad(Command):
     '''
 
     def declare(self, arg):
-        arg(OPTIONAL_INPUT_NAME)
+        arg(INPUT_NAME.optional)
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
@@ -450,7 +457,7 @@ class CmdUnload(Command):
     '''
 
     def declare(self, arg):
-        arg(OPTIONAL_INPUT_NAME)
+        arg(INPUT_NAME.optional)
         arg(OPTIONAL_WORKSPACE)
 
     def run(self, args, env: 'Environment'):
