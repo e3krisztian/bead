@@ -27,11 +27,10 @@ Strategy:
 import os
 from dataclasses import dataclass
 
-from bead import meta
-
-from .common import get_workspace
 from bead.box_query import QueryCondition
+
 from .bead_spec import BeadSpec
+from .common import get_workspace
 from .environment import get_environment
 
 
@@ -572,7 +571,7 @@ def complete_input_name(prefix, parsed_args, **kwargs):
     """
     Autocomplete function for input names.
 
-    Returns input names from the current workspace that match the given prefix.
+    Returns input names with source bead, timestamp, and load status.
 
     Args:
         prefix: The partial input name being completed
@@ -580,7 +579,7 @@ def complete_input_name(prefix, parsed_args, **kwargs):
         **kwargs: Additional argcomplete context
 
     Returns:
-        List of input names matching the prefix
+        Dict mapping input names to "source@date (status)" descriptions
     """
     try:
         # Get workspace from current working directory
@@ -588,23 +587,35 @@ def complete_input_name(prefix, parsed_args, **kwargs):
 
         # Check if workspace is valid
         if not workspace.is_valid:
-            return []
+            return {}
 
-        # Get input names from workspace
-        input_names = list(workspace.meta.get(meta.INPUTS, {}).keys())
+        # Build dict with input names and descriptions
+        result = {}
+        for input_spec in workspace.inputs:
+            if input_spec.name.startswith(prefix):
+                # Get source bead name
+                source_name = workspace.get_source_name(input_spec.name)
 
-        # Filter by prefix
-        return sorted([name for name in input_names if name.startswith(prefix)])
+                # Get date from freeze_time_iso (first 10 chars: YYYY-MM-DD)
+                date_str = input_spec.freeze_time_iso[:10]
+
+                # Get load status
+                status = "loaded" if workspace.is_loaded(input_spec.name) else "not loaded"
+
+                # Format: "source@date (status)"
+                result[input_spec.name] = f"{source_name}@{date_str} ({status})"
+
+        return result
     except Exception:
         # Gracefully handle any errors
-        return []
+        return {}
 
 
 def complete_box_name(prefix, parsed_args, **kwargs):
     """
     Autocomplete function for box names.
 
-    Returns enabled box names from the environment that match the given prefix.
+    Returns enabled box names with their directory paths as descriptions.
 
     Args:
         prefix: The partial box name being completed
@@ -612,7 +623,7 @@ def complete_box_name(prefix, parsed_args, **kwargs):
         **kwargs: Additional argcomplete context
 
     Returns:
-        List of box names matching the prefix
+        Dict mapping box names to shortened directory paths (with ~)
     """
     try:
         env = get_environment()
@@ -620,10 +631,18 @@ def complete_box_name(prefix, parsed_args, **kwargs):
         # Get enabled boxes
         boxes = env.get_boxes()
 
-        # Get box names and filter by prefix
-        box_names = [box.name for box in boxes if box.name.startswith(prefix)]
+        # Build dict with box names and shortened paths
+        result = {}
+        for box in boxes:
+            if box.name.startswith(prefix):
+                # Shorten path by replacing home directory with ~
+                path_str = str(box.directory)
+                home = os.path.expanduser('~')
+                if path_str.startswith(home):
+                    path_str = '~' + path_str[len(home):]
+                result[box.name] = path_str
 
-        return sorted(box_names)
+        return result
     except Exception:
         # Gracefully handle any errors
-        return []
+        return {}

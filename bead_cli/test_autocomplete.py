@@ -149,18 +149,25 @@ class TestInputNameCompletion:
         """Create a mock workspace with test inputs."""
         workspace = Mock()
 
-        # Mock input specs
+        # Mock input specs with required attributes
         input1 = Mock()
         input1.name = 'training-data'
+        input1.freeze_time_iso = '2024-01-15T10:30:00+0000'
 
         input2 = Mock()
         input2.name = 'validation-set'
+        input2.freeze_time_iso = '2024-01-16T14:20:00+0000'
 
         input3 = Mock()
         input3.name = 'test-data'
+        input3.freeze_time_iso = '2024-01-17T09:15:00+0000'
 
         workspace.inputs = [input1, input2, input3]
         workspace.is_valid = True
+
+        # Mock methods required by complete_input_name
+        workspace.get_source_name = Mock(side_effect=lambda name: f'{name}-source')
+        workspace.is_loaded = Mock(return_value=True)
 
         # Mock meta dictionary for direct access
         workspace.meta = {
@@ -180,6 +187,7 @@ class TestInputNameCompletion:
         parsed_args = Namespace()
         results = complete_input_name('', parsed_args)
 
+        # Check keys (completion values) only, not descriptions
         assert 'training-data' in results
         assert 'validation-set' in results
         assert 'test-data' in results
@@ -192,6 +200,7 @@ class TestInputNameCompletion:
         parsed_args = Namespace()
         results = complete_input_name('training', parsed_args)
 
+        # Check keys (completion values) only, not descriptions
         assert 'training-data' in results
         assert 'validation-set' not in results
         assert 'test-data' not in results
@@ -203,7 +212,7 @@ class TestInputNameCompletion:
         parsed_args = Namespace()
         results = complete_input_name('test', parsed_args)
 
-        # Only 'test-data' matches 'test' prefix
+        # Check keys (completion values) only, not descriptions
         assert 'test-data' in results
         assert 'training-data' not in results
         assert 'validation-set' not in results
@@ -213,24 +222,28 @@ class TestInputNameCompletion:
         parsed_args = Namespace(workspace=None)
         results = complete_input_name('', parsed_args)
 
-        assert results == []
+        assert results == {}
 
-    def test_complete_input_names_invalid_workspace(self):
+    @patch('bead_cli.autocomplete.get_workspace')
+    def test_complete_input_names_invalid_workspace(self, mock_get_workspace):
         """Test completion with invalid workspace returns empty."""
         workspace = Mock()
         workspace.is_valid = False
+        mock_get_workspace.return_value = workspace
 
-        parsed_args = Namespace(workspace=workspace)
+        parsed_args = Namespace()
         results = complete_input_name('', parsed_args)
 
-        assert results == []
+        assert results == {}
 
-    def test_complete_input_names_exception_handling(self):
+    @patch('bead_cli.autocomplete.get_workspace')
+    def test_complete_input_names_exception_handling(self, mock_get_workspace):
         """Test completion handles exceptions gracefully."""
-        parsed_args = Namespace(workspace=Mock(side_effect=Exception("Error")))
+        mock_get_workspace.side_effect = Exception("Error")
+        parsed_args = Namespace()
         results = complete_input_name('', parsed_args)
 
-        assert results == []
+        assert results == {}
 
 
 class TestBoxNameCompletion:
@@ -241,18 +254,21 @@ class TestBoxNameCompletion:
         """Create a mock environment with test boxes."""
         env = Mock()
 
-        # Mock boxes
+        # Mock boxes with directory attribute
         box1 = Mock()
         box1.name = 'research-data'
         box1.enabled = True
+        box1.directory = '/home/user/boxes/research-data'
 
         box2 = Mock()
         box2.name = 'archive'
         box2.enabled = True
+        box2.directory = '/home/user/boxes/archive'
 
         box3 = Mock()
         box3.name = 'backup'
         box3.enabled = False
+        box3.directory = '/home/user/boxes/backup'
 
         env.get_boxes.return_value = [box1, box2]  # Only enabled boxes
 
@@ -266,6 +282,7 @@ class TestBoxNameCompletion:
         parsed_args = Namespace()
         results = complete_box_name('', parsed_args)
 
+        # Check keys (completion values) only, not descriptions
         assert 'research-data' in results
         assert 'archive' in results
         assert len(results) == 2
@@ -278,18 +295,9 @@ class TestBoxNameCompletion:
         parsed_args = Namespace()
         results = complete_box_name('ar', parsed_args)
 
+        # Check keys (completion values) only, not descriptions
         assert 'archive' in results
         assert 'research-data' not in results
-
-    @patch('bead_cli.autocomplete.get_environment')
-    def test_complete_box_names_returns_sorted(self, mock_get_env, mock_env):
-        """Test that completed box names are sorted."""
-        mock_get_env.return_value = mock_env
-
-        parsed_args = Namespace()
-        results = complete_box_name('', parsed_args)
-
-        assert results == sorted(results)
 
     @patch('bead_cli.autocomplete.get_environment', side_effect=Exception("No config"))
     def test_complete_box_names_env_error(self, mock_get_env):
@@ -297,4 +305,4 @@ class TestBoxNameCompletion:
         parsed_args = Namespace()
         results = complete_box_name('', parsed_args)
 
-        assert results == []
+        assert results == {}
