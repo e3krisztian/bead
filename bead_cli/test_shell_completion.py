@@ -384,7 +384,8 @@ class ShellTester:
         # echo (causing command text in output) and couldn't handle zsh's async
         # control codes sent after prompts. Manual setup with setecho(False) and
         # explicit prompt configuration provides the control needed for reliable testing.
-        self.shell = pexpect.spawn(shell_cmd, timeout=5, encoding='utf-8', env=env, echo=False)
+        # Start shell in temp HOME directory to isolate test artifacts
+        self.shell = pexpect.spawn(shell_cmd, timeout=5, encoding='utf-8', env=env, cwd=env['HOME'], echo=False)
 
         # Disable echo if it's enabled (like replwrap does)
         if self.shell.echo:
