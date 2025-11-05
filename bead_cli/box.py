@@ -4,12 +4,23 @@ from typing import TYPE_CHECKING
 from bead.box_index import index_schema_is_current
 from bead.infra.fs import Path
 
-from .autocomplete import complete_box_name
+from .args import BOX_NAME
+from .args import DefaultArgSentinel
 from .cmdparse import Command
 from .common import die, report_progress
 
 if TYPE_CHECKING:
     from .environment import Environment
+
+
+# Command-specific sentinel for box commands
+USE_SINGLE_BOX_IF_ONLY_ONE = DefaultArgSentinel(
+    'use the only box if exactly one exists, otherwise error')
+
+
+def is_specific_box_requested(args) -> bool:
+    """Check if user explicitly specified a box name (not using auto-detection)."""
+    return args.box_name is not USE_SINGLE_BOX_IF_ONLY_ONE
 
 
 def seed_box_index(box_directory: Path, new_index_path: Path):
@@ -96,18 +107,17 @@ class CmdForget(Command):
     '''
 
     def declare(self, arg):
-        action = arg('name')
-        action.completer = complete_box_name
+        arg(BOX_NAME.required)
 
     def run(self, args, env: 'Environment'):
-        name = args.name
+        box_name = args.box_name
 
-        if env.is_known_box(name):
-            env.forget_box(name)
+        if env.is_known_box(box_name):
+            env.forget_box(box_name)
             env.save()
-            print(f'Box "{name}" is forgotten')
+            print(f'Box "{box_name}" is forgotten')
         else:
-            print(f'WARNING: no box defined with "{name}"')
+            print(f'WARNING: no box defined with "{box_name}"')
 
 
 class CmdEnable(Command):
@@ -116,16 +126,15 @@ class CmdEnable(Command):
     '''
 
     def declare(self, arg):
-        action = arg('name')
-        action.completer = complete_box_name
+        arg(BOX_NAME.required)
 
     def run(self, args, env: 'Environment'):
-        name = args.name
+        box_name = args.box_name
 
         try:
-            env.enable_box(name)
+            env.enable_box(box_name)
             env.save()
-            print(f'Box "{name}" is enabled')
+            print(f'Box "{box_name}" is enabled')
         except ValueError as e:
             print('ERROR:', *e.args)
 
@@ -136,16 +145,15 @@ class CmdDisable(Command):
     '''
 
     def declare(self, arg):
-        action = arg('name')
-        action.completer = complete_box_name
+        arg(BOX_NAME.required)
 
     def run(self, args, env: 'Environment'):
-        name = args.name
+        box_name = args.box_name
 
         try:
-            env.disable_box(name)
+            env.disable_box(box_name)
             env.save()
-            print(f'Box "{name}" is disabled')
+            print(f'Box "{box_name}" is disabled')
         except ValueError as e:
             print('ERROR:', *e.args)
 
@@ -187,8 +195,7 @@ class CmdReindex(Command):
     '''
 
     def declare(self, arg):
-        action = arg('box_name', nargs='?', help='Box name to rebuild (optional if only one box exists)')
-        action.completer = complete_box_name
+        arg(BOX_NAME.with_default(USE_SINGLE_BOX_IF_ONLY_ONE))
         arg('--all', action='store_true', help='Rebuild all boxes')
 
     def run(self, args, env: 'Environment'):
@@ -196,7 +203,7 @@ class CmdReindex(Command):
             reindex_all(env.get_meta_boxes())
             return
 
-        if args.box_name:
+        if is_specific_box_requested(args):
             # Specific box requested - use meta boxes to avoid circular dependency
             box_name = args.box_name
             box_meta = next((b for b in env.get_meta_boxes() if b.name == box_name), None)
@@ -258,8 +265,7 @@ class CmdIndex(Command):
     '''
 
     def declare(self, arg):
-        action = arg('box_name', nargs='?', help='Box name to index (optional if only one box exists)')
-        action.completer = complete_box_name
+        arg(BOX_NAME.with_default(USE_SINGLE_BOX_IF_ONLY_ONE))
         arg('--all', action='store_true', help='Index all boxes')
 
     def run(self, args, env: 'Environment'):
@@ -267,7 +273,7 @@ class CmdIndex(Command):
             index_all(env.get_boxes())
             return
 
-        if args.box_name:
+        if is_specific_box_requested(args):
             # Specific box requested - use normal pattern like other CLI commands
             box_name = args.box_name
             try:

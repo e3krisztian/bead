@@ -15,12 +15,8 @@ from bead.infra.timestamp import detect_time_precision
 from bead.infra.timestamp import add_one_unit
 from bead.infra.timestamp import TimePrecision
 from bead.meta import InputSpec
-from bead.workspace import Workspace
 from bead.ziparchive import ZipArchive
 
-from . import arg_help
-from . import arg_metavar
-from .autocomplete import complete_bead_spec
 from .bead_spec import BeadSpec, parse_relative_offset, is_relative_offset
 
 
@@ -72,98 +68,6 @@ def info(msg):
 def assert_valid_workspace(workspace):
     if not workspace.is_valid:
         die(f'{workspace.directory} is not a valid workspace')
-
-
-class DefaultArgSentinel:
-    '''
-    I am a sentinel for default values.
-
-    I.e. If you see me, it means that you got the default value.
-
-    I also provide human sensible description for the default value.
-    '''
-
-    def __init__(self, description: str):
-        self.description = description
-
-    def __repr__(self):
-        return self.description
-
-
-def _arg_bead_spec(parser, arg_name, nargs, default):
-    '''
-    Internal helper for declaring bead_spec argument.
-    '''
-    action = parser.arg(
-        arg_name, metavar=arg_metavar.BEAD, help=arg_help.BEAD,
-        nargs=nargs, type=str, default=default)
-    action.completer = complete_bead_spec
-    return action
-
-
-class BEAD_SPEC:
-    """Argument declarer for bead specifications.
-
-    Provides variations for different argument parsing scenarios:
-    - required: Mandatory bead spec (no default)
-    - with_default(value): Optional bead spec with default value
-    - after(required_attr, default): Bead spec that completes after another arg
-    """
-
-    ARG_NAME = 'bead_spec'
-
-    @classmethod
-    def required(cls, parser):
-        """Declare required bead_spec argument."""
-        return _arg_bead_spec(parser, cls.ARG_NAME, nargs=None, default=None)
-
-    @classmethod
-    def with_default(cls, name):
-        """Create bead_spec declarer with default value."""
-        def declare(parser):
-            return _arg_bead_spec(parser, cls.ARG_NAME, nargs='?', default=name)
-        return declare
-
-    @classmethod
-    def after(cls, required_arg, default):
-        """Create bead_spec declarer that completes after another argument."""
-        from .autocomplete import after_arg
-        attr_name = required_arg.ARG_NAME
-        def declare(parser):
-            action = parser.arg(cls.ARG_NAME, type=str, nargs='?', default=default)
-            action.completer = after_arg(attr_name, complete_bead_spec, parser.argparser)
-            return action
-        return declare
-
-
-class WORKSPACE:
-    """Argument declarer for workspace paths.
-
-    Provides variations for different argument parsing scenarios:
-    - optional: Optional flag (--workspace, -w) with current directory default
-    - with_default(value): Optional positional with custom default value
-    """
-
-    ARG_NAME = 'workspace'
-
-    @classmethod
-    def optional(cls, parser):
-        """Declare optional workspace flag argument with current directory default."""
-        return parser.arg(
-            '--workspace', '-w', dest=cls.ARG_NAME,
-            metavar=arg_metavar.WORKSPACE,
-            type=Workspace, default=Workspace.for_current_working_directory(),
-            help=arg_help.WORKSPACE)
-
-    @classmethod
-    def with_default(cls, default_workspace):
-        """Create workspace declarer with custom default value."""
-        def declare(parser):
-            parser.arg(
-                cls.ARG_NAME, nargs='?', type=Workspace,
-                default=default_workspace,
-                metavar=arg_metavar.WORKSPACE, help=arg_help.WORKSPACE)
-        return declare
 
 
 def _get_bead_name(

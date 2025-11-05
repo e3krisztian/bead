@@ -8,14 +8,12 @@ from bead.exceptions import InvalidArchive
 from bead.meta import InputSpec
 from bead.workspace import Workspace
 
-from . import arg_help
-from . import arg_metavar
-from .autocomplete import complete_input_name
+from .args import BEAD_SPEC
+from .args import DefaultArgSentinel
+from .args import INPUT_NAME
+from .args import WORKSPACE
 from .cmdparse import Command
-from .common import BEAD_SPEC
-from .common import DefaultArgSentinel
 from .common import MatchStrategy
-from .common import WORKSPACE
 from .common import assert_valid_workspace
 from .common import die
 from .common import find_bead_for_update
@@ -28,42 +26,10 @@ if TYPE_CHECKING:
     from .environment import Environment
 
 
-# input_name
+# Command-specific sentinels for input commands
 ALL_INPUTS = DefaultArgSentinel('all inputs')
-
-
-class INPUT_NAME:
-    """Argument declarer for input names.
-
-    Provides variations for different argument parsing scenarios:
-    - required: Mandatory input name (no default)
-    - optional: Optional input name (defaults to ALL_INPUTS)
-    """
-
-    ARG_NAME = 'input_name'
-
-    @classmethod
-    def required(cls, parser):
-        """Declare required input_name argument."""
-        action = parser.arg(
-            cls.ARG_NAME,
-            metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
-        action.completer = complete_input_name
-        return action
-
-    @classmethod
-    def optional(cls, parser):
-        """Declare optional input_name argument with ALL_INPUTS default."""
-        action = parser.arg(
-            cls.ARG_NAME, type=str, nargs='?', default=ALL_INPUTS,
-            metavar=arg_metavar.INPUT_NAME, help=arg_help.INPUT_NAME)
-        action.completer = complete_input_name
-        return action
-
-
-# bead_spec sentinels
 SAME_BEAD_NEWEST_VERSION = DefaultArgSentinel('same bead, newest version')
-USE_INPUT_NAME = DefaultArgSentinel(f'use {arg_metavar.INPUT_NAME}')
+USE_INPUT_NAME = DefaultArgSentinel('use INPUT-NAME')
 
 
 class CmdInputAdd(Command):
@@ -152,7 +118,7 @@ class CmdUpdate(Command):
     '''
 
     def declare(self, arg):
-        arg(INPUT_NAME.optional)
+        arg(INPUT_NAME.with_default(ALL_INPUTS))
         arg(BEAD_SPEC.after(INPUT_NAME, default=SAME_BEAD_NEWEST_VERSION))
         arg(WORKSPACE.optional)
         # Matching options (mutually exclusive)
@@ -383,7 +349,7 @@ class CmdLoad(Command):
     '''
 
     def declare(self, arg):
-        arg(INPUT_NAME.optional)
+        arg(INPUT_NAME.with_default(ALL_INPUTS))
         arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
@@ -459,7 +425,7 @@ class CmdUnload(Command):
     '''
 
     def declare(self, arg):
-        arg(INPUT_NAME.optional)
+        arg(INPUT_NAME.with_default(ALL_INPUTS))
         arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):

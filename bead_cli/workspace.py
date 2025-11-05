@@ -11,13 +11,11 @@ from bead.infra.identifier import uuid
 from bead.infra.timestamp import timestamp
 from bead.workspace import Workspace
 
-from . import arg_help
-from . import arg_metavar
-from .autocomplete import complete_box_name
+from .args import BEAD_SPEC
+from .args import BOX_NAME
+from .args import DefaultArgSentinel
+from .args import WORKSPACE
 from .cmdparse import Command
-from .common import BEAD_SPEC
-from .common import DefaultArgSentinel
-from .common import WORKSPACE
 from .common import assert_valid_workspace
 from .common import die
 from .common import info
@@ -51,8 +49,7 @@ class CmdNew(Command):
     '''
 
     def declare(self, arg):
-        arg('workspace', type=Workspace, metavar=arg_metavar.WORKSPACE,
-            help='bead and directory to create')
+        arg(WORKSPACE.required)
 
     def run(self, args, env: 'Environment'):
         workspace: Workspace = args.workspace
@@ -76,9 +73,7 @@ class CmdSave(Command):
     '''
 
     def declare(self, arg):
-        action = arg('box_name', nargs='?', default=USE_THE_ONLY_BOX, type=str,
-            metavar=arg_metavar.BOX, help=arg_help.BOX)
-        action.completer = complete_box_name
+        arg(BOX_NAME.with_default(USE_THE_ONLY_BOX))
         arg(WORKSPACE.optional)
 
     def run(self, args, env: 'Environment'):
