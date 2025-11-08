@@ -30,6 +30,7 @@ class Command:
     '''
 
     FORMATTER_CLASS = argparse.RawTextHelpFormatter
+    REQUIRES_WORKSPACE = False
 
     def declare(self, arg):
         '''
@@ -61,6 +62,37 @@ class Command:
         You will want to override it!
         '''
         raise NotImplementedError
+
+
+class _HelpCommand(Command):
+    """Internal: prints help when no command or incomplete command specified."""
+
+    def __init__(self, parser: argparse.ArgumentParser, argv: Sequence[str]):
+        self._parser = parser
+        self._argv = argv
+
+    def run(self, args, env: 'Environment'):
+        # Format error message - show argv unless it's empty
+        command_str = ' '.join(shlex.quote(arg) for arg in self._argv)
+        error_msg = 'ERROR: not a full command'
+        if command_str:
+            error_msg += f' <{command_str}>'
+        print(f'{error_msg}\n')
+        self._parser.print_help()
+        return -1
+
+
+class _GroupHelpCommand(Command):
+    """Internal: prints help for command groups invoked without subcommand."""
+
+    def __init__(self, parser: argparse.ArgumentParser, group_name: str):
+        self._parser = parser
+        self._group_name = group_name
+
+    def run(self, args, env: 'Environment'):
+        print(f'ERROR: not a full command <{self._group_name}>\n')
+        self._parser.print_help()
+        return -1
 
 
 class Parser:
@@ -157,7 +189,7 @@ class Parser:
             formatter_class=command.FORMATTER_CLASS
         )
         command.declare(self.__class__(parser, self.defaults).arg)
-        parser.set_defaults(_cmdparse__run=command.run)
+        parser.set_defaults(_cmdparse__command=command)
 
     def commands(self, *commands_sequence: tuple[str, Command | type[Command], str]) -> None:
         '''
@@ -180,29 +212,18 @@ class Parser:
 
         # Set a default handler for the group that prints the group's own help
         # when invoked without a subcommand
-        def group_help(args, env: 'Environment'):
-            # Print error message with the group name
-            print(f'ERROR: not a full command <{name}>\n')
-            parser.print_help()
-            return -1
-
-        parser.set_defaults(_cmdparse__run=group_help)
+        parser.set_defaults(_cmdparse__command=_GroupHelpCommand(parser, name))
         return group_parser
+
+    def _prepare_command(self, command: Command, env: 'Environment') -> None:
+        """Prepare command before execution (validate requirements, setup, etc.)."""
+        if command.REQUIRES_WORKSPACE:
+            env.require_workspace()
 
     def dispatch(self, argv: Sequence[str], env: 'Environment') -> int:
         '''
         Parse `argv` and dispatch to the appropriate command.
         '''
-        def print_help(args, env: 'Environment'):
-            # Format error message - show argv unless it's empty
-            command_str = ' '.join(shlex.quote(arg) for arg in argv)
-            error_msg = 'ERROR: not a full command'
-            if command_str:
-                error_msg += f' <{command_str}>'
-            print(f'{error_msg}\n')
-            self.argparser.print_help()
-            return -1
-
         try:
             args = self.argparser.parse_args(argv)
         except SystemExit:
@@ -215,8 +236,10 @@ class Parser:
             #
             # this is worked around here
             return -1
-        run = getattr(args, '_cmdparse__run', print_help)
-        return run(args, env) or 0
+
+        command = getattr(args, '_cmdparse__command', _HelpCommand(self.argparser, argv))
+        self._prepare_command(command, env)
+        return command.run(args, env) or 0
 
     def autocomplete(self):
         """Enable shell autocomplete"""

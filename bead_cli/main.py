@@ -19,7 +19,7 @@ from . import input
 from . import workspace
 from .cmdparse import Command
 from .cmdparse import Parser
-from .environment import Environment
+from .environment import Environment, WorkspaceNotFoundError
 from .migration import migrate_config_if_needed
 import platformdirs
 from .graph import commands as graph_commands
@@ -168,7 +168,14 @@ def run(config_dir: Path, state_dir: Path, argv: Sequence[str]):
     parser.autocomplete()
 
     env = Environment(config_dir, state_dir)
-    return parser.dispatch(argv, env)
+    try:
+        return parser.dispatch(argv, env)
+    except WorkspaceNotFoundError as e:
+        print(f'ERROR: {e.directory} is not a valid workspace', file=sys.stderr)
+        return 1
+    except BoxIndexError as e:
+        print_box_index_error(e)
+        return 1
 
 
 FAILURE_TEMPLATE = """\
@@ -246,9 +253,6 @@ def main(run=run):
 
     try:
         retval = run(config_dir, state_dir, sys.argv[1:])
-    except BoxIndexError as e:
-        print_box_index_error(e)
-        retval = 1
     except KeyboardInterrupt:
         print("Interrupted :(", file=sys.stderr)
         retval = -1

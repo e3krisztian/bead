@@ -180,7 +180,7 @@ class TestInputNameCompletion:
 
         return workspace
 
-    @patch('bead_cli.autocomplete.get_workspace')
+    @patch('bead_cli.autocomplete.Workspace.for_current_working_directory')
     def test_complete_input_names_all(self, mock_get_workspace, mock_workspace):
         """Test completion of all input names with empty prefix."""
         mock_get_workspace.return_value = mock_workspace
@@ -193,7 +193,7 @@ class TestInputNameCompletion:
         assert 'test-data' in results
         assert len(results) == 3
 
-    @patch('bead_cli.autocomplete.get_workspace')
+    @patch('bead_cli.autocomplete.Workspace.for_current_working_directory')
     def test_complete_input_names_with_prefix(self, mock_get_workspace, mock_workspace):
         """Test completion of input names with partial prefix."""
         mock_get_workspace.return_value = mock_workspace
@@ -205,7 +205,7 @@ class TestInputNameCompletion:
         assert 'validation-set' not in results
         assert 'test-data' not in results
 
-    @patch('bead_cli.autocomplete.get_workspace')
+    @patch('bead_cli.autocomplete.Workspace.for_current_working_directory')
     def test_complete_input_names_with_prefix_match_multiple(self, mock_get_workspace, mock_workspace):
         """Test completion that matches multiple input names."""
         mock_get_workspace.return_value = mock_workspace
@@ -224,7 +224,7 @@ class TestInputNameCompletion:
 
         assert results == {}
 
-    @patch('bead_cli.autocomplete.get_workspace')
+    @patch('bead_cli.autocomplete.Workspace.for_current_working_directory')
     def test_complete_input_names_invalid_workspace(self, mock_get_workspace):
         """Test completion with invalid workspace returns empty."""
         workspace = Mock()
@@ -236,7 +236,7 @@ class TestInputNameCompletion:
 
         assert results == {}
 
-    @patch('bead_cli.autocomplete.get_workspace')
+    @patch('bead_cli.autocomplete.Workspace.for_current_working_directory')
     def test_complete_input_names_exception_handling(self, mock_get_workspace):
         """Test completion handles exceptions gracefully."""
         mock_get_workspace.side_effect = Exception("Error")

@@ -299,3 +299,25 @@ def test_load_different_name_warn(shell, box, check, times, tmp_path_factory):
     assert 'WARNING' in shell.stderr, "Should show warning"
     assert 'original_name' in shell.stderr, "Should mention expected name"
     assert 'different_name' in shell.stderr, "Should mention actual name"
+
+
+def test_input_update_outside_workspace_shows_clear_error(shell, tmp_path):
+    """
+    Test that input update command shows clear error when run outside a workspace.
+
+    This tests the workspace validation for input commands.
+    """
+    # Create a temporary directory that is NOT a workspace
+    non_workspace_dir = tmp_path / 'not_a_workspace'
+    non_workspace_dir.mkdir()
+
+    shell.cd(non_workspace_dir)
+    shell.bead('input', 'update', expect_failure=True)
+
+    # Should show clear error message, not FileNotFoundError
+    assert 'ERROR' in shell.stderr
+    assert 'not a valid workspace' in shell.stderr
+    assert str(non_workspace_dir) in shell.stderr
+    # Should NOT show traceback or FileNotFoundError
+    assert 'Traceback' not in shell.stderr
+    assert 'FileNotFoundError' not in shell.stderr

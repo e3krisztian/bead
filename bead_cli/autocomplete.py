@@ -28,9 +28,9 @@ import os
 from dataclasses import dataclass
 
 from bead.box_query import QueryCondition
+from bead.workspace import Workspace
 
 from .bead_spec import BeadSpec
-from .common import get_workspace
 from .environment import get_environment
 
 
@@ -582,10 +582,7 @@ def complete_input_name(prefix, parsed_args, **kwargs):
         Dict mapping input names to "source@date (status)" descriptions
     """
     try:
-        # Get workspace from current working directory
-        workspace = get_workspace()
-
-        # Check if workspace is valid
+        workspace = Workspace.for_current_working_directory()
         if not workspace.is_valid:
             return {}
 

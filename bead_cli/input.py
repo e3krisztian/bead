@@ -15,7 +15,6 @@ from .cmdparse import Command
 from .common import MatchStrategy
 from .common import die
 from .common import find_bead_for_update
-from .common import get_workspace
 from .common import refresh_all_box_indexes
 from .common import resolve_bead
 from .common import verify_with_feedback
@@ -36,6 +35,8 @@ class CmdInputAdd(Command):
     Make data from another bead available in the input directory.
     '''
 
+    REQUIRES_WORKSPACE = True
+
     def declare(self, arg):
         arg(INPUT_NAME.required)
         arg(BEAD_SPEC.with_default(USE_INPUT_NAME))
@@ -43,7 +44,7 @@ class CmdInputAdd(Command):
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
         bead_spec = args.bead_spec
-        workspace = get_workspace()
+        workspace = env.get_valid_workspace()
 
         if os.path.dirname(input_name):
             die(f'Invalid input name: {input_name}')
@@ -68,12 +69,14 @@ class CmdDelete(Command):
     Forget all about an input.
     '''
 
+    REQUIRES_WORKSPACE = True
+
     def declare(self, arg):
         arg(INPUT_NAME.required)
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
-        workspace = get_workspace()
+        workspace = env.get_valid_workspace()
         if workspace.has_input(input_name):
             workspace.delete_input(input_name)
             print(f'Input {input_name} is deleted.')
@@ -86,6 +89,8 @@ class CmdMap(Command):
     Change the name of the bead from which the input is loaded/updated.
     '''
 
+    REQUIRES_WORKSPACE = True
+
     def declare(self, arg):
         arg(INPUT_NAME.required)
         arg(BEAD_SPEC.with_default(USE_INPUT_NAME))
@@ -93,7 +98,7 @@ class CmdMap(Command):
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
         bead_spec = args.bead_spec
-        workspace = get_workspace()
+        workspace = env.get_valid_workspace()
 
         if input_name not in [input_spec.name for input_spec in workspace.inputs]:
             die(f'Unknown input name: {input_name}')
@@ -112,6 +117,8 @@ class CmdUpdate(Command):
     By default, matches by both input name and kind for precise updates.
     Use --no-kind or --no-name to relax matching constraints.
     '''
+
+    REQUIRES_WORKSPACE = True
 
     def declare(self, arg):
         arg(INPUT_NAME.with_default(ALL_INPUTS))
@@ -156,7 +163,7 @@ class CmdUpdate(Command):
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
 
-        workspace = get_workspace()
+        workspace = env.get_valid_workspace()
         for input in workspace.inputs:
             bead_spec_to_resolve = self._get_default_bead_spec(input.name, workspace, args)
             try:
@@ -178,7 +185,7 @@ class CmdUpdate(Command):
     def update_one_input(self, args, env):
         input_name = args.input_name
         bead_spec = args.bead_spec
-        workspace = get_workspace()
+        workspace = env.get_valid_workspace()
         try:
             input = workspace.get_input(input_name)
         except LookupError:
@@ -369,12 +376,14 @@ class CmdLoad(Command):
     Put defined input data in place.
     '''
 
+    REQUIRES_WORKSPACE = True
+
     def declare(self, arg):
         arg(INPUT_NAME.with_default(ALL_INPUTS))
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
-        workspace = get_workspace()
+        workspace = env.get_valid_workspace()
 
         # Refresh indexes to ensure we have the latest beads
         refresh_all_box_indexes(env)
@@ -444,12 +453,14 @@ class CmdUnload(Command):
     Remove input data.
     '''
 
+    REQUIRES_WORKSPACE = True
+
     def declare(self, arg):
         arg(INPUT_NAME.with_default(ALL_INPUTS))
 
     def run(self, args, env: 'Environment'):
         input_name = args.input_name
-        workspace = get_workspace()
+        workspace = env.get_valid_workspace()
         if input_name is ALL_INPUTS:
             for input in workspace.inputs:
                 _unload(workspace, input.name)
