@@ -30,7 +30,6 @@ class Command:
     '''
 
     FORMATTER_CLASS = argparse.RawTextHelpFormatter
-    REQUIRES_WORKSPACE = False
 
     def declare(self, arg):
         '''
@@ -215,11 +214,6 @@ class Parser:
         parser.set_defaults(_cmdparse__command=_GroupHelpCommand(parser, name))
         return group_parser
 
-    def _prepare_command(self, command: Command, env: 'Environment') -> None:
-        """Prepare command before execution (validate requirements, setup, etc.)."""
-        if command.REQUIRES_WORKSPACE:
-            env.require_workspace()
-
     def dispatch(self, argv: Sequence[str], env: 'Environment') -> int:
         '''
         Parse `argv` and dispatch to the appropriate command.
@@ -238,7 +232,6 @@ class Parser:
             return -1
 
         command = getattr(args, '_cmdparse__command', _HelpCommand(self.argparser, argv))
-        self._prepare_command(command, env)
         return command.run(args, env) or 0
 
     def autocomplete(self):

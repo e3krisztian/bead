@@ -62,7 +62,6 @@ class Environment:
         self.config_dir = Path(config_dir)
         self.state_dir = Path(state_dir)
         self._content = {}
-        self._workspace: Workspace | None = None
         # Ensure directories exist
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self.state_dir.mkdir(parents=True, exist_ok=True)
@@ -177,38 +176,14 @@ class Environment:
     def disable_box(self, name):
         self._set_box_enabled(name, False)
 
-    def get_workspace(self) -> Workspace:
-        """
-        Get workspace from current working directory (may be invalid).
-
-        Use this for commands that explicitly handle invalid workspaces.
-        For most commands, use get_valid_workspace() after the framework
-        has validated via REQUIRES_WORKSPACE = True.
-        """
+    def get_unchecked_workspace(self) -> Workspace:
+        """Get workspace from current working directory (may be invalid)."""
         return Workspace.for_current_working_directory()
 
-    def require_workspace(self) -> Workspace:
-        """
-        Validate and cache workspace, or raise WorkspaceNotFoundError.
-
-        Called by framework for commands with REQUIRES_WORKSPACE = True.
-        Validates once and caches the result.
-        """
-        if self._workspace is None:
-            workspace = Workspace.for_current_working_directory()
-            if not workspace.is_valid:
-                raise WorkspaceNotFoundError(workspace.directory)
-            self._workspace = workspace
-        return self._workspace
-
-    def get_valid_workspace(self) -> Workspace:
-        """
-        Return cached validated workspace.
-
-        Use this in commands after framework has validated via REQUIRES_WORKSPACE.
-        Raises RuntimeError if require_workspace() was not called first.
-        """
-        if self._workspace is None:
-            raise RuntimeError('get_valid_workspace() called before require_workspace()')
-        return self._workspace
+    def get_workspace(self) -> Workspace:
+        """Get validated workspace or raise WorkspaceNotFoundError."""
+        workspace = self.get_unchecked_workspace()
+        if not workspace.is_valid:
+            raise WorkspaceNotFoundError(workspace.directory)
+        return workspace
 

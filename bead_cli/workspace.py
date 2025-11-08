@@ -16,7 +16,6 @@ from .args import BOX_NAME
 from .args import DefaultArgSentinel
 from .args import WORKSPACE
 from .cmdparse import Command
-from .common import assert_valid_workspace
 from .common import die
 from .common import info
 from .common import refresh_all_box_indexes
@@ -72,14 +71,12 @@ class CmdSave(Command):
     Save workspace in a box.
     '''
 
-    REQUIRES_WORKSPACE = True
-
     def declare(self, arg):
         arg(BOX_NAME.with_default(USE_THE_ONLY_BOX))
 
     def run(self, args, env: 'Environment'):
         box_name = args.box_name
-        workspace = env.get_valid_workspace()
+        workspace = env.get_workspace()
         # XXX: (usability) save - support saving directly to a directory outside of workspace
         if box_name is USE_THE_ONLY_BOX:
             boxes = env.get_boxes()
@@ -164,7 +161,8 @@ class CmdEdit(Command):
 
 
 def print_inputs(env, workspace, verbose):
-    assert_valid_workspace(workspace)
+    if not workspace.is_valid:
+        die(f'{workspace.directory} is not a valid workspace')
     inputs = sorted(workspace.inputs)
 
     if inputs:
@@ -237,7 +235,7 @@ class CmdStatus(Command):
             help='show more detailed information')
 
     def run(self, args, env: 'Environment'):
-        workspace = env.get_workspace()
+        workspace = env.get_unchecked_workspace()
         verbose = args.verbose
         kind_needed = verbose
         if workspace.is_valid:
@@ -265,7 +263,8 @@ class CmdDiscard(Command):
     def run(self, args, env: 'Environment'):
         workspace = args.workspace
         if not args.force:
-            assert_valid_workspace(workspace)
+            if not workspace.is_valid:
+                die(f'{workspace.directory} is not a valid workspace')
         directory = workspace.directory
         # on non-posix systems (Windows) it might happen, that we can not remove
         # the directory we are in -> ignore errors

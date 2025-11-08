@@ -65,11 +65,6 @@ def info(msg):
     sys.stderr.write('\n')
 
 
-def assert_valid_workspace(workspace):
-    if not workspace.is_valid:
-        die(f'{workspace.directory} is not a valid workspace')
-
-
 def _get_bead_name(
     spec: BeadSpec,
     context_input: InputSpec | None,
