@@ -191,6 +191,7 @@ class CmdUpdate(Command):
         explicit_bead_name_given = (bead_spec is not SAME_BEAD_NEWEST_VERSION)
 
         # Resolve archive using new mini-language
+        has_time_constraint = False
         if bead_spec is SAME_BEAD_NEWEST_VERSION:
             bead_spec_to_resolve = self._get_default_bead_spec(input_name, workspace, args)
             try:
@@ -205,13 +206,11 @@ class CmdUpdate(Command):
             # For relative offsets without explicit name (e.g., @-, @+), prepend mapped name
             bead_spec, spec = self._resolve_bead_spec_for_input(bead_spec, input_name, workspace)
             archive = self._find_with_diagnostics(env, bead_spec, input, args, spec)
+            # Determine if spec has time constraint (allows downgrade)
+            if not os.path.isfile(args.bead_spec):
+                has_time_constraint = bool(spec.time)
 
         # Verify constraints before updating
-        # Determine if spec has time constraint (allows downgrade)
-        has_time_constraint = False
-        if explicit_bead_name_given and not os.path.isfile(args.bead_spec):
-            # We already parsed spec in the else branch above
-            has_time_constraint = bool(spec.time)
 
         self._verify_archive_constraints(
             input, archive, args, workspace, explicit_bead_name_given, has_time_constraint
