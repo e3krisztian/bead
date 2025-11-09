@@ -18,6 +18,7 @@ from .args import WORKSPACE
 from .cmdparse import Command
 from .common import die
 from .common import info
+from .common import MatchStrategy
 from .common import refresh_all_box_indexes
 from .common import resolve_bead
 from .common import verify_with_feedback
@@ -160,7 +161,7 @@ class CmdEdit(Command):
             print('Input data not loaded, update if needed and load manually')
 
 
-def print_inputs(env, workspace, verbose):
+def print_inputs(env, workspace, verbose, match_strategy):
     if not workspace.is_valid:
         die(f'{workspace.directory} is not a valid workspace')
     inputs = sorted(workspace.inputs)
@@ -170,52 +171,22 @@ def print_inputs(env, workspace, verbose):
 
         print('Inputs:')
         has_not_loaded = False
-        is_not_first_input = True
+        is_first_input = True
         for input in inputs:
-            if is_not_first_input:
+            if not is_first_input:
                 print('')
-            is_not_loaded = not workspace.is_loaded(input.name)
-            has_not_loaded = has_not_loaded or is_not_loaded
+            is_first_input = False
+
+            is_loaded = workspace.is_loaded(input.name)
+            has_not_loaded = has_not_loaded or not is_loaded
+
             print(f'input/{input.name}')
-            print(f'\tStatus:      {"**NOT LOADED**" if is_not_loaded else "loaded"}')
 
-            # Find bead name by content_id
-            bead_name = None
-            for box in boxes:
-                try:
-                    bead = box.search().by_content_id(input.content_id).first()
-                    bead_name = bead.name
-                    break
-                except LookupError:
-                    continue
+            real_name = workspace.get_source_name(input.name)
+            found_beads = find_beads_by_content_id(boxes, input.content_id)
 
-            if bead_name:
-                print(f'\tBead:        {bead_name} # {input.freeze_time_iso}')
-            else:
-                print(f'\tBead:        **MISSING** # {input.freeze_time_iso}')
-
-            if verbose:
-                print(f'\tKind:        {input.kind}')
-                print(f'\tContent id:  {input.content_id}')
-            print('\tBox[es]:')
-            has_box = False
-            # find by kind, then check for exact match
-            for box in boxes:
-                try:
-                    # First search by kind and freeze time to find best match
-                    best_bead = box.search().by_kind(input.kind).at_or_older(input.freeze_time).newest()
-                    has_box = True
-                    # Check if the best match is also an exact content_id match
-                    if best_bead.content_id == input.content_id:
-                        print(f'\t * -r {box.name} # {best_bead.freeze_time_iso}')
-                    else:
-                        print(f'\t ~ -r {box.name} # {best_bead.freeze_time_iso} (kind match)')
-                except LookupError:
-                    pass
-            if not has_box:
-                print('\t - no candidates :(')
-                print('\t   Maybe it has been renamed? or is it in an unreachable box?')
-            is_not_first_input = True
+            print_input_status(is_loaded, found_beads, verbose)
+            print_input_location(real_name, input, found_beads, verbose, boxes, match_strategy)
 
         print('')
         if has_not_loaded:
@@ -223,6 +194,114 @@ def print_inputs(env, workspace, verbose):
             print('You can "load" or "update" them manually.')
     else:
         print('No inputs defined')
+
+
+def find_beads_by_content_id(boxes, content_id):
+    """Search all boxes for beads matching the content_id."""
+    found = []
+    for box in boxes:
+        try:
+            bead = box.search().by_content_id(content_id).first()
+            found.append((box.name, bead))
+        except LookupError:
+            continue
+    return found
+
+
+def print_input_status(is_loaded, found_beads, verbose):
+    """Print the Status line if needed."""
+    if verbose or not is_loaded:
+        if is_loaded:
+            print('\tStatus:      loaded')
+        else:
+            print('\tStatus:      **NOT LOADED**')
+
+
+def print_input_location(real_name, input, found_beads, verbose, boxes, match_strategy):
+    """Print location information (Bead/From/Box/Available as lines)."""
+    if not found_beads:
+        print_missing_bead(real_name, input, verbose)
+        return
+
+    update_available = check_update_available(real_name, input, boxes, match_strategy)
+    update_suffix = ' **UPDATE AVAILABLE**' if update_available else ''
+
+    matching_boxes = []
+    different_name_beads = []
+
+    for box_name, bead in found_beads:
+        if bead.name == real_name:
+            matching_boxes.append(box_name)
+        else:
+            different_name_beads.append((box_name, bead))
+
+    if verbose:
+        print(f'\tKind:        {input.kind}')
+        print(f'\tContent id:  {input.content_id}')
+
+    if len(matching_boxes) == 1 and not different_name_beads:
+        print(f'\tFrom:        {matching_boxes[0]}:{real_name}@{input.freeze_time_iso}{update_suffix}')
+    else:
+        print(f'\tBead:        {real_name}@{input.freeze_time_iso}{update_suffix}')
+        if matching_boxes:
+            print(f'\tBox:         {", ".join(matching_boxes)}')
+        if different_name_beads:
+            specs = [f'{box_name}:{bead.name}' for box_name, bead in different_name_beads]
+            print(f'\tAvailable as: {", ".join(specs)}')
+
+    if verbose and update_available:
+        print_update_details(real_name, input, boxes, match_strategy)
+
+
+def print_missing_bead(real_name, input, verbose):
+    """Print information for missing bead."""
+    if verbose:
+        print(f'\tKind:        {input.kind}')
+        print(f'\tContent id:  {input.content_id}')
+    print(f'\tBead:        {real_name}@{input.freeze_time_iso}')
+    print('\tBox:         **NO CANDIDATES**')
+    print('\t   Maybe it has been renamed? or is it in an unreachable box?')
+
+
+def check_update_available(real_name, input, boxes, match_strategy):
+    """Check if a newer version is available for update."""
+    use_name = (match_strategy != MatchStrategy.KIND_ONLY)
+    use_kind = (match_strategy != MatchStrategy.NAME_ONLY)
+
+    for box in boxes:
+        try:
+            search = box.search()
+            if use_name:
+                search = search.by_name(real_name)
+            if use_kind:
+                search = search.by_kind(input.kind)
+
+            search.newer_than(input.freeze_time).newest()
+            return True
+        except LookupError:
+            continue
+
+    return False
+
+
+def print_update_details(real_name, input, boxes, match_strategy):
+    """Print detailed update information in verbose mode."""
+    use_name = (match_strategy != MatchStrategy.KIND_ONLY)
+    use_kind = (match_strategy != MatchStrategy.NAME_ONLY)
+
+    for box in boxes:
+        try:
+            search = box.search()
+            if use_name:
+                search = search.by_name(real_name)
+            if use_kind:
+                search = search.by_kind(input.kind)
+
+            newest = search.newer_than(input.freeze_time).newest()
+            print(f'\tUpdate:      {box.name}:{newest.name}@{newest.freeze_time_iso}')
+            return
+        except LookupError:
+            continue
 
 
 class CmdStatus(Command):
@@ -233,17 +312,31 @@ class CmdStatus(Command):
     def declare(self, arg):
         arg('-v', '--verbose', default=False, action='store_true',
             help='show more detailed information')
+        arg(self._add_matching_options)
+
+    @staticmethod
+    def _add_matching_options(parser):
+        """Add --no-kind/--no-name matching options for update checking."""
+        matching_group = parser.argparser.add_mutually_exclusive_group()
+        matching_group.add_argument(
+            '--no-kind', action='store_const', const=MatchStrategy.NAME_ONLY,
+            dest='match_strategy', help='Check for updates ignoring kind (match by name only)')
+        matching_group.add_argument(
+            '--no-name', action='store_const', const=MatchStrategy.KIND_ONLY,
+            dest='match_strategy', help='Check for updates ignoring name (match by kind only)')
+        parser.argparser.set_defaults(match_strategy=MatchStrategy.NAME_AND_KIND)
 
     def run(self, args, env: 'Environment'):
         workspace = env.get_unchecked_workspace()
         verbose = args.verbose
+        match_strategy = args.match_strategy
         kind_needed = verbose
         if workspace.is_valid:
             print(f'Bead Name: {workspace.name}')
             if kind_needed:
                 print(f'Bead kind: {workspace.kind}')
             print()
-            print_inputs(env, workspace, verbose)
+            print_inputs(env, workspace, verbose, match_strategy)
         else:
             warning(f'Invalid workspace ({workspace.directory})')
 

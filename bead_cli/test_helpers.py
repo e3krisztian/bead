@@ -112,3 +112,42 @@ def create_bead_with_inputs(shell, box, bead_name, inputs, timestamp, tmp_path_f
     return ZipArchive(archive)
 
 
+def split_status_by_inputs(status_output):
+    """Split status output into dict keyed by input name.
+
+    Args:
+        status_output: String output from `bead status` command
+
+    Returns:
+        Dict mapping input names to their section text
+        Example: {'producer': 'input/producer\\n\\tFrom: ...', 'dataset': 'input/dataset\\n\\t...'}
+    """
+    sections = {}
+    lines = status_output.split('\n')
+    current_input = None
+    current_section = []
+
+    for line in lines:
+        if line.startswith('input/'):
+            # Save previous section if any
+            if current_input:
+                sections[current_input] = '\n'.join(current_section)
+            # Start new section
+            current_input = line[6:]  # Remove 'input/' prefix
+            current_section = [line]
+        elif current_input and (line.startswith('\t') or line.strip() == ''):
+            # Part of current input section
+            current_section.append(line)
+        elif current_input:
+            # End of inputs section
+            sections[current_input] = '\n'.join(current_section)
+            current_input = None
+            current_section = []
+
+    # Save last section if any
+    if current_input:
+        sections[current_input] = '\n'.join(current_section)
+
+    return sections
+
+
