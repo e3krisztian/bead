@@ -98,6 +98,7 @@ TAB = '\t'
 BELL = '\x07'  # Completion feedback tone
 BACKSPACE = '\x08'  # Character deletion
 CTRL_A = '\x01'  # Move to start of line
+CTRL_E = '\x05'  # Move to end of line
 CTRL_F = '\x06'  # Move cursor forward (right) one character
 CTRL_B = '\x02'  # Move cursor backward (left) one character
 ESC = '\x1b'  # Escape key
@@ -463,12 +464,16 @@ class ShellTester:
 
         return output
 
-    def complete(self, partial_input, cursor_offset=0):
+    def complete(self, partial_input, *, cursor_offset=0, cursor='', rstrip=True):
         """Test completion of bead command using tab key.
 
         Works identically for both bash and zsh using low-level pexpect API:
-        sends partial command, TAB(s), CTRL_A + echo, and NEWLINE to capture
-        the completed line.
+        1. Sends partial command
+        2. Sends TAB to trigger completion
+        3. Inserts cursor marker string at cursor position (if provided)
+        4. Uses CTRL_A + echo 'line' + CTRL_E to capture with single quotes
+        5. Single quotes preserve all content (spaces, special chars)
+        6. Processes result: optionally rstrips
 
         Args:
             partial_input: The partial command line (e.g., "bead inp")
@@ -476,6 +481,10 @@ class ShellTester:
                           0 means cursor at end (default). Positive values move cursor
                           left from the end. For example, cursor_offset=5 with input
                           "bead input" would place cursor after "bead in".
+            cursor: String to insert at cursor position after completion.
+                   Empty string (default) inserts nothing.
+                   E.g., '=CURSOR=' marks cursor position in result.
+            rstrip: If True (default), strip trailing whitespace from result.
 
         Returns:
             dict: {'completed_line': str, 'success': True/False, ...}
@@ -501,11 +510,21 @@ class ShellTester:
             # Send TAB to trigger completion
             self.shell.send(TAB)
 
-            # Use CTRL_A to move to start of line, then echo to capture the completed line
-            self.shell.send(CTRL_A + 'echo COMPLETED LINE=')
+            # Insert cursor marker at current position (right after completion)
+            # This marks exactly where the shell placed the cursor after TAB
+            if cursor:
+                self.shell.send(cursor)
 
-            # Send NEWLINE to execute the echo command
-            self.shell.send(NEWLINE)
+            # Use CTRL_A to move to start of line, then echo with quoted line to preserve all content
+            # Without quotes, `echo foo ` outputs just `foo` (space is lost)
+            # With quotes, `echo 'foo '` outputs `foo ` (space preserved)
+            # The =CURSOR= marker shows cursor position and protects content from rstrip
+            self.shell.send(CTRL_A + "echo COMPLETED LINE='")
+
+            # Move to end of line, close the quote, and execute
+            # After CTRL_A + type, cursor is before the completed line
+            # CTRL_E moves cursor to end of line, then we add closing quote
+            self.shell.send(CTRL_E + "'" + NEWLINE)
 
             # DEBUG: Show buffer state before expect
             if self.debug:
@@ -539,12 +558,21 @@ class ShellTester:
 
             completed_line = match.group('line')
 
-            # Then wait for prompt
-            self.shell.expect_exact(prompt, timeout=2)
-
+            # DEBUG: Show raw captured line before any processing
             if self.debug:
                 print(f"\n[COMPLETION DEBUG] {self.shell_name} - Input: {partial_input}")
-                print(f"[COMPLETION DEBUG] Completed line: {repr(completed_line)}")
+                print(f"[COMPLETION DEBUG] Raw captured line: {repr(completed_line)}")
+                print(f"[COMPLETION DEBUG] cursor={repr(cursor)}, rstrip={rstrip}")
+
+            # Process the result: apply rstrip if requested
+            if rstrip:
+                completed_line = completed_line.rstrip()
+
+            if self.debug:
+                print(f"[COMPLETION DEBUG] Processed line: {repr(completed_line)}")
+
+            # Then wait for prompt
+            self.shell.expect_exact(prompt, timeout=2)
 
             return {'completed_line': completed_line, 'success': True}
 
@@ -586,13 +614,29 @@ def shell_tester(request, home_env):
         tester.cleanup()
 
 
-def test_bead_help_completion(shell_tester):
-    """Test completing partial command 'bead inp' completes to 'bead input'."""
-    result = shell_tester.complete("bead inp")
+def test_input_command_not_directory(shell_tester):
+    """Test that 'bead inpu' completes to 'input' command, not 'input/' directory.
+
+    In a bead workspace (created by shell_tester fixture), there's an input/
+    directory. This test verifies that argcomplete completes to the 'input'
+    command rather than treating it as filesystem completion to 'input/'
+    directory (with slash).
+
+    This is a regression test: if argcomplete incorrectly does filesystem
+    completion, it would complete to 'bead input/=CURSOR=' instead of
+    'bead input =CURSOR='.
+
+    Uses cursor='=CURSOR=' to mark cursor position, allowing us to verify
+    there's no slash in the completion.
+    """
+    # Complete 'bead inpu' with cursor marker
+    result = shell_tester.complete("bead inpu", cursor='=CURSOR=')
     assert result['success']
-    # Should complete to 'bead input'
-    assert result['completed_line'] == 'bead input', \
-        f"Expected 'bead input' but got: {result['completed_line']}"
+
+    # Should complete to 'bead input =CURSOR=' (command with space before cursor)
+    # NOT 'bead input/=CURSOR=' (directory with slash)
+    assert result['completed_line'] == 'bead input =CURSOR=', \
+        f"Expected 'bead input =CURSOR=' but got: {result['completed_line']}"
 
 
 def test_box_name_completion(shell_tester, completion_debug_log):
