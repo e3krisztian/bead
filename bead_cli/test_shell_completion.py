@@ -77,11 +77,15 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 import pexpect
 import pytest
 
 from bead.ziparchive import ZipArchive
+
+# Type alias for pexpect match result
+MatchType = re.Match[str]
 
 # Skip entire test module on Windows - pexpect requires Unix PTY support
 pytestmark = pytest.mark.skipif(
@@ -361,8 +365,8 @@ class ShellTester:
         if not self.config:
             raise ValueError(f"Unknown shell: {shell_name}")
         self.debug = debug
-        self.shell = None
-        self.bash_version = None  # Will be set during setup for bash
+        self.shell: pexpect.pty_spawn.spawn | None = None
+        self.bash_version: int | None = None  # Will be set during setup for bash
 
     def setup(self):
         """Start shell and configure completion."""
@@ -446,6 +450,7 @@ class ShellTester:
         Returns:
             str: Command output (text between command and prompt)
         """
+        assert self.shell is not None
         prompt = self.config.prompt_change.split('"')[1]
         self.shell.send(cmd + '\n')
         self.shell.expect_exact(prompt, timeout=5.0)
@@ -475,6 +480,7 @@ class ShellTester:
         Returns:
             dict: {'completed_line': str, 'success': True/False, ...}
         """
+        assert self.shell is not None
         try:
             prompt = self.config.prompt_change.split('"')[1]
 
@@ -517,15 +523,21 @@ class ShellTester:
             # newline wasn't in pexpect's buffer window.
             self.shell.expect(r'(?<!echo )COMPLETED LINE=(?P<line>[^\r\n]+)', timeout=2)
 
+            # Ensure match succeeded and is not EOF/TIMEOUT
+            assert self.shell.match is not None
+            assert self.shell.match is not pexpect.EOF
+            assert self.shell.match is not pexpect.TIMEOUT
+            match = cast(MatchType, self.shell.match)
+
             # DEBUG: Show what was matched
             if self.debug:
-                print(f"[DEBUG] Match object: {self.shell.match}")
-                print(f"[DEBUG] Match groups: {self.shell.match.groups()}")
-                print(f"[DEBUG] Match groupdict: {self.shell.match.groupdict()}")
+                print(f"[DEBUG] Match object: {match}")
+                print(f"[DEBUG] Match groups: {match.groups()}")
+                print(f"[DEBUG] Match groupdict: {match.groupdict()}")
                 print(f"[DEBUG] Before buffer: {repr(self.shell.before)}")
                 print(f"[DEBUG] After buffer: {repr(self.shell.after)}")
 
-            completed_line = self.shell.match.group('line')
+            completed_line = match.group('line')
 
             # Then wait for prompt
             self.shell.expect_exact(prompt, timeout=2)
