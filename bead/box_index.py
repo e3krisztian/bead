@@ -425,19 +425,17 @@ class BoxIndex:
         '''
         Add a bead archive to the index.
 
-        Extracts metadata from the archive file, validates it, and adds a record
-        to the index. This is called automatically by Box.store() when creating
-        a new bead, but can also be used to index manually added archive files.
+        Reads metadata from the archive and inserts an index record.
+        Content integrity is not checked; only metadata is read.
 
         Args:
             archive_path: Path to the bead archive file (.zip)
 
         Raises:
-            InvalidArchive: Archive is corrupted or has invalid metadata (non-fatal)
+            InvalidArchive: Archive meta is missing or unparseable (non-fatal)
             BoxIndexError: Database operation failed (fatal, see error advice)
         '''
         archive = ZipArchive(archive_path, box_name='')
-        archive.validate()
         relative_path = archive_path.relative_to(self.box_directory)
         with self._safe_db_access() as conn:
             insert_bead_record(conn, archive, relative_path)
