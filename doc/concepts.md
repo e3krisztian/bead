@@ -21,6 +21,13 @@ The directory has special structure and content, so it must be created via the `
 
 A *bead* is a frozen, discrete computation, created from a *workspace*. It is currently a zip file.
 
+The archive has three directories:
+- `code/`: everything in the workspace root (scripts, configs, subdirectories) except the special directories
+- `data/`: the contents of `output/` — the results of the computation
+- `meta/`: bead metadata (kind, freeze time, inputs, content manifest)
+
+The special workspace directories `input/`, `temp/`, and `.bead-meta/` are not archived.
+
 A bead is intended to capture data with the code that produced it. The goal is transparency and semi-automatic reproducability through extra tooling. Full automatic reproducability is assumed to be inpractical/expensive, however it can be achieved by gradual process/quality improvements (learning through feedback).
 
 The bead format is designed to be

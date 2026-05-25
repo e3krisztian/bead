@@ -1,5 +1,12 @@
 '''
-layout of beads
+Layout constants for bead archives and workspaces.
+
+Workspace → Archive mapping when packing:
+  workspace root files/dirs  →  archive code/
+  workspace output/          →  archive data/
+  workspace .bead-meta/      →  archive meta/
+  workspace input/           →  (not archived)
+  workspace temp/            →  (not archived)
 '''
 
 from .infra.fs import Path
