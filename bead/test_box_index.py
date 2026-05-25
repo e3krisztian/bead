@@ -1,12 +1,14 @@
 from bead.infra.fs import Path
 from dataclasses import dataclass
+import io
+import zipfile
 
 import pytest
 
 import bead.zipopener
 from .box import Box
 from .box_index import BoxIndex, SCHEMA_VERSION
-from .exceptions import BoxIndexError
+from .exceptions import BoxIndexError, InvalidArchive
 from .infra import sqlite
 from .workspace import Workspace
 
@@ -73,6 +75,33 @@ def create_invalid_file(box_directory: Path, name: str):
     """Helper to create a file that is not a valid bead."""
     (box_directory / name).touch()
 
+
+def create_unindexed_bead_with_code_file(box_directory: Path, name: str, kind: str = "test-kind"):
+    """Create a valid bead archive with a code file, so the zip has a `code/` member to corrupt."""
+    ws_path = box_directory / f"ws_{name}"
+    ws = Workspace(ws_path)
+    ws.create(kind)
+    code_file = ws_path / "code_file.txt"
+    code_file.write_text("some code")
+    freeze_time = "20230101T000000000000+0000"
+    zipfilename = box_directory / f"{name}_{freeze_time}.zip"
+    ws.pack(zipfilename, freeze_time=freeze_time, comment="Test bead archive")
+    return zipfilename
+
+
+def corrupt_code_file_in_zip(zip_path: Path) -> Path:
+    """Rewrite zip replacing a code/ file's bytes with flipped bits. Returns zip_path."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(zip_path, "r") as zin:
+        code_member = next(n for n in zin.namelist() if n.startswith("code/"))
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                data = zin.read(item.filename)
+                if item.filename == code_member:
+                    data = bytes(b ^ 0xFF for b in data)
+                zout.writestr(item, data)
+    zip_path.write_bytes(buf.getvalue())
+    return zip_path
 
 
 def test_sync_add_new_file(box_paths: BoxPaths, box_index: BoxIndex):
@@ -184,3 +213,24 @@ def test_box_index_init_newer_db(box_paths: BoxPaths):
 
     with pytest.raises(BoxIndexError, match="Index schema is from a newer version"):
         BoxIndex("test_box", box_paths.box_directory, box_paths.index_path)
+
+
+def test_corrupted_archive_is_indexed_but_fails_validation(
+    box_paths: BoxPaths, box_index: BoxIndex
+):
+    # Create a valid bead with a code file, then corrupt the code
+    zip_path = create_unindexed_bead_with_code_file(box_paths.box_directory, "bead1")
+    corrupt_code_file_in_zip(zip_path)
+
+    # Sync: corrupted archive should be indexed without error
+    progress_updates = list(box_index.sync())
+    assert count_beads_in_index(box_index) == 1
+    assert progress_updates[-1].error_count == 0
+
+    # Validate: corruption is detected when the archive is validated
+    beads = box_index.get_beads([])
+    assert len(beads) == 1
+    box = Box("test_box", box_paths.box_directory, box_paths.index_path)
+    archive = box.resolve(beads[0])
+    with pytest.raises(InvalidArchive):
+        archive.validate()
