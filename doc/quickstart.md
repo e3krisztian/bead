@@ -34,7 +34,7 @@ There are existing data that are to be converted to beads.
 
 ## <a name="update-with-new-data"></a>Update a bead for new input data (create a new version)
 
-- `bead develop BEAD-NAME`  (create workspace )
+- `bead edit BEAD-NAME`  (create workspace )
 - `cd BEAD-NAME`
 - `bead input update NEW-INPUT-NAME` (update data at `input/NEW-INPUT-NAME` from the newest version)
   - By default, matches by both input name and kind for precise updates
@@ -46,7 +46,7 @@ There are existing data that are to be converted to beads.
 
 ## <a name="update-with-new-algorithm"></a>Update algorithm to create a bead (create a new version)
 
-- `bead develop BEAD-NAME`  (create workspace )
+- `bead edit BEAD-NAME`  (create workspace )
 - `cd BEAD-NAME`
 - modify code
 - run the program
