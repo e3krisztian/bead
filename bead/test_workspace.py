@@ -45,6 +45,14 @@ def test_create_of_specified_kind(workspace_dir):
     assert A_KIND == workspace.kind
 
 
+def test_set_kind_replaces_kind(workspace_dir):
+    """Test that set_kind replaces the kind."""
+    ws = m.Workspace(workspace_dir)
+    ws.create('original-kind')
+    ws.set_kind('new-kind')
+    assert ws.kind == 'new-kind'
+
+
 def test_for_current_working_directory_non_workspace(tmp_path, monkeypatch):
     """Test workspace detection in non-workspace directory."""
     monkeypatch.chdir(tmp_path)

@@ -64,6 +64,11 @@ class Workspace(Computation):
     def kind(self):  # type: ignore[override]
         return self.meta[meta.KIND]
 
+    def set_kind(self, kind):
+        m = self.meta
+        m[meta.KIND] = kind
+        self.meta = m
+
     @property
     def name(self):  # type: ignore[override]
         return self.directory.name
