@@ -10,6 +10,7 @@ from bead.workspace import Workspace
 
 from .args import BEAD_SPEC
 from .args import DefaultArgSentinel
+from .bead_spec import BeadSpec
 from .args import INPUT_NAME
 from .cmdparse import Command
 from .common import MatchStrategy
@@ -240,7 +241,6 @@ class CmdUpdate(Command):
         For relative offsets without explicit name (e.g., @-, @+), prepends the mapped bead name.
         Returns tuple: (resolved_spec_string, parsed_BeadSpec_object)
         """
-        from .bead_spec import BeadSpec
         spec = BeadSpec.parse(bead_spec)
         if spec.time and not spec.name:
             # Relative offset without name - use mapped name
@@ -261,14 +261,18 @@ class CmdUpdate(Command):
                 match_strategy=args.match_strategy
             )
         except LookupError:
+            resolved_spec = BeadSpec.parse(bead_spec)
+            effective_name = resolved_spec.name or spec.name
             # Diagnose the failure
-            if spec.name and args.match_strategy == MatchStrategy.NAME_AND_KIND:
+            if effective_name and args.match_strategy == MatchStrategy.NAME_AND_KIND:
                 try:
                     if self._is_kind_mismatch(env, bead_spec, input, args):
-                        die(f"Kind (lineage) mismatch: only a different kind of {spec.name} was found. "
+                        die(f"Kind (lineage) mismatch: only a different kind of {effective_name} was found. "
                             f"Use --no-kind to allow this update.")
                 except LookupError:
                     pass  # Bead truly doesn't exist, will report below
+            if resolved_spec.time and effective_name and self._bead_name_exists(env, effective_name, input, args):
+                die(f'No version found for "{effective_name}" matching @{resolved_spec.time}')
             die(f'Not a known bead name: {bead_spec}')
 
     def _verify_archive_constraints(
@@ -306,6 +310,13 @@ class CmdUpdate(Command):
         )
         # Found a bead - check if it has different kind
         return archive.kind != input.kind
+
+    def _bead_name_exists(self, env, name, input, args):
+        try:
+            find_bead_for_update(env, name, current_input=input, match_strategy=MatchStrategy.NAME_ONLY)
+            return True
+        except LookupError:
+            return False
 
     def _verify_name_constraint(
         self, input: InputSpec, archive: Archive, args, workspace: Workspace, explicit_bead_name: bool

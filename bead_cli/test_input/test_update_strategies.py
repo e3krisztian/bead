@@ -586,3 +586,52 @@ def test_update_file_path_verifies_kind_and_time(shell, box, check, times, tmp_p
     # With --allow-downgrade should work (name check already skipped, kind matches)
     shell.bead('input', 'update', 'myinput', str(archive_path_downgrade), '--allow-downgrade')
     check.loaded('myinput', times.TS1)
+
+
+def test_update_at_minus_no_older_version_shows_clear_error(shell, box, times, tmp_path_factory):
+    """@- on input with no older version should report missing version, not unknown bead name."""
+    create_bead_family(box, 'solo_bead', [times.TS2], tmp_path_factory)
+
+    shell.bead('new', 'test_workspace')
+    shell.cd('test_workspace')
+    shell.bead('input', 'add', 'myinput', 'solo_bead')
+
+    shell.bead('input', 'update', 'myinput', '@-', expect_failure=True)
+
+    assert 'solo_bead' in shell.stderr
+    assert '@-' in shell.stderr
+    assert 'Not a known bead name' not in shell.stderr
+
+
+def test_update_at_time_no_matching_version_shows_clear_error(shell, box, times, tmp_path_factory):
+    """@<timestamp> with no matching version should report missing version, not unknown bead name."""
+    create_bead_family(box, 'solo_bead', [times.TS4], tmp_path_factory)
+
+    shell.bead('new', 'test_workspace')
+    shell.cd('test_workspace')
+    shell.bead('input', 'add', 'myinput', 'solo_bead')
+
+    shell.bead('input', 'update', 'myinput', f'solo_bead@{times.TS1}', expect_failure=True)
+
+    assert 'solo_bead' in shell.stderr
+    assert times.TS1 in shell.stderr
+    assert 'Not a known bead name' not in shell.stderr
+
+
+def test_update_at_minus_kind_mismatch_shows_kind_error(shell, box, times, tmp_path_factory):
+    """@- where the one older version has wrong kind should show kind-mismatch error, not time error."""
+    # TS1: KIND:old, TS2: KIND:new — input is loaded from TS2/KIND:new
+    create_bead_family(box, 'versioned_bead', [times.TS1], tmp_path_factory, kind='KIND:old')
+    create_bead_family(box, 'versioned_bead', [times.TS2], tmp_path_factory, kind='KIND:new')
+
+    shell.bead('new', 'test_workspace')
+    shell.cd('test_workspace')
+    shell.bead('input', 'add', 'myinput', 'versioned_bead')
+    # input is now at TS2/KIND:new (latest); @- seeks TS1 but that has KIND:old
+
+    shell.bead('input', 'update', 'myinput', '@-', expect_failure=True)
+
+    # Should report kind mismatch, not "no version found matching @-" or "not a known bead name"
+    assert 'Kind' in shell.stderr or 'lineage' in shell.stderr
+    assert 'No version found' not in shell.stderr
+    assert 'Not a known bead name' not in shell.stderr
