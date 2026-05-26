@@ -62,6 +62,17 @@ class CmdNew(Command):
         print(f'Created workspace "{workspace.name}"')
 
 
+class CmdBranch(Command):
+    '''
+    Assign a new kind to the workspace, starting a new incompatible bead series.
+    '''
+
+    def run(self, args, env: 'Environment'):
+        workspace = env.get_workspace()
+        workspace.set_kind(uuid())
+        print('Branched.')
+
+
 USE_THE_ONLY_BOX = DefaultArgSentinel(
     'if there is exactly one box,' +
     ' store there, otherwise it MUST be specified')

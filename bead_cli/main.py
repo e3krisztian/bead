@@ -62,6 +62,7 @@ def make_argument_parser(defaults):
     (parser
         .commands(
             ('new', workspace.CmdNew, 'Create and initialize new workspace directory with a new bead.'),
+            ('branch', workspace.CmdBranch, 'Assign a new kind, starting a new incompatible bead series.'),
             ('edit', workspace.CmdEdit, 'Create workspace from specified bead.'),
             ('discard', workspace.CmdDiscard, 'Delete workspace.'),
             ('save', workspace.CmdSave, 'Save workspace in a box.'),
