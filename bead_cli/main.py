@@ -61,7 +61,8 @@ def make_argument_parser(defaults):
     parser = Parser.new(defaults)
     (parser
         .commands(
-            ('new', workspace.CmdNew, 'Create and initialize new workspace directory with a new bead.'),
+            ('new', workspace.CmdNew, 'Create a new subdirectory and initialize it as a bead workspace.'),
+            ('init', workspace.CmdInit, "Initialize the current directory as a bead workspace. (Like 'bead new' but in-place.)"),
             ('branch', workspace.CmdBranch, 'Assign a new kind, starting a new incompatible bead series.'),
             ('edit', workspace.CmdEdit, 'Create workspace from specified bead.'),
             ('discard', workspace.CmdDiscard, 'Delete workspace.'),

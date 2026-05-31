@@ -17,6 +17,7 @@ from .infra.fs import make_readonly
 from .infra.fs import make_writable
 from .infra.fs import rmtree
 from .infra.fs import write_file
+from .infra.identifier import uuid
 
 
 # generated with `uuidgen -t`
@@ -97,6 +98,12 @@ class Workspace(Computation):
             persistence.dumps(bead_meta))
 
         assert self.is_valid
+
+    def init(self):
+        self.create_directories()
+        if not self._meta_filename.exists():
+            bead_meta = {meta.KIND: uuid(), meta.INPUTS: {}}
+            write_file(self._meta_filename, persistence.dumps(bead_meta))
 
     def create_directories(self):
         dir = self.directory

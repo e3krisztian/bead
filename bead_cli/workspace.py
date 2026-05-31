@@ -28,6 +28,17 @@ if TYPE_CHECKING:
     from .environment import Environment
 
 
+_ONBOARDING = (
+    '\n'
+    '  input/    read-only, managed by bead (use: bead input add/update/load)\n'
+    '  output/   put your results here\n'
+    '  temp/     scratch space, not saved\n'
+    '  .         put your scripts/code here (or a subdirectory)\n'
+    '\n'
+    '  When output is ready: bead save\n'
+)
+
+
 def assert_may_be_valid_name(name):
     '''
     Refuse bead names that are non cross platform file-system compatible
@@ -45,7 +56,7 @@ def assert_may_be_valid_name(name):
 
 class CmdNew(Command):
     '''
-    Create and initialize new workspace directory for a new bead.
+    Create a new subdirectory and initialize it as a bead workspace.
     '''
 
     def declare(self, arg):
@@ -59,7 +70,26 @@ class CmdNew(Command):
 
         kind = uuid()
         workspace.create(kind)
-        print(f'Created workspace "{workspace.name}"')
+        print(f'Created workspace "{workspace.name}".')
+        print(_ONBOARDING)
+
+
+class CmdInit(Command):
+    '''
+    Initialize the current directory as a bead workspace. (Like 'bead new' but in-place.)
+    '''
+
+    def run(self, args, env: 'Environment'):
+        workspace = env.get_unchecked_workspace()
+        if workspace.is_valid:
+            print('Already a workspace.')
+            return
+        input_dir = workspace.directory / 'input'
+        if input_dir.exists() and any(input_dir.iterdir()):
+            die('ERROR: input/ has files but this is not a valid bead workspace.')
+        workspace.init()
+        print(f'Initialized workspace "{workspace.name}".')
+        print(_ONBOARDING)
 
 
 class CmdBranch(Command):
