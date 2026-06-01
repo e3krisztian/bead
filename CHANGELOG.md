@@ -2,6 +2,16 @@
 
 ## Unreleased (since v0.9)
 
+### `bead branch`
+
+Assign a fresh kind to the current workspace, starting a new incompatible bead series under the same name. Consumers trying to update from the old series get a kind mismatch error, preventing accidental upgrades to incompatible data. Previously only achievable by renaming the workspace directory.
+
+### `bead init`
+
+Initialize the current directory as a bead workspace. Counterpart to `bead new`, which creates a new subdirectory instead.
+
+
+
 ### Bead reference mini-language
 
 Commands that take a bead argument now accept a structured spec: `[[box:]name][@time]`.
