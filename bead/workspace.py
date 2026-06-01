@@ -279,17 +279,9 @@ class _ZipCreator:
         self.zipfile.writestr(zip_path, bytes)
         self.add_hash(zip_path, securehash.bytes(bytes))
 
-    def create(self, zip_file_name: Path, workspace, freeze_timestamp, comment: str):
+    def create(self, zip_file_name: Path, workspace, freeze_timestamp, comment: str, compress: bool = True):
         assert workspace.is_valid
-        user_compression_preference = os.environ.get('BEAD_ZIP_COMPRESSION', 'deflated')
-        compression = {
-            'off': zipfile.ZIP_STORED,
-            'stored': zipfile.ZIP_STORED,
-            # these are not universally supported compression methods
-            # 'lzma': zipfile.ZIP_LZMA,
-            # 'bz2': zipfile.ZIP_BZIP2,
-            'deflated': zipfile.ZIP_DEFLATED,
-        }.get(user_compression_preference, zipfile.ZIP_DEFLATED)
+        compression = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
         try:
             with zipfile.ZipFile(
                 zip_file_name,
