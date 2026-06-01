@@ -115,9 +115,17 @@ class CmdSave(Command):
 
     def declare(self, arg):
         arg(BOX_NAME.with_default(USE_THE_ONLY_BOX))
+        arg('--no-compress', '-0',
+            action='store_true',
+            default=False,
+            help='Store without compression (faster for large outputs)')
 
     def run(self, args, env: 'Environment'):
         box_name = args.box_name
+        compress = not args.no_compress
+        if compress:
+            env_pref = os.environ.get('BEAD_ZIP_COMPRESSION', 'deflated')
+            compress = env_pref not in ('off', 'stored')
         workspace = env.get_workspace()
         # XXX: (usability) save - support saving directly to a directory outside of workspace
         if box_name is USE_THE_ONLY_BOX:
@@ -143,7 +151,7 @@ class CmdSave(Command):
             except LookupError:
                 die(f'Unknown box: {box_name}')
         try:
-            location = box.store(workspace, timestamp())
+            location = box.store(workspace, timestamp(), compress=compress)
         except BoxError as e:
             die(f'Error saving: {e}')
         print(f'Successfully stored bead at {location}.')

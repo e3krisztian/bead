@@ -1,11 +1,12 @@
 import os
+import zipfile
 
 from bead.infra.fs import rmtree
 import pytest
 
 from bead.workspace import Workspace
 
-from .test_shell import Shell
+from .test_shell import Shell, setenv
 
 
 def test_invalid_workspace_causes_error(shell):
@@ -125,3 +126,70 @@ def test_save_to_box_without_backing_directory(shell_multi_box, box1, box2):
     shell.bead('save', box2.name, expect_failure=True)
     assert 'ERROR' in shell.stderr
     assert 'does not exist' in shell.stderr
+
+
+def _zip_compression_types(zip_path):
+    with zipfile.ZipFile(zip_path) as zf:
+        return {info.compress_type for info in zf.infolist()}
+
+
+def _find_saved_zip(box):
+    zips = list(box.directory.glob('*.zip'))
+    assert len(zips) == 1, f'Expected 1 zip, found {zips}'
+    return zips[0]
+
+
+def test_save_default_uses_compression(shell, box):
+    shell.bead('new', 'bead')
+    shell.cd('bead')
+    shell.write_file('output/data.txt', 'x' * 1000)
+    shell.bead('save')
+    zip_path = _find_saved_zip(box)
+    types = _zip_compression_types(zip_path)
+    assert zipfile.ZIP_DEFLATED in types
+
+
+def test_save_no_compress_flag_uses_stored(shell, box):
+    shell.bead('new', 'bead')
+    shell.cd('bead')
+    shell.write_file('output/data.txt', 'some content')
+    shell.bead('save', '--no-compress')
+    zip_path = _find_saved_zip(box)
+    types = _zip_compression_types(zip_path)
+    assert zipfile.ZIP_STORED in types
+    assert zipfile.ZIP_DEFLATED not in types
+
+
+def test_save_dash_zero_flag_uses_stored(shell, box):
+    shell.bead('new', 'bead')
+    shell.cd('bead')
+    shell.write_file('output/data.txt', 'some content')
+    shell.bead('save', '-0')
+    zip_path = _find_saved_zip(box)
+    types = _zip_compression_types(zip_path)
+    assert zipfile.ZIP_STORED in types
+    assert zipfile.ZIP_DEFLATED not in types
+
+
+def test_save_env_var_off_uses_stored(shell, box):
+    shell.bead('new', 'bead')
+    shell.cd('bead')
+    shell.write_file('output/data.txt', 'some content')
+    with setenv('BEAD_ZIP_COMPRESSION', 'off'):
+        shell.bead('save')
+    zip_path = _find_saved_zip(box)
+    types = _zip_compression_types(zip_path)
+    assert zipfile.ZIP_STORED in types
+    assert zipfile.ZIP_DEFLATED not in types
+
+
+def test_save_no_compress_overrides_env_var(shell, box):
+    shell.bead('new', 'bead')
+    shell.cd('bead')
+    shell.write_file('output/data.txt', 'some content')
+    with setenv('BEAD_ZIP_COMPRESSION', 'deflated'):
+        shell.bead('save', '--no-compress')
+    zip_path = _find_saved_zip(box)
+    types = _zip_compression_types(zip_path)
+    assert zipfile.ZIP_STORED in types
+    assert zipfile.ZIP_DEFLATED not in types
