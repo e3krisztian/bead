@@ -114,14 +114,14 @@ class Workspace(Computation):
         ensure_directory(dir / layouts.Workspace.TEMP)
         ensure_directory(dir / layouts.Workspace.META)
 
-    def pack(self, zipfilename: Path, freeze_time, comment: str):
+    def pack(self, zipfilename: Path, freeze_time, comment: str, compress: bool = True):
         '''
         Create archive from workspace.
         '''
         zipfilename = Path(zipfilename)
         assert not zipfilename.exists()
         try:
-            _ZipCreator().create(zipfilename, self, freeze_time, comment)
+            _ZipCreator().create(zipfilename, self, freeze_time, comment, compress=compress)
         except (RuntimeError, Exception):
             if zipfilename.exists():
                 zipfilename.unlink()

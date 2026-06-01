@@ -439,19 +439,19 @@ class Box:
                 + f"Archive({archive.name}, {archive.content_id}, {archive.box_name}) != "
                 + f"Bead({bead.name}, {bead.content_id}, {bead.box_name})")
 
-    def store(self, workspace, freeze_time) -> Path:
+    def store(self, workspace, freeze_time, compress: bool = True) -> Path:
         '''Store workspace as bead archive.'''
         if not self.directory.exists():
             raise BoxError(f'Box "{self.name}": directory {self.directory} does not exist')
         if not self.directory.is_dir():
             raise BoxError(f'Box "{self.name}": {self.directory} is not a directory')
-        
+
         zipfilename = self.directory / f'{workspace.name}_{freeze_time}.zip'
-        workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT)
+        workspace.pack(zipfilename, freeze_time=freeze_time, comment=ARCHIVE_COMMENT, compress=compress)
 
         # Add to index
         self.index.add_file(zipfilename)
-        
+
         return zipfilename
 
     def search(self) -> BeadSearch:
